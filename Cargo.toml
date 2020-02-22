@@ -2,6 +2,7 @@
 name = "basic-lang"
 version = "0.1.0"
 authors = ["David Turnbull"]
+license = "Apache-2.0 OR MIT"
 readme = "README.md"
 homepage = "http://basic-lang.org/"
 repository = "https://github.com/AE9RB/basic-lang"
