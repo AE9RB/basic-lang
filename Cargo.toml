@@ -1,0 +1,19 @@
+[package]
+name = "basic-lang"
+version = "0.1.0"
+authors = ["David Turnbull"]
+readme = "README.md"
+homepage = "http://basic-lang.org/"
+repository = "https://github.com/AE9RB/basic-lang"
+description = "The BASIC programming language as it was in 1978."
+
+edition = "2018"
+
+[lib]
+name = "macros"
+proc-macro = true
+doc = false
+
+[[bin]]
+name = "basic"
+path = "src/main.rs"
