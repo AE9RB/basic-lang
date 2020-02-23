@@ -1,3 +1,8 @@
+//! # BASIC
+//!
+//! Should not see this. Documentation is in bin crate.
+//!
+
 extern crate proc_macro;
 use proc_macro::*;
 
@@ -6,6 +11,7 @@ This provides #[derive(EnumIter)] which implements
 YourEnum::iter() to return all variants that don't have data.
 */
 
+#[doc(hidden)]
 #[proc_macro_derive(EnumIter)]
 pub fn derive_enum_iter(item: TokenStream) -> TokenStream {
     let mut scan = item.clone().into_iter();
