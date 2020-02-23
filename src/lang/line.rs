@@ -11,7 +11,7 @@ pub struct Line {
 }
 
 impl Line {
-    pub fn from_str(s: &str) -> Line {
+    pub fn new(s: &str) -> Line {
         let (line_number, tokens) = lex(s);
         Line {
             tokens: tokens,
@@ -20,7 +20,7 @@ impl Line {
     }
 
     pub fn ast(&mut self) -> Result<Vec<Statement>, Error> {
-        parse(self.tokens.iter())
+        parse(self.number, &self.tokens)
     }
 }
 
@@ -41,6 +41,6 @@ mod tests {
 
     #[test]
     fn test_foo() {
-        let _ = Line::from_str("100 fancy");
+        let _ = Line::new("100 fancy");
     }
 }

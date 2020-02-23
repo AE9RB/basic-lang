@@ -2,35 +2,36 @@
 pub struct Error {
     code: u16,
     line: Option<u16>,
-    columns: Option<std::ops::Range<usize>>,
+    column: std::ops::Range<usize>,
 }
 
 macro_rules! error {
     ($err:ident) => {
-        Err($crate::lang::error::Error::from_code(
+        Err($crate::lang::error::Error::new(
             $crate::lang::error::ErrorCode::$err,
         ))
     };
 }
 
 impl Error {
-    pub fn from_code(code: ErrorCode) -> Error {
+    pub fn new(code: ErrorCode) -> Error {
         Error {
             code: code as u16,
             line: None,
-            columns: None,
+            column: 0..0,
         }
     }
 
-    pub fn var_err(&self) -> u16 {
-        self.code
+    pub fn in_line_number(mut self, line: Option<u16>) -> Error {
+        debug_assert!(self.line.is_none());
+        self.line = line;
+        self
     }
 
-    pub fn var_erl(&self) -> u16 {
-        if self.line.is_none() {
-            return 65535;
-        }
-        return self.line.unwrap();
+    pub fn in_column(mut self, column: &std::ops::Range<usize>) -> Error {
+        debug_assert_eq!(self.column, 0..0);
+        self.column = column.clone();
+        self
     }
 }
 
@@ -89,10 +90,20 @@ impl std::fmt::Display for Error {
             68 => "OUT OF RANDOM BLOCKS",
             _ => "",
         };
+        let suffix = match self.line {
+            None => format!(""),
+            Some(_) => {
+                if (0..0) == self.column {
+                    format!(" IN {}", self.line.unwrap())
+                } else {
+                    format!(" IN {}:{}", self.line.unwrap(), self.column.start)
+                }
+            }
+        };
         if s.len() > 0 {
-            write!(f, "{}", s)
+            write!(f, "{}{}", s, suffix)
         } else {
-            write!(f, "PROGRAM ERROR {}", self.code)
+            write!(f, "PROGRAM ERROR {}{}", self.code, suffix)
         }
     }
 }
