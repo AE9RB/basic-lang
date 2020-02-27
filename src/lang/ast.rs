@@ -10,12 +10,12 @@ pub enum Statement {
 
 #[derive(Debug, PartialEq)]
 pub enum Expression {
-    // Single(f32),
-    // Double(f64),
-    // Integer(i32),
-    // String(String),
+    Single(f32),
+    Double(f64),
+    Integer(i16),
+    String(String),
     Ident(Ident),
-    // Function(Ident, Vec<Expression>),
+    Function(Ident, Vec<Expression>),
     // Add(Box<Expression>, Box<Expression>),
     // Subtract(Box<Expression>, Box<Expression>),
     // Multiply(Box<Expression>, Box<Expression>),

@@ -20,27 +20,26 @@ struct Parse<'a> {
 
 impl<'a> Parse<'a> {
     fn tokens(tokens: &'a [Token]) -> Result<Vec<Statement>> {
-        let mut p = Parse {
+        let mut parse = Parse {
             token_stream: tokens.iter(),
             peeked: None,
             rem2: false,
             col: 0..0,
         };
-
         let mut r: Vec<Statement> = vec![];
         loop {
-            match p.statement() {
-                Ok(s) => r.push(s),
-                Err(e) => return Err(e.in_column(&p.col)),
-            }
-            println!("!p {:?}", p.peek());
-            match p.peek() {
+            match parse.peek() {
                 None => return Ok(r),
                 Some(t) => {
                     if *t == &Token::Colon {
-                        p.next();
+                        parse.next();
+                        continue;
                     }
                 }
+            }
+            match parse.statement() {
+                Ok(s) => r.push(s),
+                Err(e) => return Err(e.in_column(&parse.col)),
             }
         }
     }
@@ -67,7 +66,7 @@ impl<'a> Parse<'a> {
         }
     }
 
-    fn peek(&mut self) -> Option<&&Token> {
+    fn peek(&mut self) -> Option<&&'a Token> {
         if self.peeked.is_none() {
             self.peeked = self.next();
         }
@@ -75,17 +74,83 @@ impl<'a> Parse<'a> {
     }
 
     fn statement(&mut self) -> Result<Statement> {
-        match self.next().unwrap() {
-            Token::Word(w) => Statement::for_word(self, w),
+        match self.peek() {
+            Some(Token::Ident(_)) => Statement::for_word(self, &Word::Let),
+            Some(Token::Word(word)) => {
+                self.next();
+                Statement::for_word(self, word)
+            }
             _ => error!(SyntaxError),
         }
     }
 
     fn expression(&mut self) -> Result<Expression> {
         match self.next() {
-            Some(Token::Ident(i)) => Ok(Expression::Ident(i.clone())),
+            Some(Token::Ident(i)) => match self.peek() {
+                Some(&&Token::ParenOpen) => {
+                    Ok(Expression::Function(i.clone(), self.expression_list()?))
+                }
+                _ => Ok(Expression::Ident(i.clone())),
+            },
+            Some(Token::Literal(l)) => Expression::for_literal(l),
             _ => error!(SyntaxError),
         }
+    }
+
+    fn expression_list(&mut self) -> Result<Vec<Expression>> {
+        match self.next() {
+            Some(Token::ParenOpen) => {}
+            _ => return error!(SyntaxError),
+        }
+        let mut v: Vec<Expression> = vec![];
+        loop {
+            v.push(self.expression()?);
+            match self.next() {
+                Some(Token::ParenClose) => return Ok(v),
+                Some(Token::Comma) => continue,
+                _ => return error!(SyntaxError),
+            }
+        }
+    }
+}
+
+impl Expression {
+    fn for_literal(lit: &Literal) -> Result<Expression> {
+        match lit {
+            Literal::Single(s) => {
+                let v = Self::clean(s).parse::<f32>();
+                match v {
+                    Ok(v) => Ok(Expression::Single(v)),
+                    Err(why) => panic!(why),
+                }
+            }
+            Literal::Double(s) => {
+                let v = Self::clean(s).parse::<f64>();
+                match v {
+                    Ok(v) => Ok(Expression::Double(v)),
+                    Err(why) => panic!(why),
+                }
+            }
+            Literal::Integer(s) => {
+                let v = Self::clean(s).parse::<i16>();
+                match v {
+                    Ok(v) => Ok(Expression::Integer(v)),
+                    Err(why) => panic!(why),
+                }
+            }
+            Literal::String(s) => Ok(Expression::String(s.to_string())),
+        }
+    }
+
+    fn clean(s: &str) -> String {
+        let mut s = String::from(s).replace("D", "E");
+        match s.chars().last() {
+            Some('!') | Some('#') | Some('%') => {
+                s.pop();
+            }
+            _ => {}
+        };
+        s
     }
 }
 
@@ -117,20 +182,58 @@ mod tests {
     use super::super::lex::*;
     use super::*;
 
-    fn parse_str(s: &str) -> Result<Vec<Statement>> {
+    fn parse_str(s: &str) -> Statement {
         let (lin, tokens) = lex(s);
-        parse(lin, &tokens)
+        match parse(lin, &tokens) {
+            Ok(mut v) => {
+                if v.len() != 1 {
+                    panic!();
+                }
+                v.pop().unwrap()
+            }
+            Err(e) => panic!("{} : {:?}", e, e.column()),
+        }
     }
 
     #[test]
     fn test_let_foo_eq_bar() {
-        let x = parse_str("letfoo=bar");
-        assert_eq!(
-            x.unwrap(),
-            vec![Statement::Let(
-                Ident::Plain("FOO".to_string()),
-                Expression::Ident(Ident::Plain("BAR".to_string()))
-            )]
+        let answer = Statement::Let(
+            Ident::Plain("FOO".to_string()),
+            Expression::Ident(Ident::Plain("BAR".to_string())),
         );
+        assert_eq!(parse_str("letfoo=bar:"), answer);
+        assert_eq!(parse_str("foo=bar:"), answer);
+    }
+
+    #[test]
+    fn test_literals() {
+        let answer = Statement::Let(Ident::Plain("A".to_string()), Expression::Integer(12));
+        assert_eq!(parse_str("A=12"), answer);
+        let answer = Statement::Let(Ident::Plain("A".to_string()), Expression::Single(12.0));
+        assert_eq!(parse_str("A=12!"), answer);
+        let answer = Statement::Let(Ident::Plain("A".to_string()), Expression::Double(12e4));
+        assert_eq!(parse_str("A=12d4"), answer);
+        let answer = Statement::Let(
+            Ident::Plain("A".to_string()),
+            Expression::String("food".to_string()),
+        );
+        assert_eq!(parse_str("A=\"food\""), answer);
+        let answer = Statement::Let(Ident::Plain("A".to_string()), Expression::Double(0.0));
+        assert_eq!(
+            parse_str("A=798347598234765983475983248592d-234721398742391847982344"),
+            answer
+        );
+    }
+
+    #[test]
+    fn test_functions() {
+        let answer = Statement::Let(
+            Ident::Plain("A".to_string()),
+            Expression::Function(
+                Ident::Plain("COS".to_string()),
+                vec![Expression::Single(3.14)],
+            ),
+        );
+        assert_eq!(parse_str("A=cos(3.14)"), answer);
     }
 }

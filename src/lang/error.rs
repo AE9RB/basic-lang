@@ -33,6 +33,10 @@ impl Error {
         self.column = column.clone();
         self
     }
+
+    pub fn column(&self) -> &std::ops::Range<usize> {
+        &self.column
+    }
 }
 
 #[repr(u16)]

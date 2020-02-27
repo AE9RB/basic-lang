@@ -44,16 +44,13 @@ fn collapse_go(t: &mut Vec<Token>) {
 }
 
 fn upgrade_tokens(t: &mut Vec<Token>) {
-    for i in 0..t.len() {
-        let r = match t[i] {
-            Token::Word(Word::Print2) => Some(Token::Word(Word::Print1)),
-            Token::Word(Word::Goto2) => Some(Token::Word(Word::Goto1)),
-            Token::Word(Word::Gosub2) => Some(Token::Word(Word::Gosub1)),
-            _ => None,
+    for token in t.iter_mut() {
+        match token {
+            Token::Word(Word::Print2) => *token = Token::Word(Word::Print1),
+            Token::Word(Word::Goto2) => *token = Token::Word(Word::Goto1),
+            Token::Word(Word::Gosub2) => *token = Token::Word(Word::Gosub1),
+            _ => {}
         };
-        if r.is_some() {
-            t[i] = r.unwrap();
-        }
     }
 }
 
