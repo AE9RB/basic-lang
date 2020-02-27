@@ -97,10 +97,10 @@ impl std::fmt::Display for Error {
         let suffix = match self.line {
             None => format!(""),
             Some(_) => {
-                if (0..0) == self.column {
+                if (0..0) == *self.column() {
                     format!(" IN {}", self.line.unwrap())
                 } else {
-                    format!(" IN {}:{}", self.line.unwrap(), self.column.start)
+                    format!(" IN {}:{}", self.line.unwrap(), self.column().start)
                 }
             }
         };

@@ -85,16 +85,42 @@ impl<'a> Parse<'a> {
     }
 
     fn expression(&mut self) -> Result<Expression> {
-        match self.next() {
-            Some(Token::Ident(i)) => match self.peek() {
-                Some(&&Token::ParenOpen) => {
-                    Ok(Expression::Function(i.clone(), self.expression_list()?))
+        fn parse(p: &mut Parse, precedence: usize) -> Result<Expression> {
+            let mut lhs = match p.next() {
+                Some(Token::ParenOpen) => {
+                    let e = p.expression()?;
+                    match p.next() {
+                        Some(Token::ParenClose) => e,
+                        _ => return error!(SyntaxError),
+                    }
                 }
-                _ => Ok(Expression::Ident(i.clone())),
-            },
-            Some(Token::Literal(l)) => Expression::for_literal(l),
-            _ => error!(SyntaxError),
-        }
+                Some(Token::Ident(i)) => match p.peek() {
+                    Some(&&Token::ParenOpen) => {
+                        Expression::Function(i.clone(), p.expression_list()?)
+                    }
+                    _ => Expression::Ident(i.clone()),
+                },
+                Some(Token::Literal(l)) => Expression::for_literal(l),
+                _ => return error!(SyntaxError),
+            };
+            let mut rhs;
+            loop {
+                match p.peek() {
+                    Some(Token::Operator(op)) => {
+                        let op_precedence = Expression::op_precedence(op);
+                        if op_precedence < precedence {
+                            break;
+                        }
+                        p.next();
+                        rhs = parse(p, op_precedence)?;
+                        lhs = Expression::for_binary_op(op, lhs, rhs);
+                    }
+                    _ => break,
+                }
+            }
+            Ok(lhs)
+        };
+        parse(self, 0)
     }
 
     fn expression_list(&mut self) -> Result<Vec<Expression>> {
@@ -115,30 +141,59 @@ impl<'a> Parse<'a> {
 }
 
 impl Expression {
-    fn for_literal(lit: &Literal) -> Result<Expression> {
+    fn for_binary_op(op: &Operator, lhs: Expression, rhs: Expression) -> Expression {
+        use Operator::*;
+        match op {
+            Plus => Expression::Add(Box::new(lhs), Box::new(rhs)),
+            Minus => Expression::Subtract(Box::new(lhs), Box::new(rhs)),
+            Multiply => Expression::Multiply(Box::new(lhs), Box::new(rhs)),
+            Divide => Expression::Divide(Box::new(lhs), Box::new(rhs)),
+            _ => unimplemented!(),
+        }
+    }
+
+    fn op_precedence(op: &Operator) -> usize {
+        use Operator::*;
+        match op {
+            Equals => 0,
+            Plus | Minus => 10,
+            Multiply | Divide => 20,
+            DivideInt => 0,
+            Caret => 0,
+            Modulus => 0,
+            Not => 0,
+            And => 0,
+            Or => 0,
+            Xor => 0,
+            Eqv => 0,
+            Imp => 0,
+        }
+    }
+
+    fn for_literal(lit: &Literal) -> Expression {
         match lit {
             Literal::Single(s) => {
                 let v = Self::clean(s).parse::<f32>();
                 match v {
-                    Ok(v) => Ok(Expression::Single(v)),
+                    Ok(v) => Expression::Single(v),
                     Err(why) => panic!(why),
                 }
             }
             Literal::Double(s) => {
                 let v = Self::clean(s).parse::<f64>();
                 match v {
-                    Ok(v) => Ok(Expression::Double(v)),
+                    Ok(v) => Expression::Double(v),
                     Err(why) => panic!(why),
                 }
             }
             Literal::Integer(s) => {
                 let v = Self::clean(s).parse::<i16>();
                 match v {
-                    Ok(v) => Ok(Expression::Integer(v)),
+                    Ok(v) => Expression::Integer(v),
                     Err(why) => panic!(why),
                 }
             }
-            Literal::String(s) => Ok(Expression::String(s.to_string())),
+            Literal::String(s) => Expression::String(s.to_string()),
         }
     }
 
@@ -198,11 +253,11 @@ mod tests {
     #[test]
     fn test_let_foo_eq_bar() {
         let answer = Statement::Let(
-            Ident::Plain("FOO".to_string()),
+            Ident::Plain("TER".to_string()),
             Expression::Ident(Ident::Plain("BAR".to_string())),
         );
-        assert_eq!(parse_str("letfoo=bar:"), answer);
-        assert_eq!(parse_str("foo=bar:"), answer);
+        assert_eq!(parse_str("letter=bar:"), answer);
+        assert_eq!(parse_str("ter=bar:"), answer);
     }
 
     #[test]
@@ -235,5 +290,26 @@ mod tests {
             ),
         );
         assert_eq!(parse_str("A=cos(3.14)"), answer);
+    }
+
+    #[test]
+    fn test_precedence_and_paren() {
+        let answer = Statement::Let(
+            Ident::Plain("A".to_string()),
+            Expression::Subtract(
+                Box::new(Expression::Integer(2)),
+                Box::new(Expression::Multiply(
+                    Box::new(Expression::Add(
+                        Box::new(Expression::Integer(3)),
+                        Box::new(Expression::Function(
+                            Ident::Plain("COS".to_string()),
+                            vec![Expression::Single(3.14)],
+                        )),
+                    )),
+                    Box::new(Expression::Integer(4)),
+                )),
+            ),
+        );
+        assert_eq!(parse_str("A=(2-(3+cos(3.14))*4)"), answer);
     }
 }
