@@ -25,6 +25,7 @@ pub enum Token {
     ParenClose,
     Comma,
     Colon,
+    SemiColon,
 }
 
 impl Token {
@@ -50,6 +51,7 @@ impl std::fmt::Display for Token {
             ParenClose => write!(f, ")"),
             Comma => write!(f, ","),
             Colon => write!(f, ":"),
+            SemiColon => write!(f, ";"),
         }
     }
 }
