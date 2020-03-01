@@ -29,7 +29,7 @@ impl<'a> Parse<'a> {
         let mut r: Vec<Statement> = vec![];
         loop {
             match parse.peek() {
-                None => return Ok(r),
+                None | Some(Token::Word(Word::Rem1)) => return Ok(r),
                 Some(t) => {
                     if *t == &Token::Colon {
                         parse.next();
@@ -102,7 +102,7 @@ impl<'a> Parse<'a> {
                         Some(&&Token::ParenOpen) => {
                             Expression::Function(column, i.clone(), this.expression_list()?)
                         }
-                        _ => Expression::Ident(column, i.clone()),
+                        _ => Expression::Var(column, i.clone()),
                     }
                 }
                 Some(Token::Literal(l)) => Expression::for_literal(this.column(), l),
@@ -286,13 +286,13 @@ mod tests {
         let answer = Statement::Let(
             0..3,
             (3..6, Ident::Plain("TER".to_string())),
-            Expression::Ident(7..10, Ident::Plain("BAR".to_string())),
+            Expression::Var(7..10, Ident::Plain("BAR".to_string())),
         );
         assert_eq!(parse_str("letter=bar:"), answer);
         let answer = Statement::Let(
             0..3,
             (0..3, Ident::Plain("TER".to_string())),
-            Expression::Ident(4..7, Ident::Plain("BAR".to_string())),
+            Expression::Var(4..7, Ident::Plain("BAR".to_string())),
         );
         assert_eq!(parse_str("ter=bar:"), answer);
     }

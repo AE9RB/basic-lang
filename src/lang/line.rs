@@ -19,7 +19,7 @@ impl Line {
         }
     }
 
-    pub fn ast(&mut self) -> Result<Vec<Statement>, Error> {
+    pub fn ast(&self) -> Result<Vec<Statement>, Error> {
         parse(self.number, &self.tokens)
     }
 }

@@ -20,10 +20,14 @@ pub mod __Chapter_2;
 pub mod ___Appendix_A;
 
 mod lang;
+mod mach;
 use lang::line::*;
+use mach::compile::*;
 
 fn main() {
-    let mut t = Line::new(" 10?10:fori=j%to10:g=1+3+sin(3):remark \r\n");
+    let t = Line::new(" 10letg=1+3*3:remarkABLE! \r\n");
     println!("{}", t);
     println!("{:?}", t.ast());
+    let c = compile(&t);
+    println!("{:?}", c);
 }

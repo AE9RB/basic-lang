@@ -15,10 +15,70 @@ pub enum Expression {
     Integer(Column, i16),
     String(Column, String),
     Char(Column, char),
-    Ident(Column, Ident),
+    Var(Column, Ident),
     Function(Column, Ident, Vec<Expression>),
     Add(Column, Box<Expression>, Box<Expression>),
     Subtract(Column, Box<Expression>, Box<Expression>),
     Multiply(Column, Box<Expression>, Box<Expression>),
     Divide(Column, Box<Expression>, Box<Expression>),
+}
+
+pub trait Visitor {
+    fn visit_statement(&mut self, _: &Statement) {}
+    fn visit_ident(&mut self, _: &Ident) {}
+    fn visit_expression(&mut self, _: &Expression) {}
+}
+
+pub trait AcceptVisitor {
+    fn accept<V: Visitor>(&self, visitor: &mut V);
+}
+
+impl AcceptVisitor for Ident {
+    fn accept<V: Visitor>(&self, visitor: &mut V) {
+        visitor.visit_ident(self)
+    }
+}
+
+impl AcceptVisitor for Statement {
+    fn accept<V: Visitor>(&self, visitor: &mut V) {
+        use Statement::*;
+        match self {
+            Let(_, (_, ident), expr) => {
+                ident.accept(visitor);
+                expr.accept(visitor);
+            }
+            Print(_, vec_expr) => {
+                for expr in vec_expr {
+                    expr.accept(visitor);
+                }
+            }
+        }
+        visitor.visit_statement(self)
+    }
+}
+
+impl AcceptVisitor for Expression {
+    fn accept<V: Visitor>(&self, visitor: &mut V) {
+        use Expression::*;
+        match self {
+            Single(_, _) | Double(_, _) | Integer(_, _) | String(_, _) | Char(_, _) => {}
+            Var(_, ident) => {
+                ident.accept(visitor);
+            }
+            Function(_, ident, vec_expr) => {
+                ident.accept(visitor);
+                for expr in vec_expr {
+                    expr.accept(visitor);
+                }
+            }
+            Add(_, box_expr1, box_expr2)
+            | Subtract(_, box_expr1, box_expr2)
+            | Multiply(_, box_expr1, box_expr2)
+            | Divide(_, box_expr1, box_expr2) => {
+                box_expr1.accept(visitor);
+                box_expr2.accept(visitor);
+            }
+        }
+        visitor.visit_expression(self)
+    }
 }
