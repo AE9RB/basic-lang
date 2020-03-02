@@ -21,16 +21,22 @@ impl Error {
         }
     }
 
-    pub fn in_line_number(mut self, line: Option<u16>) -> Error {
+    pub fn in_line_number(&self, line: Option<u16>) -> Error {
         debug_assert!(self.line.is_none());
-        self.line = line;
-        self
+        Error {
+            code: self.code,
+            line: line,
+            column: self.column.clone(),
+        }
     }
 
-    pub fn in_column(mut self, column: &std::ops::Range<usize>) -> Error {
+    pub fn in_column(&self, column: &std::ops::Range<usize>) -> Error {
         debug_assert_eq!(self.column, 0..0);
-        self.column = column.clone();
-        self
+        Error {
+            code: self.code,
+            line: self.line,
+            column: column.clone(),
+        }
     }
 
     pub fn column(&self) -> &std::ops::Range<usize> {
@@ -38,7 +44,6 @@ impl Error {
     }
 }
 
-#[repr(u16)]
 pub enum ErrorCode {
     SyntaxError = 2,
     OutOfMemory = 7,

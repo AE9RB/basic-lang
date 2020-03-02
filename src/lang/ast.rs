@@ -61,7 +61,7 @@ impl AcceptVisitor for Expression {
     fn accept<V: Visitor>(&self, visitor: &mut V) {
         use Expression::*;
         match self {
-            Single(_, _) | Double(_, _) | Integer(_, _) | String(_, _) | Char(_, _) => {}
+            Single(..) | Double(..) | Integer(..) | String(..) | Char(..) => {}
             Var(_, ident) => {
                 ident.accept(visitor);
             }
@@ -71,12 +71,12 @@ impl AcceptVisitor for Expression {
                     expr.accept(visitor);
                 }
             }
-            Add(_, box_expr1, box_expr2)
-            | Subtract(_, box_expr1, box_expr2)
-            | Multiply(_, box_expr1, box_expr2)
-            | Divide(_, box_expr1, box_expr2) => {
-                box_expr1.accept(visitor);
-                box_expr2.accept(visitor);
+            Add(_, expr1, expr2)
+            | Subtract(_, expr1, expr2)
+            | Multiply(_, expr1, expr2)
+            | Divide(_, expr1, expr2) => {
+                expr1.accept(visitor);
+                expr2.accept(visitor);
             }
         }
         visitor.visit_expression(self)

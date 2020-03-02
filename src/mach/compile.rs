@@ -12,10 +12,9 @@ pub fn compile(line: &Line) -> Result<Vec<Op>, Vec<Error>> {
 
 struct Compiler {
     program: Vec<Op>,
-    statement: Vec<Vec<Op>>,
+    error: Vec<Error>,
     ident: Vec<String>,
     expression: Vec<Vec<Op>>,
-    error: Vec<Error>,
 }
 
 impl Compiler {
@@ -26,46 +25,41 @@ impl Compiler {
         };
         let mut this = Compiler {
             program: vec![],
-            statement: vec![],
             ident: vec![],
             expression: vec![],
             error: vec![],
         };
         for statement in ast {
             statement.accept(&mut this);
-            this.program.append(&mut this.statement.pop().unwrap());
-            debug_assert_eq!(0, this.statement.len());
-            debug_assert_eq!(0, this.ident.len());
-            debug_assert_eq!(0, this.expression.len());
         }
         if this.program.len() > Address::max_value() as usize {
-            this.error(error!(OutOfMemory));
+            this.error(&(0..0), error!(OutOfMemory));
         }
         if this.error.len() > 0 {
-            return Err(std::mem::take(&mut this.error));
+            for error in &mut this.error {
+                *error = error.in_line_number(line.number())
+            }
+            Err(std::mem::take(&mut this.error))
+        } else {
+            Ok(std::mem::take(&mut this.program))
         }
-        Ok(std::mem::take(&mut this.program))
     }
 
-    fn error(&mut self, error: Error) {
-        //todo col and line number
-        self.error.push(error);
+    fn error(&mut self, col: &std::ops::Range<usize>, error: Error) {
+        self.error.push(error.in_column(col));
     }
 
-    fn expression_flat(&mut self) -> (usize, Vec<Op>) {
-        (
-            self.expression.len(),
-            self.expression.drain(..).flatten().collect(),
-        )
+    fn append(&mut self, mut ops: &mut Vec<Op>) {
+        self.program.append(&mut ops);
     }
 
-    fn expression_pop(&mut self) -> Vec<Op> {
-        self.expression.pop().unwrap()
+    fn push(&mut self, op: Op) {
+        self.program.push(op);
     }
 
     fn expression_binary_op(&mut self, op: Op) -> Vec<Op> {
-        let mut rhs = self.expression_pop();
-        let mut ops = self.expression_pop();
+        let mut rhs = self.expression.pop().unwrap();
+        let mut ops = self.expression.pop().unwrap();
         ops.append(&mut rhs);
         ops.push(op);
         ops
@@ -74,23 +68,26 @@ impl Compiler {
 
 impl Visitor for Compiler {
     fn visit_statement(&mut self, statement: &Statement) {
-        let ops = match statement {
-            Statement::Let(_, (_, _ident), _expr) => {
-                let mut ops = self.expression_pop();
-                ops.push(Op::Pop(self.ident.pop().unwrap()));
-                ops
+        let mut ident = std::mem::take(&mut self.ident);
+        let mut expression = std::mem::take(&mut self.expression);
+        match statement {
+            Statement::Let(..) => {
+                self.append(&mut expression.pop().unwrap());
+                self.push(Op::Pop(ident.pop().unwrap()));
             }
-            Statement::Print(_, _vec_expr) => {
-                let (len, mut ops) = self.expression_flat();
+            Statement::Print(col, ..) => {
+                let len = expression.len();
+                let mut expr = expression.drain(..).flatten().collect::<Vec<Op>>();
+                self.append(&mut expr);
                 match i16::try_from(len) {
-                    Ok(len) => ops.push(Op::Literal(Val::Integer(len))),
-                    Err(_) => self.error(error!(SyntaxError)),
+                    Ok(len) => self.push(Op::Literal(Val::Integer(len))),
+                    Err(_) => self.error(col, error!(SyntaxError)),
                 };
-                ops.push(Op::Print);
-                ops
+                self.push(Op::Print);
             }
         };
-        self.statement.push(ops);
+        debug_assert_eq!(0, ident.len());
+        debug_assert_eq!(0, expression.len());
     }
     fn visit_ident(&mut self, ident: &Ident) {
         self.ident.push(match ident {
@@ -109,8 +106,8 @@ impl Visitor for Compiler {
             Expression::String(_, val) => vec![Op::Literal(Val::String(val.clone()))],
             Expression::Char(_, val) => vec![Op::Literal(Val::Char(*val))],
 
-            Expression::Add(_, _lhs, _rhs) => self.expression_binary_op(Op::Add),
-            Expression::Multiply(_, _lhs, _rhs) => self.expression_binary_op(Op::Mul),
+            Expression::Add(..) => self.expression_binary_op(Op::Add),
+            Expression::Multiply(..) => self.expression_binary_op(Op::Mul),
             _ => unimplemented!(),
         };
         self.expression.push(ops);

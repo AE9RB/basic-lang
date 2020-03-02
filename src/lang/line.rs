@@ -19,6 +19,10 @@ impl Line {
         }
     }
 
+    pub fn number(&self) -> Option<u16> {
+        self.number
+    }
+
     pub fn ast(&self) -> Result<Vec<Statement>, Error> {
         parse(self.number, &self.tokens)
     }
