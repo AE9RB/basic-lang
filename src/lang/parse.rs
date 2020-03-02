@@ -5,22 +5,22 @@ use super::token::*;
 type Result<T> = std::result::Result<T, Error>;
 
 pub fn parse(line_number: Option<u16>, tokens: &[Token]) -> Result<Vec<Statement>> {
-    match Parse::parse(tokens) {
+    match Parser::parse(tokens) {
         Err(e) => Err(e.in_line_number(line_number)),
         Ok(r) => Ok(r),
     }
 }
 
-struct Parse<'a> {
+struct Parser<'a> {
     token_stream: std::slice::Iter<'a, Token>,
     peeked: Option<&'a Token>,
     rem2: bool,
     col: Column,
 }
 
-impl<'a> Parse<'a> {
+impl<'a> Parser<'a> {
     fn parse(tokens: &'a [Token]) -> Result<Vec<Statement>> {
-        let mut parse = Parse {
+        let mut parse = Parser {
             token_stream: tokens.iter(),
             peeked: None,
             rem2: false,
@@ -84,12 +84,12 @@ impl<'a> Parse<'a> {
                 self.next();
                 Statement::for_word(self, word)
             }
-            _ => error!(SyntaxError),
+            _ => Err(error!(SyntaxError)),
         }
     }
 
     fn expression(&mut self) -> Result<Expression> {
-        fn parse(this: &mut Parse, precedence: usize) -> Result<Expression> {
+        fn parse(this: &mut Parser, precedence: usize) -> Result<Expression> {
             let mut lhs = match this.next() {
                 Some(Token::ParenOpen) => {
                     let expr = this.expression()?;
@@ -106,7 +106,7 @@ impl<'a> Parse<'a> {
                     }
                 }
                 Some(Token::Literal(l)) => Expression::for_literal(this.column(), l),
-                _ => return error!(SyntaxError),
+                _ => return Err(error!(SyntaxError)),
             };
             let mut rhs;
             loop {
@@ -137,7 +137,7 @@ impl<'a> Parse<'a> {
             match self.next() {
                 Some(Token::ParenClose) => return Ok(v),
                 Some(Token::Comma) => continue,
-                _ => return error!(SyntaxError),
+                _ => return Err(error!(SyntaxError)),
             }
         }
     }
@@ -175,7 +175,7 @@ impl<'a> Parse<'a> {
     fn ident(&mut self) -> Result<(Column, Ident)> {
         let ident = match self.next() {
             Some(Token::Ident(i)) => i.clone(),
-            _ => return error!(SyntaxError),
+            _ => return Err(error!(SyntaxError)),
         };
         Ok((self.column(), ident))
     }
@@ -186,7 +186,7 @@ impl<'a> Parse<'a> {
                 return Ok(());
             }
         }
-        error!(SyntaxError)
+        Err(error!(SyntaxError))
     }
 }
 
@@ -241,24 +241,24 @@ impl Expression {
 }
 
 impl Statement {
-    fn for_word(parse: &mut Parse, word: &Word) -> Result<Statement> {
+    fn for_word(parse: &mut Parser, word: &Word) -> Result<Statement> {
         let column = parse.column();
         use Word::*;
         match word {
             Let => Self::r#let(parse, column),
             Print1 | Print2 => Self::r#print(parse, column),
-            _ => error!(SyntaxError),
+            _ => Err(error!(SyntaxError)),
         }
     }
 
-    fn r#let(parse: &mut Parse, column: Column) -> Result<Statement> {
+    fn r#let(parse: &mut Parser, column: Column) -> Result<Statement> {
         let ident = parse.ident()?;
         parse.expect(Token::Operator(Operator::Equals))?;
         let expr = parse.expression()?;
         Ok(Statement::Let(column, ident, expr))
     }
 
-    fn r#print(parse: &mut Parse, column: Column) -> Result<Statement> {
+    fn r#print(parse: &mut Parser, column: Column) -> Result<Statement> {
         Ok(Statement::Print(column, parse.printer_list()?))
     }
 }

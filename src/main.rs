@@ -19,6 +19,7 @@ pub mod __Chapter_2;
 #[allow(non_snake_case)]
 pub mod ___Appendix_A;
 
+#[macro_use]
 mod lang;
 mod mach;
 use lang::line::*;

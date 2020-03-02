@@ -14,7 +14,7 @@ YourEnum::iter() to return all variants that don't have data.
 #[doc(hidden)]
 #[proc_macro_derive(EnumIter)]
 pub fn derive_enum_iter(item: TokenStream) -> TokenStream {
-    let mut scan = item.clone().into_iter();
+    let mut scan = item.into_iter();
     let mut enum_name: Option<String> = None;
     let mut is_pub = false;
     loop {
@@ -51,7 +51,7 @@ pub fn derive_enum_iter(item: TokenStream) -> TokenStream {
 
     if let Some(t) = scan.next() {
         if let TokenTree::Group(t) = t {
-            t.stream().clone().into_iter().for_each(|x| match x {
+            t.stream().into_iter().for_each(|x| match x {
                 TokenTree::Ident(t) => vals.push(t.to_string()),
                 TokenTree::Group(_) => {
                     // exclude variants with data

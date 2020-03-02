@@ -5,11 +5,10 @@ pub struct Error {
     column: std::ops::Range<usize>,
 }
 
+#[macro_export]
 macro_rules! error {
     ($err:ident) => {
-        Err($crate::lang::error::Error::new(
-            $crate::lang::error::ErrorCode::$err,
-        ))
+        $crate::lang::error::Error::new($crate::lang::error::ErrorCode::$err)
     };
 }
 
@@ -42,6 +41,7 @@ impl Error {
 #[repr(u16)]
 pub enum ErrorCode {
     SyntaxError = 2,
+    OutOfMemory = 7,
 }
 
 impl std::fmt::Display for Error {
@@ -95,12 +95,23 @@ impl std::fmt::Display for Error {
             _ => "",
         };
         let suffix = match self.line {
-            None => format!(""),
-            Some(_) => {
+            None => {
                 if (0..0) == *self.column() {
-                    format!(" IN {}", self.line.unwrap())
+                    format!("")
                 } else {
-                    format!(" IN {}:{}", self.line.unwrap(), self.column().start)
+                    format!(" IN {}..{}", self.column().start, self.column().end)
+                }
+            }
+            Some(line_number) => {
+                if (0..0) == *self.column() {
+                    format!(" IN {}", line_number)
+                } else {
+                    format!(
+                        " IN {}:{}..{}",
+                        line_number,
+                        self.column().start,
+                        self.column().end
+                    )
                 }
             }
         };

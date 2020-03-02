@@ -1,26 +1,15 @@
 use super::token::*;
-use std::iter::Peekable;
 
 pub fn lex(s: &str) -> (Option<u16>, Vec<Token>) {
-    let mut t = s.len();
-    if s.ends_with("\r\n") {
-        t -= 2
-    } else if s.ends_with("\n") {
-        t -= 1
-    }
-    let l = &mut Lex {
-        i: s.chars().take(t).peekable(),
-        remark: false,
-    };
-    let mut t = l.collect::<Vec<Token>>();
-    let line_number = take_line_number(&mut t);
-    trim_end(&mut t);
-    collapse_go(&mut t);
+    let mut tokens = Lexer::lex(s);
+    let line_number = take_line_number(&mut tokens);
+    trim_end(&mut tokens);
+    collapse_go(&mut tokens);
     if line_number.is_some() {
-        separate_words(&mut t);
-        upgrade_tokens(&mut t);
+        separate_words(&mut tokens);
+        upgrade_tokens(&mut tokens);
     }
-    (line_number, t)
+    (line_number, tokens)
 }
 
 fn collapse_go(t: &mut Vec<Token>) {
@@ -142,18 +131,18 @@ fn is_basic_alphabetic(c: char) -> bool {
     c.is_ascii_alphabetic()
 }
 
-struct Lex<T: Iterator<Item = char>> {
-    i: Peekable<T>,
+struct Lexer<'a> {
+    chars: std::iter::Peekable<std::iter::Take<std::str::Chars<'a>>>,
     remark: bool,
 }
 
-impl<T: Iterator<Item = char>> Iterator for Lex<T> {
+impl<'a> Iterator for Lexer<'a> {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let p = self.i.peek()?;
+        let p = self.chars.peek()?;
         if self.remark {
-            return Some(Token::Unknown(self.i.by_ref().collect::<String>()));
+            return Some(Token::Unknown(self.chars.by_ref().collect::<String>()));
         }
         if is_basic_whitespace(*p) {
             let tw = self.whitespace();
@@ -181,13 +170,27 @@ impl<T: Iterator<Item = char>> Iterator for Lex<T> {
     }
 }
 
-impl<T: Iterator<Item = char>> Lex<T> {
+impl<'a> Lexer<'a> {
+    fn lex(s: &str) -> Vec<Token> {
+        let mut take = s.len();
+        if s.ends_with("\r\n") {
+            take -= 2
+        } else if s.ends_with("\n") {
+            take -= 1
+        }
+        Lexer {
+            chars: s.chars().take(take).peekable(),
+            remark: false,
+        }
+        .collect()
+    }
+
     fn whitespace(&mut self) -> Option<Token> {
         let mut spaces = 0;
         loop {
-            self.i.next();
+            self.chars.next();
             spaces += 1;
-            if let Some(p) = self.i.peek() {
+            if let Some(p) = self.chars.peek() {
                 if is_basic_whitespace(*p) {
                     continue;
                 }
@@ -202,7 +205,7 @@ impl<T: Iterator<Item = char>> Lex<T> {
         let mut decimal = false;
         let mut exp = false;
         loop {
-            let mut c = self.i.next().unwrap();
+            let mut c = self.chars.next().unwrap();
             if c == 'e' {
                 c = 'E'
             }
@@ -228,7 +231,7 @@ impl<T: Iterator<Item = char>> Lex<T> {
             if c == '%' {
                 return Some(Token::Literal(Literal::Integer(s)));
             }
-            if let Some(p) = self.i.peek() {
+            if let Some(p) = self.chars.peek() {
                 if c == 'E' || c == 'D' {
                     exp = true;
                     if *p == '+' || *p == '-' {
@@ -262,9 +265,9 @@ impl<T: Iterator<Item = char>> Lex<T> {
 
     fn string(&mut self) -> Option<Token> {
         let mut s = String::new();
-        self.i.next();
+        self.chars.next();
         loop {
-            if let Some(c) = self.i.next() {
+            if let Some(c) = self.chars.next() {
                 if c != '"' {
                     s.push(c);
                     continue;
@@ -278,7 +281,7 @@ impl<T: Iterator<Item = char>> Lex<T> {
         let mut s = String::new();
         let mut digit = false;
         loop {
-            let c = self.i.next().unwrap().to_ascii_uppercase();
+            let c = self.chars.next().unwrap().to_ascii_uppercase();
             s.push(c);
             if is_basic_digit(c) {
                 digit = true;
@@ -298,7 +301,7 @@ impl<T: Iterator<Item = char>> Lex<T> {
             if c == '%' {
                 return Some(Token::Ident(Ident::Integer(s)));
             }
-            if let Some(p) = self.i.peek() {
+            if let Some(p) = self.chars.peek() {
                 if is_basic_alphabetic(*p) {
                     if digit {
                         break;
@@ -317,12 +320,12 @@ impl<T: Iterator<Item = char>> Lex<T> {
     fn minutia(&mut self) -> Option<Token> {
         let mut s = String::new();
         loop {
-            if let Some(c) = self.i.next() {
+            if let Some(c) = self.chars.next() {
                 s.push(c);
                 if let Some(t) = Token::from_string(&s) {
                     return Some(t);
                 }
-                if let Some(p) = self.i.peek() {
+                if let Some(p) = self.chars.peek() {
                     if is_basic_alphabetic(*p) {
                         break;
                     }
