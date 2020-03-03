@@ -1,8 +1,5 @@
 /*!
-# GOTO
-
-## Format
-`GOTO <line number>`
+# `GOTO <line number>`
 
 ## Purpose
 Immediately and unconditionally move execution to the specified line number.

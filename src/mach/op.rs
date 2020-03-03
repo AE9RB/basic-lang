@@ -87,8 +87,9 @@ GoTo(:finish)
 
 */
 
-use super::runtime::Address;
 use super::val::Val;
+
+pub type Address = usize;
 
 #[allow(dead_code)]
 #[derive(Debug)]

@@ -350,10 +350,9 @@ mod tests {
 
     fn token(s: &str) -> Token {
         let s = format!("?{}", s);
-        let (_, l) = lex(&s);
-        let mut i = l.iter();
-        i.next();
-        i.next().unwrap().clone()
+        let (_, mut tokens) = lex(&s);
+        let tok = tokens.drain(1..2).next();
+        tok.unwrap()
     }
 
     #[test]

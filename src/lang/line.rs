@@ -1,13 +1,9 @@
-use super::ast::*;
-use super::error::*;
-use super::lex::*;
-use super::parse::*;
-use super::token::*;
+use super::*;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct Line {
     number: Option<u16>,
-    tokens: Vec<Token>,
+    tokens: Vec<token::Token>,
 }
 
 impl Line {
@@ -23,7 +19,7 @@ impl Line {
         self.number
     }
 
-    pub fn ast(&self) -> Result<Vec<Statement>, Error> {
+    pub fn ast(&self) -> Result<Vec<ast::Statement>, Error> {
         parse(self.number, &self.tokens)
     }
 }

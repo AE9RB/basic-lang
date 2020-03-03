@@ -1,11 +1,10 @@
-use super::op::Op;
+use super::op::Address;
+use super::program::Program;
 use super::val::Val;
-
-pub type Address = usize;
 
 struct Runtime {
     vars: std::collections::HashMap<String, Val>,
     stack: Vec<Val>,
-    program: Vec<Op>,
+    program: Program,
     program_counter: Address,
 }

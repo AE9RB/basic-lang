@@ -1,19 +1,19 @@
 extern crate macros;
 pub use super::ident::Ident;
-use macros::EnumIter;
+use macros::EnumFieldLess;
 
 use std::collections::HashMap;
 
 thread_local!(
-    static STRING_TO_TOKEN: HashMap<std::string::String, Token> = Token::iter()
-        .cloned()
-        .chain(Word::iter().map(|x| Token::Word(x.clone())))
-        .chain(Operator::iter().map(|x| Token::Operator(x.clone())))
+    static STRING_TO_TOKEN: HashMap<std::string::String, Token> = Token::field_less()
+        .drain(..)
+        .chain(Word::field_less().drain(..).map(|x| Token::Word(x)))
+        .chain(Operator::field_less().drain(..).map(|x| Token::Operator(x)))
         .map(|d| (d.to_string(), d))
         .collect();
 );
 
-#[derive(Debug, PartialEq, Clone, EnumIter)]
+#[derive(Debug, PartialEq, EnumFieldLess, Clone)]
 pub enum Token {
     Unknown(String),
     Whitespace(usize),
@@ -76,7 +76,7 @@ impl std::fmt::Display for Literal {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, EnumIter)]
+#[derive(Debug, PartialEq, Clone, EnumFieldLess)]
 pub enum Word {
     Data,
     Def,
@@ -138,7 +138,7 @@ impl std::fmt::Display for Word {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, EnumIter)]
+#[derive(Debug, PartialEq, Clone, EnumFieldLess)]
 pub enum Operator {
     Equals,
     Plus,

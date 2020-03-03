@@ -20,15 +20,17 @@ pub mod __Chapter_2;
 pub mod ___Appendix_A;
 
 #[macro_use]
-mod lang;
-mod mach;
-use lang::line::*;
-use mach::compile::*;
+pub mod lang;
+pub mod mach;
+use lang::*;
+use mach::program::*;
 
 fn main() {
     let t = Line::new(" 10letg=1+3*3:remarkABLE! \r\n");
     println!("{}", t);
     println!("{:?}", t.ast());
-    let c = compile(&t);
-    println!("{:?}", c);
+
+    let mut p = Program::new();
+    p.compile(&vec![t]).expect("whaaa!");
+    println!("{:?}", p.ops());
 }

@@ -1,14 +1,13 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct Error {
     code: u16,
     line: Option<u16>,
     column: std::ops::Range<usize>,
 }
 
-#[macro_export]
 macro_rules! error {
     ($err:ident) => {
-        $crate::lang::error::Error::new($crate::lang::error::ErrorCode::$err)
+        $crate::lang::Error::new($crate::lang::ErrorCode::$err)
     };
 }
 

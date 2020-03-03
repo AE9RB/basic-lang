@@ -12,7 +12,7 @@ YourEnum::iter() to return all variants that don't have data.
 */
 
 #[doc(hidden)]
-#[proc_macro_derive(EnumIter)]
+#[proc_macro_derive(EnumFieldLess)]
 pub fn derive_enum_iter(item: TokenStream) -> TokenStream {
     let mut scan = item.into_iter();
     let mut enum_name: Option<String> = None;
@@ -74,12 +74,12 @@ pub fn derive_enum_iter(item: TokenStream) -> TokenStream {
     }
 
     code.push_str(&format!(
-        "fn iter() -> ::std::slice::Iter<'static, {}> {{ [\n",
+        "fn field_less() -> ::std::vec::Vec<{}> {{ vec![\n",
         enum_name
     ));
     vals.iter()
         .for_each(|v| code.push_str(&format!("{}::{},\n", enum_name, v)));
-    code.push_str("].iter() } }\n");
+    code.push_str("] } }\n");
 
     ts.extend(code.parse::<TokenStream>());
     ts

@@ -1,6 +1,6 @@
 use super::ast::*;
-use super::error::*;
 use super::token::*;
+use super::Error;
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -378,8 +378,8 @@ mod tests {
     fn test_printer_list() {
         let (lin, tokens) = lex("? 1 2,3;:?");
         assert_eq!(
-            parse(lin, &tokens),
-            Ok(vec!(
+            parse(lin, &tokens).unwrap(),
+            vec!(
                 Statement::Print(
                     0..1,
                     vec!(
@@ -390,7 +390,7 @@ mod tests {
                     )
                 ),
                 Statement::Print(9..10, vec!(Expression::Char(10..10, '\n'),)),
-            ))
+            )
         );
     }
 }

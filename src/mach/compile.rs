@@ -1,30 +1,31 @@
 use super::op::*;
-use super::runtime::Address;
+use super::program::Program;
 use super::val::*;
-use crate::lang::ast::*;
-use crate::lang::error::*;
-use crate::lang::line::*;
+use crate::lang::ast;
+use crate::lang::ast::AcceptVisitor;
+use crate::lang::Error;
+use crate::lang::Line;
 use std::convert::TryFrom;
 
-pub fn compile(line: &Line) -> Result<Vec<Op>, Vec<Error>> {
-    Compiler::compile(line)
+pub fn compile(program: &mut Program, line: &Line) -> Result<(), Vec<Error>> {
+    Compiler::compile(program, line)
 }
 
-struct Compiler {
-    program: Vec<Op>,
+struct Compiler<'a> {
+    program: &'a mut Program,
     error: Vec<Error>,
     ident: Vec<String>,
     expression: Vec<Vec<Op>>,
 }
 
-impl Compiler {
-    fn compile(line: &Line) -> Result<Vec<Op>, Vec<Error>> {
+impl<'a> Compiler<'a> {
+    fn compile(program: &mut Program, line: &Line) -> Result<(), Vec<Error>> {
         let ast = match line.ast() {
             Ok(ast) => ast,
             Err(e) => return Err(vec![e]),
         };
         let mut this = Compiler {
-            program: vec![],
+            program: program,
             ident: vec![],
             expression: vec![],
             error: vec![],
@@ -41,7 +42,7 @@ impl Compiler {
             }
             Err(std::mem::take(&mut this.error))
         } else {
-            Ok(std::mem::take(&mut this.program))
+            Ok(())
         }
     }
 
@@ -66,8 +67,9 @@ impl Compiler {
     }
 }
 
-impl Visitor for Compiler {
-    fn visit_statement(&mut self, statement: &Statement) {
+impl<'a> ast::Visitor for Compiler<'a> {
+    fn visit_statement(&mut self, statement: &ast::Statement) {
+        use ast::Statement;
         let mut ident = std::mem::take(&mut self.ident);
         let mut expression = std::mem::take(&mut self.expression);
         match statement {
@@ -89,7 +91,8 @@ impl Visitor for Compiler {
         debug_assert_eq!(0, ident.len());
         debug_assert_eq!(0, expression.len());
     }
-    fn visit_ident(&mut self, ident: &Ident) {
+    fn visit_ident(&mut self, ident: &ast::Ident) {
+        use ast::Ident;
         self.ident.push(match ident {
             Ident::Plain(s)
             | Ident::String(s)
@@ -98,7 +101,8 @@ impl Visitor for Compiler {
             | Ident::Integer(s) => s.clone(),
         })
     }
-    fn visit_expression(&mut self, expression: &Expression) {
+    fn visit_expression(&mut self, expression: &ast::Expression) {
+        use ast::Expression;
         let ops = match expression {
             Expression::Single(_, val) => vec![Op::Literal(Val::Single(*val))],
             Expression::Double(_, val) => vec![Op::Literal(Val::Double(*val))],

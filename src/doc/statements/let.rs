@@ -1,8 +1,5 @@
 /*!
-# LET
-
-## Format
-`[LET] <variable>=<expression>`
+# `[LET] <variable>=<expression>`
 
 ## Purpose
 Assign a value to the variable.
