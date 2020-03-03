@@ -1,7 +1,9 @@
+use super::Line;
+
 #[derive(Debug)]
 pub struct Error {
     code: u16,
-    line: Option<u16>,
+    line_number: Option<u16>,
     column: std::ops::Range<usize>,
 }
 
@@ -15,16 +17,25 @@ impl Error {
     pub fn new(code: ErrorCode) -> Error {
         Error {
             code: code as u16,
-            line: None,
+            line_number: None,
             column: 0..0,
         }
     }
 
-    pub fn in_line_number(&self, line: Option<u16>) -> Error {
-        debug_assert!(self.line.is_none());
+    pub fn in_line(&self, line: &Line) -> Error {
+        debug_assert!(self.line_number.is_none());
         Error {
             code: self.code,
-            line: line,
+            line_number: line.number(),
+            column: self.column.clone(),
+        }
+    }
+
+    pub fn in_line_number(&self, line: Option<u16>) -> Error {
+        debug_assert!(self.line_number.is_none());
+        Error {
+            code: self.code,
+            line_number: line,
             column: self.column.clone(),
         }
     }
@@ -33,7 +44,7 @@ impl Error {
         debug_assert_eq!(self.column, 0..0);
         Error {
             code: self.code,
-            line: self.line,
+            line_number: self.line_number,
             column: column.clone(),
         }
     }
@@ -45,7 +56,9 @@ impl Error {
 
 pub enum ErrorCode {
     SyntaxError = 2,
+    Overflow = 6,
     OutOfMemory = 7,
+    UndefinedLine = 8,
 }
 
 impl std::fmt::Display for Error {
@@ -98,7 +111,7 @@ impl std::fmt::Display for Error {
             68 => "OUT OF RANDOM BLOCKS",
             _ => "",
         };
-        let suffix = match self.line {
+        let suffix = match self.line_number {
             None => {
                 if (0..0) == *self.column() {
                     format!("")

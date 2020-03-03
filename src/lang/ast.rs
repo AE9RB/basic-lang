@@ -4,6 +4,7 @@ pub type Column = std::ops::Range<usize>;
 
 #[derive(Debug, PartialEq)]
 pub enum Statement {
+    Goto(Column, Expression),
     Let(Column, (Column, Ident), Expression),
     Print(Column, Vec<Expression>),
 }
@@ -43,6 +44,9 @@ impl AcceptVisitor for Statement {
     fn accept<V: Visitor>(&self, visitor: &mut V) {
         use Statement::*;
         match self {
+            Goto(_, expr) => {
+                expr.accept(visitor);
+            }
             Let(_, (_, ident), expr) => {
                 ident.accept(visitor);
                 expr.accept(visitor);

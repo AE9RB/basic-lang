@@ -102,7 +102,7 @@ pub enum Op {
     // Branch control
     If(Address),    // pop stack and branch if zero
     IfNot(Address), // pop stack and branch if not zero
-    GoTo(Address),  // unconditional branch
+    Goto(Address),  // unconditional branch
     Return,         // expect Return(Address) on stack then branch
     Next,           /* expect Next(Address) on stack, pop var ident, pop step, pop to
                      * if wrong var name, repeat. enables breaking out of loop.

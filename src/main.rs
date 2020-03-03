@@ -26,11 +26,15 @@ use lang::*;
 use mach::program::*;
 
 fn main() {
-    let t = Line::new(" 10letg=1+3*3:remarkABLE! \r\n");
+    let t = Line::new(" 10letg=1+3*3:goto10:remarkABLE! \r\n");
     println!("{}", t);
     println!("{:?}", t.ast());
 
     let mut p = Program::new();
-    p.compile(&vec![t]).expect("whaaa!");
-    println!("{:?}", p.ops());
+    p.compile(&vec![Line::new("0 letg=1")]);
+    p.compile(&vec![Line::new("20 ?\"Hullo Wurld\"")]);
+    p.compile(&vec![Line::new("30 goto20")]);
+    p.compile(&vec![Line::new("40 goto0")]);
+    p.link();
+    println!("{:?}", p);
 }

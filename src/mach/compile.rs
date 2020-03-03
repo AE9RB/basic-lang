@@ -1,5 +1,5 @@
 use super::op::*;
-use super::program::Program;
+use super::program::*;
 use super::val::*;
 use crate::lang::ast;
 use crate::lang::ast::AcceptVisitor;
@@ -7,28 +7,31 @@ use crate::lang::Error;
 use crate::lang::Line;
 use std::convert::TryFrom;
 
-pub fn compile(program: &mut Program, line: &Line) -> Result<(), Vec<Error>> {
+pub fn compile(program: &mut Program, line: &Line) {
     Compiler::compile(program, line)
 }
 
 struct Compiler<'a> {
     program: &'a mut Program,
-    error: Vec<Error>,
+    line: &'a Line,
     ident: Vec<String>,
     expression: Vec<Vec<Op>>,
 }
 
 impl<'a> Compiler<'a> {
-    fn compile(program: &mut Program, line: &Line) -> Result<(), Vec<Error>> {
+    fn compile(program: &mut Program, line: &Line) {
         let ast = match line.ast() {
             Ok(ast) => ast,
-            Err(e) => return Err(vec![e]),
+            Err(e) => {
+                program.error_push(e);
+                return;
+            }
         };
         let mut this = Compiler {
             program: program,
+            line: line,
             ident: vec![],
             expression: vec![],
-            error: vec![],
         };
         for statement in ast {
             statement.accept(&mut this);
@@ -36,18 +39,11 @@ impl<'a> Compiler<'a> {
         if this.program.len() > Address::max_value() as usize {
             this.error(&(0..0), error!(OutOfMemory));
         }
-        if this.error.len() > 0 {
-            for error in &mut this.error {
-                *error = error.in_line_number(line.number())
-            }
-            Err(std::mem::take(&mut this.error))
-        } else {
-            Ok(())
-        }
     }
 
     fn error(&mut self, col: &std::ops::Range<usize>, error: Error) {
-        self.error.push(error.in_column(col));
+        self.program
+            .error_push(error.in_column(col).in_line_number(self.line.number()));
     }
 
     fn append(&mut self, mut ops: &mut Vec<Op>) {
@@ -56,6 +52,18 @@ impl<'a> Compiler<'a> {
 
     fn push(&mut self, op: Op) {
         self.program.push(op);
+    }
+
+    pub fn symbol_for_line_number(&mut self, line_number: u16) -> Symbol {
+        self.program.symbol_for_line_number(line_number)
+    }
+
+    pub fn symbol_here(&mut self) -> Symbol {
+        self.program.symbol_here()
+    }
+
+    pub fn link_next_op_to(&mut self, symbol: Symbol) {
+        self.program.link_next_op_to(symbol)
     }
 
     fn expression_binary_op(&mut self, op: Op) -> Vec<Op> {
@@ -70,9 +78,29 @@ impl<'a> Compiler<'a> {
 impl<'a> ast::Visitor for Compiler<'a> {
     fn visit_statement(&mut self, statement: &ast::Statement) {
         use ast::Statement;
-        let mut ident = std::mem::take(&mut self.ident);
-        let mut expression = std::mem::take(&mut self.expression);
+        let mut ident = self.ident.split_off(0);
+        let mut expression = self.expression.split_off(0);
         match statement {
+            Statement::Goto(col, ..) => {
+                let mut v = expression.pop().unwrap();
+                let mut line_number = u16::max_value();
+                loop {
+                    if v.len() == 1 {
+                        if let Op::Literal(value) = v.pop().unwrap() {
+                            match u16::try_from(value) {
+                                Ok(n) => line_number = n,
+                                Err(e) => self.error(col, e),
+                            }
+                            break;
+                        }
+                    }
+                    self.error(col, error!(SyntaxError));
+                    break;
+                }
+                let sym = self.symbol_for_line_number(line_number);
+                self.link_next_op_to(sym);
+                self.push(Op::Goto(0));
+            }
             Statement::Let(..) => {
                 self.append(&mut expression.pop().unwrap());
                 self.push(Op::Pop(ident.pop().unwrap()));
