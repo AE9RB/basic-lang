@@ -1,7 +1,10 @@
-use crate::lang::Error;
+use super::Address;
+use crate::error;
+use crate::lang::{Error, LineNumber, MaxValue};
 use std::convert::TryFrom;
 
-#[allow(dead_code)]
+/// ## Stack values
+
 #[derive(Debug)]
 pub enum Val {
     String(String),
@@ -9,13 +12,28 @@ pub enum Val {
     Single(f32),
     Double(f64),
     Char(char),
-    Next(usize),
-    Return(usize),
+    Next(Address),
+    Return(Address),
+}
+
+impl TryFrom<Val> for LineNumber {
+    type Error = Error;
+    fn try_from(val: Val) -> Result<Self, Self::Error> {
+        match u16::try_from(val) {
+            Ok(num) => {
+                if num <= LineNumber::max_value() {
+                    Ok(Some(num))
+                } else {
+                    Err(error!(Overflow))
+                }
+            }
+            Err(e) => Err(e),
+        }
+    }
 }
 
 impl TryFrom<Val> for u16 {
     type Error = Error;
-    // this is limited to valid line numbers
     fn try_from(val: Val) -> Result<Self, Self::Error> {
         match val {
             Val::Integer(i) => {
@@ -26,14 +44,14 @@ impl TryFrom<Val> for u16 {
                 }
             }
             Val::Single(f) => {
-                if f >= 0.0 && f <= 65529.0 {
+                if f >= 0.0 && f <= u16::max_value() as f32 {
                     Ok(f as u16)
                 } else {
                     Err(error!(Overflow))
                 }
             }
             Val::Double(d) => {
-                if d >= 0.0 && d <= 65529.0 {
+                if d >= 0.0 && d <= u16::max_value() as f64 {
                     Ok(d as u16)
                 } else {
                     Err(error!(Overflow))

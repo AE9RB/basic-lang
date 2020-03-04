@@ -1,4 +1,60 @@
+use super::{Address, Val};
+
+/// ## Virtual machine instruction set
+///
+/// The BASIC virtual machine has no registers.
+/// Every operation is performed on the stack.
+///
+/// For example: `LET A=3*B` compiles to `[Literal(3), Push("B"), Mul, Pop("A")]`
+///
+/// See <https://en.wikipedia.org/wiki/Reverse_Polish_notation>
+
+#[derive(Debug)]
+pub enum Op {
+    // *** Stack manipulation
+    /// Push literal value on to the stack.
+    Literal(Val),
+    /// Push stack value of named variable. Infallible.
+    Push(String),
+    /// Pop stack value to named variable. This is the `LET` statement
+    /// and may generate errors.
+    Pop(String),
+
+    // *** Branch control
+    /// Expects Next(Address) on stack or else error: NEXT WITHOUT FOR.
+    /// Then pops variable ident, step value, and to value.
+    /// if wrong variable, repeat; to break out of a loop.
+    /// Modify the variable using the step then check for end.
+    /// If not done, push it all back on stack and jump to Address.
+    Next(String),
+    /// Pop stack and branch to Address if zero.
+    If(Address),
+    /// Pop stack and branch to Address if not zero.
+    IfNot(Address),
+    /// Unconditional branch to Address.
+    Jump(Address),
+    /// Expect Return(Address) on stack or else error: RETURN WITHOUT GOSUB.
+    /// Branch to Address.
+    Return,
+
+    // Statements
+    Print,
+
+    // Expression operations
+    Neg,
+    Add,
+    Sub,
+    Mul,
+    Div,
+
+    // Built-in functions
+    FnSin,
+    FnCos,
+    FnStrS,
+}
+
 /*
+VM design notes. Move to docs some day.
 
 // let r = 10 + a% * 2
 Literal(10)   // lhs+
@@ -86,41 +142,3 @@ GoTo(:finish)
 :finish
 
 */
-
-use super::val::Val;
-
-pub type Address = usize;
-
-#[allow(dead_code)]
-#[derive(Debug)]
-pub enum Op {
-    // Stack access
-    Literal(Val), // push literal
-    Push(String), // push value of named variable
-    Pop(String),  // assign variable to popped value
-
-    // Branch control
-    If(Address),    // pop stack and branch if zero
-    IfNot(Address), // pop stack and branch if not zero
-    Goto(Address),  // unconditional branch
-    Return,         // expect Return(Address) on stack then branch
-    Next,           /* expect Next(Address) on stack, pop var ident, pop step, pop to
-                     * if wrong var name, repeat. enables breaking out of loop.
-                     * do step. If not done, push it all back on stack and GoTo(Address).
-                     */
-
-    // Statements
-    Print,
-
-    // Expression operations
-    Neg,
-    Add,
-    Sub,
-    Mul,
-    Div,
-
-    // Built-in functions
-    FnSin,
-    FnCos,
-    FnStrS,
-}

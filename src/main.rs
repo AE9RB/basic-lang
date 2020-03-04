@@ -19,11 +19,10 @@ pub mod __Chapter_2;
 #[allow(non_snake_case)]
 pub mod ___Appendix_A;
 
-#[macro_use]
 pub mod lang;
 pub mod mach;
-use lang::*;
-use mach::program::*;
+use lang::Line;
+use mach::Program;
 
 fn main() {
     let t = Line::new(" 10letg=1+3*3:goto10:remarkABLE! \r\n");
@@ -35,6 +34,6 @@ fn main() {
     p.compile(&vec![Line::new("20 ?\"Hullo Wurld\"")]);
     p.compile(&vec![Line::new("30 goto20")]);
     p.compile(&vec![Line::new("40 goto0")]);
-    p.link();
+    let p = p.link();
     println!("{:?}", p);
 }

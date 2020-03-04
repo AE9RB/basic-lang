@@ -1,6 +1,5 @@
 pub use super::ident::Ident;
-
-pub type Column = std::ops::Range<usize>;
+use super::Column;
 
 #[derive(Debug, PartialEq)]
 pub enum Statement {

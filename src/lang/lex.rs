@@ -1,6 +1,6 @@
-use super::token::*;
+use super::{token::*, LineNumber, MaxValue};
 
-pub fn lex(s: &str) -> (Option<u16>, Vec<Token>) {
+pub fn lex(s: &str) -> (LineNumber, Vec<Token>) {
     let mut tokens = Lexer::lex(s);
     let line_number = take_line_number(&mut tokens);
     trim_end(&mut tokens);
@@ -78,17 +78,17 @@ fn trim_end(t: &mut Vec<Token>) {
     }
 }
 
-fn take_line_number(t: &mut Vec<Token>) -> Option<u16> {
+fn take_line_number(tokens: &mut Vec<Token>) -> LineNumber {
     let mut pos: Option<usize> = None;
-    if let Some(Token::Literal(_)) = t.get(1) {
-        if let Some(Token::Whitespace(_)) = t.get(0) {
+    if let Some(Token::Literal(_)) = tokens.get(1) {
+        if let Some(Token::Whitespace(_)) = tokens.get(0) {
             pos = Some(1);
         }
-    } else if let Some(Token::Literal(_)) = t.get(0) {
+    } else if let Some(Token::Literal(_)) = tokens.get(0) {
         pos = Some(0);
     }
     if let Some(pos) = pos {
-        let s = t.get(pos).unwrap();
+        let s = tokens.get(pos).unwrap();
         if let Token::Literal(lit) = s {
             let s = match lit {
                 Literal::Integer(s) => s,
@@ -98,17 +98,17 @@ fn take_line_number(t: &mut Vec<Token>) -> Option<u16> {
             };
             if s.chars().all(|c| is_basic_digit(c)) {
                 if let Ok(line) = s.parse::<u16>() {
-                    if line <= 65529 {
-                        t.drain(0..=pos);
-                        let wsc: usize = match t.get(0) {
+                    if line <= LineNumber::max_value() {
+                        tokens.drain(0..=pos);
+                        let whitespace_len: usize = match tokens.get(0) {
                             Some(Token::Whitespace(x)) => *x,
                             _ => 0,
                         };
-                        if wsc == 1 {
-                            t.remove(0);
+                        if whitespace_len == 1 {
+                            tokens.remove(0);
                         }
-                        if wsc > 1 {
-                            t[0] = Token::Whitespace(wsc - 1);
+                        if whitespace_len > 1 {
+                            tokens[0] = Token::Whitespace(whitespace_len - 1);
                         }
                         return Some(line);
                     }

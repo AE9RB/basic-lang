@@ -1,10 +1,9 @@
-use super::ast::*;
-use super::token::*;
-use super::Error;
+use super::{ast::*, token::*, Column, Error, LineNumber};
+use crate::error;
 
 type Result<T> = std::result::Result<T, Error>;
 
-pub fn parse(line_number: Option<u16>, tokens: &[Token]) -> Result<Vec<Statement>> {
+pub fn parse(line_number: LineNumber, tokens: &[Token]) -> Result<Vec<Statement>> {
     match Parser::parse(tokens) {
         Err(e) => Err(e.in_line_number(line_number)),
         Ok(r) => Ok(r),
@@ -282,7 +281,7 @@ mod tests {
                 }
                 v.pop().unwrap()
             }
-            Err(e) => panic!("{} : {:?}", e, e.column()),
+            Err(e) => panic!("{} : {:?}", e, e),
         }
     }
 

@@ -2,7 +2,7 @@ use super::*;
 
 #[derive(Debug)]
 pub struct Line {
-    number: Option<u16>,
+    number: LineNumber,
     tokens: Vec<token::Token>,
 }
 
@@ -15,7 +15,7 @@ impl Line {
         }
     }
 
-    pub fn number(&self) -> Option<u16> {
+    pub fn number(&self) -> LineNumber {
         self.number
     }
 

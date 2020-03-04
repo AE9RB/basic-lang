@@ -1,20 +1,16 @@
-use super::compile::*;
-use super::op::Op;
-use crate::lang::Error;
-use crate::lang::Line;
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-
-pub type Symbol = isize;
+use super::{compile, Address, Op, Symbol};
+use crate::error;
+use crate::lang::{Column, Error, Line, LineNumber};
+use std::collections::{BTreeMap, HashMap};
 
 #[derive(Debug)]
 pub struct Program {
     ops: Vec<Op>,
     error: Vec<Error>,
-    line_number: Option<u16>,
+    line_number: LineNumber,
     current_symbol: Symbol,
-    symbols: BTreeMap<Symbol, usize>,
-    unlinked: HashMap<usize, Symbol>,
+    symbols: BTreeMap<Symbol, Address>,
+    unlinked: HashMap<Address, Symbol>,
 }
 
 impl Program {
@@ -28,8 +24,9 @@ impl Program {
             unlinked: HashMap::new(),
         }
     }
-    pub fn error_push(&mut self, error: Error) {
-        self.error.push(error);
+    pub fn error(&mut self, col: &Column, error: Error) {
+        self.error
+            .push(error.in_column(col).in_line_number(self.line_number));
     }
     pub fn append(&mut self, ops: &mut Vec<Op>) {
         self.ops.append(ops)
@@ -37,14 +34,8 @@ impl Program {
     pub fn push(&mut self, op: Op) {
         self.ops.push(op)
     }
-    pub fn len(&self) -> usize {
-        self.ops.len()
-    }
-    pub fn ops(&self) -> &Vec<Op> {
-        &self.ops
-    }
-    pub fn symbol_for_line_number(&mut self, line_number: u16) -> Symbol {
-        line_number as Symbol
+    pub fn symbol_for_line_number(&mut self, line_number: LineNumber) -> Symbol {
+        line_number.unwrap() as Symbol
     }
     pub fn symbol_here(&mut self) -> Symbol {
         self.current_symbol -= 1;
@@ -55,6 +46,10 @@ impl Program {
         self.unlinked.insert(self.ops.len(), symbol);
     }
     pub fn compile<'a, T: IntoIterator<Item = &'a Line>>(&mut self, lines: T) {
+        let is_out_of_mem = |this: &Self| this.ops.len() > Address::max_value() as usize;
+        if is_out_of_mem(self) {
+            return;
+        }
         for line in lines {
             if !self.ops.is_empty() {
                 if let Some(line_number) = line.number() {
@@ -74,22 +69,34 @@ impl Program {
             } else {
                 // record watermark for direct statement rewind
             }
-
-            compile(self, line)
+            let ast = match line.ast() {
+                Ok(ast) => ast,
+                Err(e) => {
+                    self.error.push(e);
+                    continue;
+                }
+            };
+            compile(self, &ast);
+            if is_out_of_mem(self) {
+                self.error
+                    .push(error!(OutOfMemory).in_line_number(self.line_number));
+                return;
+            }
         }
     }
-    pub fn link(&mut self) {
+    pub fn link(&mut self) -> Result<&Vec<Op>, &Vec<Error>> {
         for (op_addr, symbol) in std::mem::take(&mut self.unlinked) {
             let dest = self.symbols.get(&symbol);
             if dest.is_none() && symbol >= 0 {
-                self.error_push(error!(UndefinedLine).in_line_number(self.line_number(op_addr)));
+                self.error
+                    .push(error!(UndefinedLine).in_line_number(self.line_number_for(op_addr)));
                 continue;
             }
             let dest = *dest.unwrap();
             if let Some(new_op) = match self.ops[op_addr] {
                 Op::If(_) => Some(Op::If(dest)),
                 Op::IfNot(_) => Some(Op::IfNot(dest)),
-                Op::Goto(_) => Some(Op::Goto(dest)),
+                Op::Jump(_) => Some(Op::Jump(dest)),
                 _ => None,
             } {
                 self.ops[op_addr] = new_op;
@@ -98,8 +105,13 @@ impl Program {
             panic!();
         }
         self.symbols = self.symbols.split_off(&0);
+        if !self.error.is_empty() {
+            Err(&self.error)
+        } else {
+            Ok(&self.ops)
+        }
     }
-    pub fn line_number(&self, op_addr: usize) -> Option<u16> {
+    pub fn line_number_for(&self, op_addr: Address) -> LineNumber {
         for (line_number, symbol_addr) in self.symbols.range(0..).rev() {
             if op_addr >= *symbol_addr {
                 return Some(*line_number as u16);

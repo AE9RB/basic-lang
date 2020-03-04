@@ -1,11 +1,21 @@
 /*!
-# Rust Language Module
+## Rust Language Module
 
 This Rust module provides lexical analysis and parsing of the BASIC language.
 
 */
 
-#[macro_use]
+pub type Column = std::ops::Range<usize>;
+pub type LineNumber = Option<u16>;
+pub trait MaxValue {
+    fn max_value() -> u16;
+}
+impl MaxValue for LineNumber {
+    fn max_value() -> u16 {
+        65529
+    }
+}
+
 mod error;
 mod ident;
 mod lex;

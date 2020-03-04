@@ -1,69 +1,29 @@
-use super::op::*;
-use super::program::*;
-use super::val::*;
-use crate::lang::ast;
-use crate::lang::ast::AcceptVisitor;
-use crate::lang::Error;
-use crate::lang::Line;
+use super::{Op, Program, Val};
+use crate::error;
+use crate::lang::ast::{self, AcceptVisitor};
+use crate::lang::LineNumber;
 use std::convert::TryFrom;
 
-pub fn compile(program: &mut Program, line: &Line) {
-    Compiler::compile(program, line)
+pub fn compile(program: &mut Program, ast: &[ast::Statement]) {
+    Compiler::compile(program, ast)
 }
 
 struct Compiler<'a> {
     program: &'a mut Program,
-    line: &'a Line,
     ident: Vec<String>,
     expression: Vec<Vec<Op>>,
 }
 
 impl<'a> Compiler<'a> {
-    fn compile(program: &mut Program, line: &Line) {
-        let ast = match line.ast() {
-            Ok(ast) => ast,
-            Err(e) => {
-                program.error_push(e);
-                return;
-            }
-        };
+    fn compile(program: &mut Program, ast: &[ast::Statement]) {
         let mut this = Compiler {
             program: program,
-            line: line,
             ident: vec![],
             expression: vec![],
         };
         for statement in ast {
             statement.accept(&mut this);
         }
-        if this.program.len() > Address::max_value() as usize {
-            this.error(&(0..0), error!(OutOfMemory));
-        }
-    }
-
-    fn error(&mut self, col: &std::ops::Range<usize>, error: Error) {
-        self.program
-            .error_push(error.in_column(col).in_line_number(self.line.number()));
-    }
-
-    fn append(&mut self, mut ops: &mut Vec<Op>) {
-        self.program.append(&mut ops);
-    }
-
-    fn push(&mut self, op: Op) {
-        self.program.push(op);
-    }
-
-    pub fn symbol_for_line_number(&mut self, line_number: u16) -> Symbol {
-        self.program.symbol_for_line_number(line_number)
-    }
-
-    pub fn symbol_here(&mut self) -> Symbol {
-        self.program.symbol_here()
-    }
-
-    pub fn link_next_op_to(&mut self, symbol: Symbol) {
-        self.program.link_next_op_to(symbol)
     }
 
     fn expression_binary_op(&mut self, op: Op) -> Vec<Op> {
@@ -78,42 +38,42 @@ impl<'a> Compiler<'a> {
 impl<'a> ast::Visitor for Compiler<'a> {
     fn visit_statement(&mut self, statement: &ast::Statement) {
         use ast::Statement;
-        let mut ident = self.ident.split_off(0);
-        let mut expression = self.expression.split_off(0);
+        let ref mut program = self.program;
+        let ref mut ident = self.ident;
+        let ref mut expression = self.expression;
         match statement {
             Statement::Goto(col, ..) => {
                 let mut v = expression.pop().unwrap();
-                let mut line_number = u16::max_value();
+                let mut line_number = Some(u16::max_value());
                 loop {
                     if v.len() == 1 {
                         if let Op::Literal(value) = v.pop().unwrap() {
-                            match u16::try_from(value) {
+                            match LineNumber::try_from(value) {
                                 Ok(n) => line_number = n,
-                                Err(e) => self.error(col, e),
+                                Err(e) => program.error(col, e),
                             }
                             break;
                         }
                     }
-                    self.error(col, error!(SyntaxError));
+                    program.error(col, error!(SyntaxError));
                     break;
                 }
-                let sym = self.symbol_for_line_number(line_number);
-                self.link_next_op_to(sym);
-                self.push(Op::Goto(0));
+                let sym = program.symbol_for_line_number(line_number);
+                program.link_next_op_to(sym);
+                program.push(Op::Jump(0));
             }
             Statement::Let(..) => {
-                self.append(&mut expression.pop().unwrap());
-                self.push(Op::Pop(ident.pop().unwrap()));
+                program.append(&mut expression.pop().unwrap());
+                program.push(Op::Pop(ident.pop().unwrap()));
             }
             Statement::Print(col, ..) => {
                 let len = expression.len();
-                let mut expr = expression.drain(..).flatten().collect::<Vec<Op>>();
-                self.append(&mut expr);
+                program.append(&mut expression.drain(..).flatten().collect());
                 match i16::try_from(len) {
-                    Ok(len) => self.push(Op::Literal(Val::Integer(len))),
-                    Err(_) => self.error(col, error!(SyntaxError)),
+                    Ok(len) => program.push(Op::Literal(Val::Integer(len))),
+                    Err(_) => program.error(col, error!(SyntaxError)),
                 };
-                self.push(Op::Print);
+                program.push(Op::Print);
             }
         };
         debug_assert_eq!(0, ident.len());
@@ -139,7 +99,9 @@ impl<'a> ast::Visitor for Compiler<'a> {
             Expression::Char(_, val) => vec![Op::Literal(Val::Char(*val))],
 
             Expression::Add(..) => self.expression_binary_op(Op::Add),
+            Expression::Subtract(..) => self.expression_binary_op(Op::Add),
             Expression::Multiply(..) => self.expression_binary_op(Op::Mul),
+            Expression::Divide(..) => self.expression_binary_op(Op::Mul),
             _ => unimplemented!(),
         };
         self.expression.push(ops);

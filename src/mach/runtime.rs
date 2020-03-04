@@ -1,8 +1,7 @@
-use super::op::Address;
-use super::program::Program;
-use super::val::Val;
+use super::{Address, Program, Val};
 
-struct Runtime {
+#[allow(dead_code)]
+pub struct Runtime {
     vars: std::collections::HashMap<String, Val>,
     stack: Vec<Val>,
     program: Program,

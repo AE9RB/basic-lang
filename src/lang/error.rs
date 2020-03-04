@@ -1,12 +1,14 @@
-use super::Line;
+use super::{Column, Line, LineNumber};
 
 #[derive(Debug)]
 pub struct Error {
     code: u16,
-    line_number: Option<u16>,
-    column: std::ops::Range<usize>,
+    line_number: LineNumber,
+    column: Column,
 }
 
+#[doc(hidden)]
+#[macro_export]
 macro_rules! error {
     ($err:ident) => {
         $crate::lang::Error::new($crate::lang::ErrorCode::$err)
@@ -23,15 +25,10 @@ impl Error {
     }
 
     pub fn in_line(&self, line: &Line) -> Error {
-        debug_assert!(self.line_number.is_none());
-        Error {
-            code: self.code,
-            line_number: line.number(),
-            column: self.column.clone(),
-        }
+        self.in_line_number(line.number())
     }
 
-    pub fn in_line_number(&self, line: Option<u16>) -> Error {
+    pub fn in_line_number(&self, line: LineNumber) -> Error {
         debug_assert!(self.line_number.is_none());
         Error {
             code: self.code,
@@ -40,17 +37,13 @@ impl Error {
         }
     }
 
-    pub fn in_column(&self, column: &std::ops::Range<usize>) -> Error {
+    pub fn in_column(&self, column: &Column) -> Error {
         debug_assert_eq!(self.column, 0..0);
         Error {
             code: self.code,
             line_number: self.line_number,
             column: column.clone(),
         }
-    }
-
-    pub fn column(&self) -> &std::ops::Range<usize> {
-        &self.column
     }
 }
 
@@ -113,21 +106,19 @@ impl std::fmt::Display for Error {
         };
         let suffix = match self.line_number {
             None => {
-                if (0..0) == *self.column() {
+                if (0..0) == self.column {
                     format!("")
                 } else {
-                    format!(" IN {}..{}", self.column().start, self.column().end)
+                    format!(" IN {}..{}", self.column.start, self.column.end)
                 }
             }
             Some(line_number) => {
-                if (0..0) == *self.column() {
+                if (0..0) == self.column {
                     format!(" IN {}", line_number)
                 } else {
                     format!(
                         " IN {}:{}..{}",
-                        line_number,
-                        self.column().start,
-                        self.column().end
+                        line_number, self.column.start, self.column.end
                     )
                 }
             }

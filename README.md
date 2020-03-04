@@ -1,7 +1,7 @@
 # BASIC
 
 The BASIC programming language as it was in 1978.\
-See https://en.wikipedia.org/wiki/Microsoft_BASIC
+See <https://en.wikipedia.org/wiki/Microsoft_BASIC>
 
 ```
 READY.
