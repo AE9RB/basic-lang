@@ -30,10 +30,10 @@ fn main() {
     println!("{:?}", t.ast());
 
     let mut p = Program::new();
-    p.compile(&vec![Line::new("0 letg=1")]);
-    p.compile(&vec![Line::new("20 ?\"Hullo Wurld\"")]);
+    p.compile(&vec![Line::new("0 letx=y")]);
+    p.compile(&vec![Line::new("20 ?\"Hullo Wurld\";")]);
     p.compile(&vec![Line::new("30 goto20")]);
-    p.compile(&vec![Line::new("40 goto0")]);
-    let p = p.link();
-    println!("{:?}", p);
+    println!("{:?}", p.link());
+    p.compile(&vec![Line::new("leta=0")]);
+    println!("{:?}", p.link());
 }
