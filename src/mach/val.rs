@@ -5,8 +5,9 @@ use std::convert::TryFrom;
 
 /// ## Stack values
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Val {
+    Undefined,
     String(String),
     Integer(i16),
     Single(f32),
@@ -36,6 +37,7 @@ impl TryFrom<Val> for u16 {
     type Error = Error;
     fn try_from(val: Val) -> Result<Self, Self::Error> {
         match val {
+            Val::Undefined => Ok(0),
             Val::Integer(i) => {
                 if i >= 0 {
                     Ok(i as u16)

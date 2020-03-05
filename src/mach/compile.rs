@@ -96,7 +96,7 @@ fn r#goto((program, _ident, expression): PIE, col: &Column) {
         break;
     }
     let sym = program.symbol_for_line_number(line_number);
-    program.link_next_op_to(sym);
+    program.link_next_op_to(col, sym);
     program.push(Op::Jump(0));
 }
 

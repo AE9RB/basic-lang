@@ -37,17 +37,18 @@ pub enum Op {
     /// Branch to Address.
     Return,
 
-    // Statements
+    // *** Statements
+    End,
     Print,
 
-    // Expression operations
+    // *** Expression operations
     Neg,
     Add,
     Sub,
     Mul,
     Div,
 
-    // Built-in functions
+    // *** Built-in functions
     FnSin,
     FnCos,
     FnStrS,

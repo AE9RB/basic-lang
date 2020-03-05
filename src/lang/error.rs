@@ -1,4 +1,4 @@
-use super::{Column, Line, LineNumber};
+use super::{Column, LineNumber};
 
 #[derive(Debug)]
 pub struct Error {
@@ -13,6 +13,9 @@ macro_rules! error {
     ($err:ident) => {
         $crate::lang::Error::new($crate::lang::ErrorCode::$err)
     };
+    ($err:ident, $line:expr) => {
+        $crate::lang::Error::new($crate::lang::ErrorCode::$err).in_line_number($line)
+    };
 }
 
 impl Error {
@@ -24,8 +27,8 @@ impl Error {
         }
     }
 
-    pub fn in_line(&self, line: &Line) -> Error {
-        self.in_line_number(line.number())
+    pub fn is_direct(&self) -> bool {
+        self.line_number.is_none()
     }
 
     pub fn in_line_number(&self, line: LineNumber) -> Error {

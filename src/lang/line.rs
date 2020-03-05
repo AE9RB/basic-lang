@@ -10,13 +10,17 @@ impl Line {
     pub fn new(s: &str) -> Line {
         let (line_number, tokens) = lex(s);
         Line {
-            tokens: tokens,
             number: line_number,
+            tokens: tokens,
         }
     }
 
     pub fn number(&self) -> LineNumber {
         self.number
+    }
+
+    pub fn is_direct(&self) -> bool {
+        self.number.is_none()
     }
 
     pub fn ast(&self) -> Result<Vec<ast::Statement>, Error> {
@@ -32,6 +36,14 @@ impl std::fmt::Display for Line {
         } else {
             write!(f, "{}", s)
         }
+    }
+}
+
+impl<'a> IntoIterator for &'a Line {
+    type Item = &'a Line;
+    type IntoIter = std::option::IntoIter<Self::Item>;
+    fn into_iter(self) -> Self::IntoIter {
+        Some(self).into_iter()
     }
 }
 
