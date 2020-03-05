@@ -244,9 +244,10 @@ impl Statement {
         let column = parse.column();
         use Word::*;
         match word {
+            Goto1 | Goto2 => Self::r#goto(parse, column),
             Let => Self::r#let(parse, column),
             Print1 | Print2 => Self::r#print(parse, column),
-            Goto1 | Goto2 => Self::r#goto(parse, column),
+            Run => Self::r#run(parse, column),
             _ => Err(error!(SyntaxError)),
         }
     }
@@ -264,6 +265,10 @@ impl Statement {
 
     fn r#goto(parse: &mut Parser, column: Column) -> Result<Statement> {
         Ok(Statement::Goto(column, parse.expression()?))
+    }
+
+    fn r#run(_parse: &mut Parser, column: Column) -> Result<Statement> {
+        Ok(Statement::Run(column))
     }
 }
 

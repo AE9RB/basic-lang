@@ -1,5 +1,5 @@
 use super::{Op, Program, Val};
-use crate::lang::{Line, LineNumber};
+use crate::lang::{Error, Line, LineNumber};
 use std::collections::{BTreeMap, HashMap};
 
 pub struct Runtime {
@@ -32,31 +32,47 @@ impl Runtime {
             }
             let direct_line = self.source.get(&None).unwrap();
             self.program.compile(direct_line);
-        //self.execute();
+            dbg!(self.execute());
         } else {
             self.dirty = true;
         }
     }
 
-    fn execute(&mut self) {
-        if let Ok((mut pc, ops)) = self.program.link_indirect() {
-            loop {
-                let op = &ops[pc];
-                pc += 1;
-                match op {
-                    Op::Literal(val) => self.stack.push(val.clone()),
-                    Op::Push(str) => {
-                        self.stack.push(match self.vars.get(str) {
-                            Some(val) => val.clone(),
-                            None => Val::Undefined,
-                        });
-                    }
-                    Op::Jump(addr) => pc = *addr,
-                    _ => unimplemented!("{:?}", op),
+    fn execute(&mut self) -> Result<(), &Vec<Error>> {
+        self.stack.clear();
+        let mut pc = self.program.link();
+        let has_indirect_errors = self.program.indirect_errors().len() > 0;
+        let watermark = pc;
+        if self.program.direct_errors().len() > 0 {
+            return Err(self.program.direct_errors());
+        }
+        loop {
+            let op = self.program.op(pc);
+            pc += 1;
+            match op {
+                Op::Literal(val) => self.stack.push(val.clone()),
+                Op::Push(var_name) => {
+                    self.stack.push(match self.vars.get(var_name) {
+                        Some(val) => val.clone(),
+                        None => Val::Undefined,
+                    });
                 }
+                Op::Run => {
+                    if has_indirect_errors && pc < watermark {
+                        return Err(self.program.indirect_errors());
+                    }
+                    self.stack.clear();
+                    self.vars.clear();
+                    pc = 0;
+                }
+                Op::Jump(addr) => {
+                    if has_indirect_errors && pc < watermark {
+                        return Err(self.program.indirect_errors());
+                    }
+                    pc = *addr;
+                }
+                _ => unimplemented!("{:?}", op),
             }
-        } else {
-            // print errors
         }
     }
 }

@@ -8,8 +8,8 @@ use std::collections::{BTreeMap, HashMap};
 #[derive(Debug)]
 pub struct Program {
     ops: Vec<Op>,
-    errors: Vec<Error>,
-    indirect_errors: Vec<Error>,
+    pub errors: Vec<Error>,
+    pub indirect_errors: Vec<Error>,
     direct_address: Address,
     current_symbol: Symbol,
     symbols: BTreeMap<Symbol, Address>,
@@ -30,6 +30,18 @@ impl Program {
             line_number: None,
         }
     }
+    pub fn op(&self, addr: Address) -> &Op {
+        &self.ops[addr]
+    }
+
+    pub fn indirect_errors(&self) -> &Vec<Error> {
+        &self.indirect_errors
+    }
+
+    pub fn direct_errors(&self) -> &Vec<Error> {
+        &self.errors
+    }
+
     pub fn error(&mut self, col: &Column, error: Error) {
         self.errors
             .push(error.in_line_number(self.line_number).in_column(col));
@@ -77,7 +89,7 @@ impl Program {
                     debug_assert!(line_number > self_line_number, "Lines out of order.");
                 }
             } else if self.line_number.is_some() {
-                self.link();
+                let _ = self.link();
                 self.ensure_end();
             }
             self.line_number = line.number();
@@ -119,25 +131,7 @@ impl Program {
         ender(self);
     }
 
-    pub fn link_direct(&mut self) -> Result<(Address, &Vec<Op>), &Vec<Error>> {
-        self.link();
-        if !self.errors.is_empty() {
-            Err(&self.errors)
-        } else {
-            Ok((self.direct_address, &self.ops))
-        }
-    }
-
-    pub fn link_indirect(&mut self) -> Result<(Address, &Vec<Op>), &Vec<Error>> {
-        self.link();
-        if !self.indirect_errors.is_empty() {
-            Err(&self.indirect_errors)
-        } else {
-            Ok((0, &self.ops))
-        }
-    }
-
-    fn link(&mut self) {
+    pub fn link(&mut self) -> Address {
         self.ensure_end();
         for (op_addr, (col, symbol)) in std::mem::take(&mut self.unlinked) {
             let dest = self.symbols.get(&symbol);
@@ -164,6 +158,7 @@ impl Program {
         }
         self.symbols = self.symbols.split_off(&0);
         self.current_symbol = 0;
+        self.direct_address
     }
 
     pub fn line_number_for(&self, op_addr: Address) -> LineNumber {

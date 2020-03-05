@@ -6,6 +6,7 @@ pub enum Statement {
     Goto(Column, Expression),
     Let(Column, (Column, Ident), Expression),
     Print(Column, Vec<Expression>),
+    Run(Column),
 }
 
 #[derive(Debug, PartialEq)]
@@ -55,6 +56,7 @@ impl AcceptVisitor for Statement {
                     expr.accept(visitor);
                 }
             }
+            Run(_) => {}
         }
         visitor.visit_statement(self)
     }

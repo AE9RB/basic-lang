@@ -38,6 +38,7 @@ pub enum Op {
     Return,
 
     // *** Statements
+    Run,
     End,
     Print,
 

@@ -43,8 +43,9 @@ impl<'a> ast::Visitor for Compiler<'a> {
         let pie = (&mut *self.program, &mut self.ident, &mut self.expression);
         match statement {
             Statement::Goto(col, ..) => r#goto(pie, col),
-            Statement::Let(..) => r#let(pie),
+            Statement::Let(col, ..) => r#let(pie, col),
             Statement::Print(col, ..) => r#print(pie, col),
+            Statement::Run(col) => r#run(pie, col),
         };
         debug_assert_eq!(0, self.ident.len());
         debug_assert_eq!(0, self.expression.len());
@@ -100,7 +101,7 @@ fn r#goto((program, _ident, expression): PIE, col: &Column) {
     program.push(Op::Jump(0));
 }
 
-fn r#let((program, ident, expression): PIE) {
+fn r#let((program, ident, expression): PIE, _col: &Column) {
     program.append(&mut expression.pop().unwrap());
     program.push(Op::Pop(ident.pop().unwrap()));
 }
@@ -113,4 +114,8 @@ fn r#print((program, _ident, expression): PIE, col: &Column) {
         Err(_) => program.error(col, error!(SyntaxError)),
     };
     program.push(Op::Print);
+}
+
+fn r#run((program, _ident, _expression): PIE, _col: &Column) {
+    program.push(Op::Run);
 }

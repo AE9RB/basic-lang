@@ -31,14 +31,8 @@ fn main() {
     println!("{:?}", t.ast());
 
     let mut p = Program::new();
-    p.compile(&Line::new("0 letx=y"));
-    p.compile(&Line::new("20 ?\"Hullo Wurld\";"));
-    p.compile(&Line::new("30 goto20"));
-    println!("{:?}", p.link_indirect());
-    p.compile(&Line::new("leta=0"));
-    println!("{:?}", p.link_direct());
-    p.compile(&Line::new("?a;"));
-    println!("{:?}", p.link_direct());
+    println!("{:?}", p.compile(&Line::new("0 letx=y")));
+    println!("{:?}", p.link());
 
     let mut r = Runtime::new();
     r.enter(Line::new("20goto10"));
