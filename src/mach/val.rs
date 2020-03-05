@@ -7,7 +7,6 @@ use std::convert::TryFrom;
 
 #[derive(Debug, Clone)]
 pub enum Val {
-    Undefined,
     String(String),
     Integer(i16),
     Single(f32),
@@ -15,6 +14,20 @@ pub enum Val {
     Char(char),
     Next(Address),
     Return(Address),
+}
+
+impl std::fmt::Display for Val {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use Val::*;
+        match self {
+            String(s) => write!(f, "{}", s),
+            Integer(n) => write!(f, "{}", n),
+            Single(n) => write!(f, "{}", n),
+            Double(n) => write!(f, "{}", n),
+            Char(c) => write!(f, "{}", c),
+            Next(..) | Return(..) => panic!(),
+        }
+    }
 }
 
 impl TryFrom<Val> for LineNumber {
@@ -37,7 +50,6 @@ impl TryFrom<Val> for u16 {
     type Error = Error;
     fn try_from(val: Val) -> Result<Self, Self::Error> {
         match val {
-            Val::Undefined => Ok(0),
             Val::Integer(i) => {
                 if i >= 0 {
                     Ok(i as u16)

@@ -112,7 +112,7 @@ impl std::fmt::Display for Error {
                 if (0..0) == self.column {
                     format!("")
                 } else {
-                    format!(" IN {}..{}", self.column.start, self.column.end)
+                    format!(" IN ({}..{})", self.column.start, self.column.end)
                 }
             }
             Some(line_number) => {
@@ -120,7 +120,7 @@ impl std::fmt::Display for Error {
                     format!(" IN {}", line_number)
                 } else {
                     format!(
-                        " IN {}:{}..{}",
+                        " IN {} ({}..{})",
                         line_number, self.column.start, self.column.end
                     )
                 }

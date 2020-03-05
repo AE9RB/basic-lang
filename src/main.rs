@@ -31,11 +31,11 @@ fn main() {
     println!("{:?}", t.ast());
 
     let mut p = Program::new();
-    println!("{:?}", p.compile(&Line::new("0 letx=y")));
-    println!("{:?}", p.link());
+    p.compile(&Line::new("0 letx=y"));
+    p.link();
+    println!("{:?}", p);
 
     let mut r = Runtime::new();
-    r.enter(Line::new("20goto10"));
-    r.enter(Line::new("10?hello$"));
-    r.enter(Line::new("run"));
+    r.enter(Line::new("10?\"hello\",1,2,3"));
+    r.enter(Line::new("?999,:run"));
 }

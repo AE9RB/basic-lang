@@ -115,22 +115,17 @@ impl Program {
             }
         }
     }
-
     fn ensure_end(&mut self) {
-        fn ender(this: &mut Program) {
-            match this.ops.last() {
-                Some(Op::End) => {}
-                _ => this.ops.push(Op::End),
-            };
-        }
+        match self.ops.last() {
+            Some(Op::End) => {}
+            _ => self.ops.push(Op::End),
+        };
         if self.direct_address == 0 {
-            ender(self);
             self.indirect_errors.append(&mut self.errors);
             self.direct_address = self.ops.len();
+            self.ops.push(Op::End)
         }
-        ender(self);
     }
-
     pub fn link(&mut self) -> Address {
         self.ensure_end();
         for (op_addr, (col, symbol)) in std::mem::take(&mut self.unlinked) {
@@ -160,7 +155,6 @@ impl Program {
         self.current_symbol = 0;
         self.direct_address
     }
-
     pub fn line_number_for(&self, op_addr: Address) -> LineNumber {
         if op_addr < self.direct_address {
             for (line_number, symbol_addr) in self.symbols.range(0..).rev() {

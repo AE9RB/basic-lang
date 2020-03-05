@@ -32,7 +32,14 @@ impl Runtime {
             }
             let direct_line = self.source.get(&None).unwrap();
             self.program.compile(direct_line);
-            dbg!(self.execute());
+            match self.execute() {
+                Ok(..) => {}
+                Err(e) => {
+                    for error in e {
+                        println!("?{}", error);
+                    }
+                }
+            }
         } else {
             self.dirty = true;
         }
@@ -54,11 +61,23 @@ impl Runtime {
                 Op::Push(var_name) => {
                     self.stack.push(match self.vars.get(var_name) {
                         Some(val) => val.clone(),
-                        None => Val::Undefined,
+                        None => {
+                            if var_name.ends_with("$") {
+                                Val::String("".to_string())
+                            } else if var_name.ends_with("!") {
+                                Val::Single(0.0)
+                            } else if var_name.ends_with("#") {
+                                Val::Double(0.0)
+                            } else if var_name.ends_with("%") {
+                                Val::Integer(0)
+                            } else {
+                                Val::Integer(0)
+                            }
+                        }
                     });
                 }
                 Op::Run => {
-                    if has_indirect_errors && pc < watermark {
+                    if has_indirect_errors {
                         return Err(self.program.indirect_errors());
                     }
                     self.stack.clear();
@@ -66,11 +85,23 @@ impl Runtime {
                     pc = 0;
                 }
                 Op::Jump(addr) => {
+                    pc = *addr;
                     if has_indirect_errors && pc < watermark {
                         return Err(self.program.indirect_errors());
                     }
-                    pc = *addr;
                 }
+                Op::End => {
+                    self.stack.clear();
+                    return Ok(());
+                }
+                Op::Print => match self.stack.pop() {
+                    Some(Val::Integer(len)) => {
+                        for val in self.stack.drain((self.stack.len() - len as usize)..) {
+                            print!("{}", val);
+                        }
+                    }
+                    _ => panic!(),
+                },
                 _ => unimplemented!("{:?}", op),
             }
         }
