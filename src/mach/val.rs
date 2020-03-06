@@ -12,7 +12,6 @@ pub enum Val {
     Single(f32),
     Double(f64),
     Char(char),
-    Next(Address),
     Return(Address),
 }
 
@@ -25,7 +24,7 @@ impl std::fmt::Display for Val {
             Single(n) => write!(f, "{}", n),
             Double(n) => write!(f, "{}", n),
             Char(c) => write!(f, "{}", c),
-            Next(..) | Return(..) => panic!(),
+            Return(..) => panic!(),
         }
     }
 }
@@ -71,9 +70,7 @@ impl TryFrom<Val> for u16 {
                     Err(error!(Overflow))
                 }
             }
-            Val::Char(_) | Val::String(_) | Val::Next(_) | Val::Return(_) => {
-                Err(error!(SyntaxError))
-            }
+            Val::Char(_) | Val::String(_) | Val::Return(_) => Err(error!(SyntaxError)),
         }
     }
 }

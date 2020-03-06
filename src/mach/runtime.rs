@@ -41,17 +41,22 @@ impl Runtime {
                 }
             }
         } else {
+            self.stack.clear();
             self.dirty = true;
         }
     }
 
-    fn execute(&mut self) -> Result<(), &Vec<Error>> {
-        self.stack.clear();
-        let mut pc = self.program.link();
-        let has_indirect_errors = self.program.indirect_errors().len() > 0;
+    fn execute(&mut self) -> Result<(), Vec<Error>> {
+        let (mut pc, indirect_errors, direct_errors) = self.program.link();
         let watermark = pc;
-        if self.program.direct_errors().len() > 0 {
-            return Err(self.program.direct_errors());
+        let has_indirect_errors = if !indirect_errors.is_empty() {
+            self.dirty = true;
+            true
+        } else {
+            false
+        };
+        if !direct_errors.is_empty() {
+            return Err(direct_errors.to_owned());
         }
         loop {
             let op = self.program.op(pc);
@@ -71,14 +76,15 @@ impl Runtime {
                             } else if var_name.ends_with("%") {
                                 Val::Integer(0)
                             } else {
-                                Val::Integer(0)
+                                Val::Single(0.0)
                             }
                         }
                     });
                 }
                 Op::Run => {
                     if has_indirect_errors {
-                        return Err(self.program.indirect_errors());
+                        let (_, indirect_errors, _) = self.program.link();
+                        return Err(indirect_errors.to_owned());
                     }
                     self.stack.clear();
                     self.vars.clear();
@@ -87,11 +93,11 @@ impl Runtime {
                 Op::Jump(addr) => {
                     pc = *addr;
                     if has_indirect_errors && pc < watermark {
-                        return Err(self.program.indirect_errors());
+                        let (_, indirect_errors, _) = self.program.link();
+                        return Err(indirect_errors.to_owned());
                     }
                 }
                 Op::End => {
-                    self.stack.clear();
                     return Ok(());
                 }
                 Op::Print => match self.stack.pop() {

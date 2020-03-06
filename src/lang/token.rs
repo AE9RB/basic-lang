@@ -21,11 +21,11 @@ pub enum Token {
     Word(Word),
     Operator(Operator),
     Ident(Ident),
-    ParenOpen,
-    ParenClose,
+    LParen,
+    RParen,
     Comma,
     Colon,
-    SemiColon,
+    Semicolon,
 }
 
 impl Token {
@@ -47,11 +47,11 @@ impl std::fmt::Display for Token {
             Word(s) => write!(f, "{}", s),
             Operator(s) => write!(f, "{}", s),
             Ident(s) => write!(f, "{}", s),
-            ParenOpen => write!(f, "("),
-            ParenClose => write!(f, ")"),
+            LParen => write!(f, "("),
+            RParen => write!(f, ")"),
             Comma => write!(f, ","),
             Colon => write!(f, ":"),
-            SemiColon => write!(f, ";"),
+            Semicolon => write!(f, ";"),
         }
     }
 }

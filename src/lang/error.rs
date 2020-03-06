@@ -1,10 +1,11 @@
 use super::{Column, LineNumber};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Error {
     code: u16,
     line_number: LineNumber,
     column: Column,
+    message: &'static str,
 }
 
 #[doc(hidden)]
@@ -16,6 +17,25 @@ macro_rules! error {
     ($err:ident, $line:expr) => {
         $crate::lang::Error::new($crate::lang::ErrorCode::$err).in_line_number($line)
     };
+    ($err:ident, $line:expr, $col:expr) => {
+        $crate::lang::Error::new($crate::lang::ErrorCode::$err)
+            .in_line_number($line)
+            .in_column($col)
+    };
+    ($err:ident, $line:expr ; $msg:expr) => {
+        $crate::lang::Error::new($crate::lang::ErrorCode::$err)
+            .in_line_number($line)
+            .message($msg)
+    };
+    ($err:ident, $line:expr, $col:expr;  $msg:expr) => {
+        $crate::lang::Error::new($crate::lang::ErrorCode::$err)
+            .in_line_number($line)
+            .in_column($col)
+            .message($msg)
+    };
+    ($err:ident; $msg:expr) => {
+        $crate::lang::Error::new($crate::lang::ErrorCode::$err).message($msg)
+    };
 }
 
 impl Error {
@@ -24,6 +44,7 @@ impl Error {
             code: code as u16,
             line_number: None,
             column: 0..0,
+            message: "",
         }
     }
 
@@ -37,6 +58,7 @@ impl Error {
             code: self.code,
             line_number: line,
             column: self.column.clone(),
+            message: self.message,
         }
     }
 
@@ -46,6 +68,16 @@ impl Error {
             code: self.code,
             line_number: self.line_number,
             column: column.clone(),
+            message: self.message,
+        }
+    }
+    pub fn message(&self, message: &'static str) -> Error {
+        debug_assert_eq!(self.column, 0..0);
+        Error {
+            code: self.code,
+            line_number: self.line_number,
+            column: self.column.clone(),
+            message: message,
         }
     }
 }
@@ -59,7 +91,7 @@ pub enum ErrorCode {
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let s = match self.code {
+        let code_str = match self.code {
             1 => "NEXT WITHOUT FOR",
             2 => "SYNTAX ERROR",
             3 => "RETURN WITHOUT GOSUB",
@@ -107,29 +139,28 @@ impl std::fmt::Display for Error {
             68 => "OUT OF RANDOM BLOCKS",
             _ => "",
         };
-        let suffix = match self.line_number {
-            None => {
-                if (0..0) == self.column {
-                    format!("")
-                } else {
-                    format!(" IN ({}..{})", self.column.start, self.column.end)
-                }
+        let mut suffix = String::new();
+        if let Some(line_number) = self.line_number {
+            suffix.push_str(&format!(" {}", line_number));
+        }
+        if (0..0) != self.column {
+            suffix.push_str(&format!(" ({}..{})", self.column.start, self.column.end));
+        }
+        if !self.message.is_empty() {
+            suffix.push_str(&format!("; {}", self.message));
+        }
+        if code_str.is_empty() {
+            if suffix.is_empty() {
+                write!(f, "PROGRAM ERROR {}", self.code)
+            } else {
+                write!(f, "PROGRAM ERROR {} IN{}", self.code, suffix)
             }
-            Some(line_number) => {
-                if (0..0) == self.column {
-                    format!(" IN {}", line_number)
-                } else {
-                    format!(
-                        " IN {} ({}..{})",
-                        line_number, self.column.start, self.column.end
-                    )
-                }
-            }
-        };
-        if s.len() > 0 {
-            write!(f, "{}{}", s, suffix)
         } else {
-            write!(f, "PROGRAM ERROR {}{}", self.code, suffix)
+            if suffix.is_empty() {
+                write!(f, "{}", code_str)
+            } else {
+                write!(f, "{} IN{}", code_str, suffix)
+            }
         }
     }
 }

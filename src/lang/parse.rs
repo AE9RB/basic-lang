@@ -83,29 +83,33 @@ impl<'a> Parser<'a> {
                 self.next();
                 Statement::for_word(self, word)
             }
-            _ => Err(error!(SyntaxError)),
+            _ => {
+                 let error = Statement::for_word(self, &Word::Rem1);
+                 debug_assert!(error.is_err());
+                 error
+            },
         }
     }
 
     fn expression(&mut self) -> Result<Expression> {
         fn parse(this: &mut Parser, precedence: usize) -> Result<Expression> {
             let mut lhs = match this.next() {
-                Some(Token::ParenOpen) => {
+                Some(Token::LParen) => {
                     let expr = this.expression()?;
-                    this.expect(Token::ParenClose)?;
+                    this.expect(Token::RParen)?;
                     expr
                 }
                 Some(Token::Ident(i)) => {
                     let column = this.column();
                     match this.peek() {
-                        Some(&&Token::ParenOpen) => {
+                        Some(&&Token::LParen) => {
                             Expression::Function(column, i.clone(), this.expression_list()?)
                         }
                         _ => Expression::Var(column, i.clone()),
                     }
                 }
                 Some(Token::Literal(l)) => Expression::for_literal(this.column(), l),
-                _ => return Err(error!(SyntaxError)),
+                _ => return Err(error!(SyntaxError; "EXPECTED EXPRESSION")),
             };
             let mut rhs;
             loop {
@@ -129,14 +133,14 @@ impl<'a> Parser<'a> {
     }
 
     fn expression_list(&mut self) -> Result<Vec<Expression>> {
-        self.expect(Token::ParenOpen)?;
+        self.expect(Token::LParen)?;
         let mut v: Vec<Expression> = vec![];
         loop {
             v.push(self.expression()?);
             match self.next() {
-                Some(Token::ParenClose) => return Ok(v),
+                Some(Token::RParen) => return Ok(v),
                 Some(Token::Comma) => continue,
-                _ => return Err(error!(SyntaxError)),
+                _ => return Err(error!(SyntaxError; "EXPECTED END OR SEPARATOR")),
             }
         }
     }
@@ -154,7 +158,7 @@ impl<'a> Parser<'a> {
                     }
                     return Ok(v);
                 }
-                Some(Token::SemiColon) => {
+                Some(Token::Semicolon) => {
                     linefeed = false;
                     self.next();
                 }
@@ -185,7 +189,21 @@ impl<'a> Parser<'a> {
                 return Ok(());
             }
         }
-        Err(error!(SyntaxError))
+        use Token::*;
+        Err(error!(SyntaxError;
+            match token {
+                Unknown(_) | Whitespace(_) => {"UNEXPECTED TOKEN"}
+                Literal(_) => {"EXPECTED LITERAL"}
+                Word(_) => {"EXPECTED RESERVED WORD"}
+                Operator(_) => {"EXPECTED OPERATOR"}
+                Ident(_) => {"EXPECTED IDENTIFIER"}
+                LParen => {"EXPECTED LEFT PARENTHESIS"}
+                RParen => {"EXPECTED RIGHT PARENTHESIS"}
+                Comma => {"EXPECTED COMMA"}
+                Colon => {"EXPECTED COLON"}
+                Semicolon => {"EXPECTED SEMICOLON"}
+            }
+        ))
     }
 }
 
@@ -248,7 +266,11 @@ impl Statement {
             Let => Self::r#let(parse, column),
             Print1 | Print2 => Self::r#print(parse, column),
             Run => Self::r#run(parse, column),
-            _ => Err(error!(SyntaxError)),
+            Data | Def | Dim  | End | For | Gosub1 | Gosub2 | If | Input | Next | On
+            | Read | Restore | Return | Stop => {
+                Err(error!(SyntaxError; "STATEMENT NOT YET PARSING"))
+            }
+            Else | Rem1 | Rem2 | To | Then => Err(error!(SyntaxError; "EXPECTED STATEMENT")),
         }
     }
 

@@ -33,15 +33,6 @@ impl Program {
     pub fn op(&self, addr: Address) -> &Op {
         &self.ops[addr]
     }
-
-    pub fn indirect_errors(&self) -> &Vec<Error> {
-        &self.indirect_errors
-    }
-
-    pub fn direct_errors(&self) -> &Vec<Error> {
-        &self.errors
-    }
-
     pub fn error(&mut self, col: &Column, error: Error) {
         self.errors
             .push(error.in_line_number(self.line_number).in_column(col));
@@ -89,8 +80,7 @@ impl Program {
                     debug_assert!(line_number > self_line_number, "Lines out of order.");
                 }
             } else if self.line_number.is_some() {
-                let _ = self.link();
-                self.ensure_end();
+                self.link();
             }
             self.line_number = line.number();
             if let Some(line_number) = self.line_number {
@@ -115,28 +105,21 @@ impl Program {
             }
         }
     }
-    fn ensure_end(&mut self) {
+    pub fn link(&mut self) -> (Address, &Vec<Error>, &Vec<Error>) {
         match self.ops.last() {
             Some(Op::End) => {}
             _ => self.ops.push(Op::End),
         };
         if self.direct_address == 0 {
-            self.indirect_errors.append(&mut self.errors);
+            self.indirect_errors = std::mem::take(&mut self.errors);
             self.direct_address = self.ops.len();
             self.ops.push(Op::End)
         }
-    }
-    pub fn link(&mut self) -> Address {
-        self.ensure_end();
         for (op_addr, (col, symbol)) in std::mem::take(&mut self.unlinked) {
             let dest = self.symbols.get(&symbol);
             if dest.is_none() && symbol >= 0 {
                 let error = error!(UndefinedLine, self.line_number_for(op_addr)).in_column(&col);
-                if op_addr < self.direct_address {
-                    self.indirect_errors.push(error);
-                } else {
-                    self.errors.push(error);
-                }
+                self.errors.push(error);
                 continue;
             }
             let dest = *dest.unwrap();
@@ -153,7 +136,7 @@ impl Program {
         }
         self.symbols = self.symbols.split_off(&0);
         self.current_symbol = 0;
-        self.direct_address
+        (self.direct_address, &self.indirect_errors, &self.errors)
     }
     pub fn line_number_for(&self, op_addr: Address) -> LineNumber {
         if op_addr < self.direct_address {

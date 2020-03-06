@@ -101,6 +101,19 @@ Lieral(Next(:loop_inner))
 -- loop stuff
 Next
 
+// New compiled type for loop (to before from)
+--eval STEP
+--eval TO
+--eval FROM
+Pop("A")
+Literal("A")
+Literal(0) // signal start of loop (don't step)
+:loop
+For(:done) // pop [int],var,to,step; if done goto label ; else push back without int
+-- stuff
+Goto(:loop)
+:done
+
 // while _expr
 :again
 -- eval _expr
