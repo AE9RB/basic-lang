@@ -31,8 +31,8 @@ impl Line {
 impl std::fmt::Display for Line {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let s: String = self.tokens.iter().map(|s| s.to_string()).collect();
-        if self.number.is_some() {
-            write!(f, "{} {}", self.number.unwrap(), s)
+        if let Some(number) = self.number {
+            write!(f, "{} {}", number, s)
         } else {
             write!(f, "{}", s)
         }

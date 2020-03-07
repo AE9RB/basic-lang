@@ -230,7 +230,7 @@ impl Expression {
     }
 
     fn for_literal(col: Column, lit: &Literal) -> Expression {
-        fn clean(s: &str) -> String {
+        fn parse<T: std::str::FromStr + std::default::Default>(s: &str) -> T {
             let mut s = String::from(s).replace("D", "E");
             match s.chars().last() {
                 Some('!') | Some('#') | Some('%') => {
@@ -238,12 +238,18 @@ impl Expression {
                 }
                 _ => {}
             };
-            s
+            match s.parse::<T>() {
+                Ok(num) => num,
+                Err(_) => {
+                    debug_assert!(false, "Failed to parse numeric literal.");
+                    T::default()
+                }
+            }
         }
         match lit {
-            Literal::Single(s) => Expression::Single(col, clean(s).parse().unwrap()),
-            Literal::Double(s) => Expression::Double(col, clean(s).parse().unwrap()),
-            Literal::Integer(s) => Expression::Integer(col, clean(s).parse().unwrap()),
+            Literal::Single(s) => Expression::Single(col, parse(s)),
+            Literal::Double(s) => Expression::Double(col, parse(s)),
+            Literal::Integer(s) => Expression::Integer(col, parse(s)),
             Literal::String(s) => Expression::String(col, s.to_string()),
         }
     }
@@ -306,9 +312,7 @@ mod tests {
         let (lin, tokens) = lex(s);
         match parse(lin, &tokens) {
             Ok(mut v) => {
-                if v.len() != 1 {
-                    panic!();
-                }
+                assert!(v.len() == 1);
                 v.pop().unwrap()
             }
             Err(e) => panic!("{:?}", e),

@@ -1,4 +1,5 @@
 use super::{token::*, LineNumber, MaxValue};
+use std::convert::TryFrom;
 
 pub fn lex(s: &str) -> (LineNumber, Vec<Token>) {
     let mut tokens = Lexer::lex(s);
@@ -90,17 +91,10 @@ fn take_line_number(tokens: &mut Vec<Token>) -> LineNumber {
         pos = Some(0);
     }
     if let Some(pos) = pos {
-        let s = tokens.get(pos).unwrap();
-        if let Token::Literal(lit) = s {
-            let s = match lit {
-                Literal::Integer(s) => s,
-                Literal::Single(s) => s,
-                Literal::Double(s) => s,
-                Literal::String(s) => s,
-            };
-            if s.chars().all(|c| is_basic_digit(c)) {
-                if let Ok(line) = s.parse::<u16>() {
-                    if line <= LineNumber::max_value() {
+        if let Some(s) = tokens.get(pos) {
+            if let Ok(line) = LineNumber::try_from(s) {
+                if let Some(val) = line {
+                    if val <= LineNumber::max_value() {
                         tokens.drain(0..=pos);
                         let whitespace_len: usize = match tokens.get(0) {
                             Some(Token::Whitespace(x)) => *x,
@@ -112,7 +106,7 @@ fn take_line_number(tokens: &mut Vec<Token>) -> LineNumber {
                         if whitespace_len > 1 {
                             tokens[0] = Token::Whitespace(whitespace_len - 1);
                         }
-                        return Some(line);
+                        return line;
                     }
                 }
             }
@@ -147,12 +141,10 @@ impl<'a> Iterator for Lexer<'a> {
             return Some(Token::Unknown(self.chars.by_ref().collect::<String>()));
         }
         if is_basic_whitespace(*p) {
-            let tw = self.whitespace();
-            return tw;
+            return self.whitespace();
         }
         if is_basic_digit(*p) || *p == '.' {
-            let tn = self.number();
-            return tn;
+            return self.number();
         }
         if is_basic_alphabetic(*p) {
             let r = self.alphabetic();
@@ -207,7 +199,13 @@ impl<'a> Lexer<'a> {
         let mut decimal = false;
         let mut exp = false;
         loop {
-            let mut c = self.chars.next().unwrap();
+            let mut c = match self.chars.next() {
+                Some(c) => c,
+                None => {
+                    debug_assert!(false, "Failed to tokenize number.");
+                    return None;
+                }
+            };
             if c == 'e' {
                 c = 'E'
             }
@@ -283,7 +281,14 @@ impl<'a> Lexer<'a> {
         let mut s = String::new();
         let mut digit = false;
         loop {
-            let c = self.chars.next().unwrap().to_ascii_uppercase();
+            let c = match self.chars.next() {
+                Some(c) => c,
+                None => {
+                    debug_assert!(false, "Failed to tokenize alphabetic.");
+                    return None;
+                }
+            }
+            .to_ascii_uppercase();
             s.push(c);
             if is_basic_digit(c) {
                 digit = true;

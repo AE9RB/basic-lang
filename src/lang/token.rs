@@ -1,6 +1,9 @@
 extern crate macros;
 pub use super::ident::Ident;
+use super::{Error, LineNumber, MaxValue};
+use crate::error;
 use macros::EnumFieldLess;
+use std::convert::TryFrom;
 
 use std::collections::HashMap;
 
@@ -53,6 +56,30 @@ impl std::fmt::Display for Token {
             Colon => write!(f, ":"),
             Semicolon => write!(f, ";"),
         }
+    }
+}
+
+impl TryFrom<&Token> for LineNumber {
+    type Error = Error;
+    fn try_from(token: &Token) -> Result<Self, Self::Error> {
+        let msg = "INVALID LINE NUMBER";
+        if let Token::Literal(lit) = token {
+            let s = match lit {
+                Literal::Integer(s) => s,
+                Literal::Single(s) => s,
+                Literal::Double(s) => s,
+                Literal::String(s) => s,
+            };
+            if s.chars().all(|c| c.is_ascii_digit()) {
+                if let Ok(line) = s.parse::<u16>() {
+                    if line <= LineNumber::max_value() {
+                        return Ok(Some(line));
+                    }
+                }
+                return Err(error!(Overflow; msg));
+            }
+        }
+        Err(error!(SyntaxError; msg))
     }
 }
 

@@ -42,20 +42,20 @@ pub fn derive_enum_iter(item: TokenStream) -> TokenStream {
             break;
         }
     }
-    if enum_name == None {
-        panic!("Not a supported enum");
-    }
 
-    let enum_name = enum_name.unwrap();
-    let mut vals: Vec<String> = Vec::new();
+    let enum_name = match enum_name {
+        None => panic!("Not a supported enum"),
+        Some(name) => name,
+    };
+    let mut values: Vec<String> = Vec::new();
 
     if let Some(t) = scan.next() {
         if let TokenTree::Group(t) = t {
             t.stream().into_iter().for_each(|x| match x {
-                TokenTree::Ident(t) => vals.push(t.to_string()),
+                TokenTree::Ident(t) => values.push(t.to_string()),
                 TokenTree::Group(_) => {
                     // exclude variants with data
-                    vals.pop();
+                    values.pop();
                 }
                 _ => {}
             })
@@ -77,7 +77,8 @@ pub fn derive_enum_iter(item: TokenStream) -> TokenStream {
         "fn field_less() -> ::std::vec::Vec<{}> {{ vec![\n",
         enum_name
     ));
-    vals.iter()
+    values
+        .iter()
         .for_each(|v| code.push_str(&format!("{}::{},\n", enum_name, v)));
     code.push_str("] } }\n");
 
