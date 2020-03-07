@@ -1,4 +1,6 @@
 # BASIC
+[![](https://tokei.rs/b1/github/AE9RB/basic-lang?category=lines)](https://github.com/AE9RB/basic-lang)
+[![](https://tokei.rs/b1/github/AE9RB/basic-lang?category=comments)](https://github.com/AE9RB/basic-lang)
 
 The BASIC programming language as it was in 1978.\
 See <https://en.wikipedia.org/wiki/Microsoft_BASIC>

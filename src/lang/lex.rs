@@ -484,7 +484,7 @@ mod tests {
             x.next().unwrap(),
             &Token::Ident(Ident::Integer("I%".to_string()))
         );
-        assert_eq!(x.next().unwrap(), &Token::Operator(Operator::Equals));
+        assert_eq!(x.next().unwrap(), &Token::Operator(Operator::Equal));
         assert_eq!(
             x.next().unwrap(),
             &Token::Literal(Literal::Integer("1".to_string()))

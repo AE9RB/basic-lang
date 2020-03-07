@@ -10,6 +10,9 @@ description = "The BASIC programming language as it was in 1978."
 
 edition = "2018"
 
+[profile.release]
+panic = "abort"
+
 [lib]
 name = "macros"
 proc-macro = true

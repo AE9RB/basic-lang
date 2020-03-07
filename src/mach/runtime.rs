@@ -1,13 +1,20 @@
-use super::{Op, Program, Val};
+use super::{Op, Program, Stack, Val};
 use crate::lang::{Error, Line, LineNumber};
 use std::collections::{BTreeMap, HashMap};
+
+type Result<T> = std::result::Result<T, Error>;
 
 pub struct Runtime {
     source: BTreeMap<LineNumber, Line>,
     dirty: bool,
     program: Program,
-    stack: Vec<Val>,
+    stack: Stack,
     vars: HashMap<String, Val>,
+}
+
+enum Event<'a> {
+    Error(&'a Vec<Error>),
+    End,
 }
 
 impl Runtime {
@@ -16,37 +23,39 @@ impl Runtime {
             source: BTreeMap::new(),
             dirty: false,
             program: Program::new(),
-            stack: Vec::new(),
+            stack: Stack::new(),
             vars: HashMap::new(),
         }
     }
     pub fn enter(&mut self, line: Line) {
-        let direct = line.is_direct();
-        self.source.insert(line.number(), line);
-        if direct {
+        if line.is_direct() {
             if self.dirty {
                 self.program.clear();
-                let indirect_lines = self.source.range(Some(0)..).map(|(_, line)| line);
-                self.program.compile(indirect_lines);
+                self.program
+                    .compile(self.source.iter().map(|(_, line)| line));
                 self.dirty = false;
             }
-            let direct_line = self.source.get(&None).unwrap();
-            self.program.compile(direct_line);
+            self.program.compile(&line);
             match self.execute() {
-                Ok(..) => {}
-                Err(e) => {
-                    for error in e {
-                        println!("?{}", error);
+                Ok(event) => match event {
+                    Event::Error(errors) => {
+                        for error in errors {
+                            println!("?{}", error);
+                        }
                     }
+                    Event::End => {}
+                },
+                Err(error) => {
+                    println!("?{}", error);
                 }
             }
         } else {
+            self.source.insert(line.number(), line);
             self.stack.clear();
             self.dirty = true;
         }
     }
-
-    fn execute(&mut self) -> Result<(), &Vec<Error>> {
+    fn execute(&mut self) -> Result<Event> {
         let (mut pc, ops, indirect_errors, direct_errors) = self.program.link();
         let watermark = pc;
         let has_indirect_errors = if !indirect_errors.is_empty() {
@@ -56,13 +65,17 @@ impl Runtime {
             false
         };
         if !direct_errors.is_empty() {
-            return Err(direct_errors);
+            return Ok(Event::Error(direct_errors));
         }
         loop {
             let op = &ops[pc];
             pc += 1;
             match op {
-                Op::Literal(val) => self.stack.push(val.clone()),
+                Op::Add => {
+                    let (lhs, rhs) = self.stack.pop_2()?;
+                    self.stack.push(Val::add(lhs, rhs)?)?;
+                }
+                Op::Literal(val) => self.stack.push(val.clone())?,
                 Op::Push(var_name) => {
                     self.stack.push(match self.vars.get(var_name) {
                         Some(val) => val.clone(),
@@ -79,11 +92,11 @@ impl Runtime {
                                 Val::Single(0.0)
                             }
                         }
-                    });
+                    })?;
                 }
                 Op::Run => {
                     if has_indirect_errors {
-                        return Err(indirect_errors);
+                        return Ok(Event::Error(indirect_errors));
                     }
                     self.stack.clear();
                     self.vars.clear();
@@ -92,20 +105,17 @@ impl Runtime {
                 Op::Jump(addr) => {
                     pc = *addr;
                     if has_indirect_errors && pc < watermark {
-                        return Err(indirect_errors);
+                        return Ok(Event::Error(indirect_errors));
                     }
                 }
                 Op::End => {
-                    return Ok(());
+                    return Ok(Event::End);
                 }
-                Op::Print => match self.stack.pop() {
-                    Some(Val::Integer(len)) => {
-                        for val in self.stack.drain((self.stack.len() - len as usize)..) {
-                            print!("{}", val);
-                        }
+                Op::Print => {
+                    for item in self.stack.pop_vec()? {
+                        print!("{}", item);
                     }
-                    _ => panic!(),
-                },
+                }
                 _ => unimplemented!("{:?}", op),
             }
         }

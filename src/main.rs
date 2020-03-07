@@ -36,6 +36,6 @@ fn main() {
     println!("{:?}", p);
 
     let mut r = Runtime::new();
-    r.enter(Line::new("10?\"hello\",1,2,3"));
+    r.enter(Line::new("10?\"hello\",1,2,3+3"));
     r.enter(Line::new("?999,:run"));
 }

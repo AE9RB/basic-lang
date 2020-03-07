@@ -183,7 +183,7 @@ impl Expression {
             loop {
                 match parse.peek() {
                     Some(Token::Operator(op)) => {
-                        let op_precedence = Expression::op_precedence(op);
+                        let op_precedence = Expression::binary_op_precedence(op);
                         if op_precedence < precedence {
                             break;
                         }
@@ -211,21 +211,22 @@ impl Expression {
         }
     }
 
-    fn op_precedence(op: &Operator) -> usize {
+    fn binary_op_precedence(op: &Operator) -> usize {
         use Operator::*;
         match op {
-            Equals => 0,
-            Plus | Minus => 10,
-            Multiply | Divide => 20,
-            DivideInt => 0,
-            Caret => 0,
-            Modulus => 0,
-            Not => 0,
-            And => 0,
-            Or => 0,
-            Xor => 0,
-            Eqv => 0,
-            Imp => 0,
+            Caret => 220,
+            // Unary identity and negation => 210
+            Multiply | Divide => 200,
+            DivideInt => 190,
+            Modulus => 180,
+            Plus | Minus => 170,
+            Equal | NotEqual | Less | LessEqual | Greater | GreaterEqual => 160,
+            Not => 150,
+            And => 140,
+            Or => 130,
+            Xor => 120,
+            Imp => 110,
+            Eqv => 100,
         }
     }
 
@@ -285,7 +286,7 @@ impl Statement {
     fn r#let(parse: &mut Parser) -> Result<Statement> {
         let column = parse.column();
         let ident = parse.expect_ident()?;
-        parse.expect(Token::Operator(Operator::Equals))?;
+        parse.expect(Token::Operator(Operator::Equal))?;
         let expr = parse.expect_expression()?;
         Ok(Statement::Let(column, ident, expr))
     }

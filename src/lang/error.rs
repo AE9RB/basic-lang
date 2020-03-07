@@ -79,6 +79,7 @@ impl Error {
         }
     }
     pub fn message(&self, message: &'static str) -> Error {
+        debug_assert_eq!(message.len(), 0);
         Error {
             code: self.code,
             line_number: self.line_number,
@@ -94,6 +95,7 @@ pub enum ErrorCode {
     OutOfMemory = 7,
     UndefinedLine = 8,
     TypeMismatch = 13,
+    InternalError = 51,
 }
 
 impl std::fmt::Debug for Error {

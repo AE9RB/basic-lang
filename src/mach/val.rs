@@ -5,6 +5,8 @@ use std::convert::TryFrom;
 
 /// ## Stack values
 
+type Result<T> = std::result::Result<T, Error>;
+
 #[derive(Debug, Clone)]
 pub enum Val {
     String(String),
@@ -13,6 +15,46 @@ pub enum Val {
     Double(f64),
     Char(char),
     Return(Address),
+}
+
+impl Val {
+    pub fn add(lhs: Val, rhs: Val) -> Result<Val> {
+        use Val::*;
+        loop {
+            return match lhs {
+                String(l) => match rhs {
+                    String(r) => Ok(String(l + &r)),
+                    Char(r) => Ok(String(l + &r.to_string())),
+                    _ => break,
+                },
+                Char(l) => match rhs {
+                    String(r) => Ok(String(l.to_string() + &r)),
+                    Char(r) => Ok(String(l.to_string() + &r.to_string())),
+                    _ => break,
+                },
+                Integer(l) => match rhs {
+                    Integer(r) => Ok(Integer(l + r)),
+                    Single(r) => Ok(Single(l as f32 + r)),
+                    Double(r) => Ok(Double(l as f64 + r)),
+                    _ => break,
+                },
+                Single(l) => match rhs {
+                    Integer(r) => Ok(Single(l + r as f32)),
+                    Single(r) => Ok(Single(l + r)),
+                    Double(r) => Ok(Double(l as f64 + r)),
+                    _ => break,
+                },
+                Double(l) => match rhs {
+                    Integer(r) => Ok(Double(l + r as f64)),
+                    Single(r) => Ok(Double(l + r as f64)),
+                    Double(r) => Ok(Double(l + r)),
+                    _ => break,
+                },
+                Return(_) => break,
+            };
+        }
+        Err(error!(TypeMismatch))
+    }
 }
 
 impl std::fmt::Display for Val {
@@ -31,7 +73,7 @@ impl std::fmt::Display for Val {
 
 impl TryFrom<Val> for LineNumber {
     type Error = Error;
-    fn try_from(val: Val) -> Result<Self, Self::Error> {
+    fn try_from(val: Val) -> std::result::Result<Self, Self::Error> {
         let num = u16::try_from(val)?;
         if num <= LineNumber::max_value() {
             Ok(Some(num))
@@ -43,7 +85,7 @@ impl TryFrom<Val> for LineNumber {
 
 impl TryFrom<Val> for u16 {
     type Error = Error;
-    fn try_from(val: Val) -> Result<Self, Self::Error> {
+    fn try_from(val: Val) -> std::result::Result<Self, Self::Error> {
         match val {
             Val::Integer(i) => {
                 if i >= 0 {

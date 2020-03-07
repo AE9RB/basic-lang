@@ -169,28 +169,34 @@ impl std::fmt::Display for Word {
 
 #[derive(Debug, PartialEq, Clone, EnumFieldLess)]
 pub enum Operator {
-    Equals,
-    Plus,
-    Minus,
+    Caret,
     Multiply,
     Divide,
     DivideInt,
-    Caret,
     Modulus,
+    Plus,
+    Minus,
+    Equal,
+    NotEqual,
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual,
     Not,
     And,
     Or,
     Xor,
-    Eqv,
     Imp,
+    Eqv,
 }
 
 impl Operator {
     pub fn is_word(&self) -> bool {
         use Operator::*;
         match self {
-            Equals | Plus | Minus | Multiply | Divide | DivideInt | Caret => false,
-            Modulus | Not | And | Or | Xor | Eqv | Imp => true,
+            Caret | Multiply | Divide | DivideInt | Plus | Minus | Equal | NotEqual | Less
+            | LessEqual | Greater | GreaterEqual => false,
+            Modulus | Not | And | Or | Xor | Imp | Eqv => true,
         }
     }
 }
@@ -199,20 +205,25 @@ impl std::fmt::Display for Operator {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         use Operator::*;
         match self {
-            Equals => write!(f, "="),
-            Plus => write!(f, "+"),
-            Minus => write!(f, "-"),
+            Caret => write!(f, "^"),
             Multiply => write!(f, "*"),
             Divide => write!(f, "/"),
             DivideInt => write!(f, "\\"),
-            Caret => write!(f, "^"),
             Modulus => write!(f, "MOD"),
+            Plus => write!(f, "+"),
+            Minus => write!(f, "-"),
+            Equal => write!(f, "="),
+            NotEqual => write!(f, "<>"),
+            Less => write!(f, "<"),
+            LessEqual => write!(f, "<="),
+            Greater => write!(f, ">"),
+            GreaterEqual => write!(f, ">="),
             Not => write!(f, "NOT"),
             And => write!(f, "AND"),
             Or => write!(f, "OR"),
             Xor => write!(f, "XOR"),
-            Eqv => write!(f, "EQV"),
             Imp => write!(f, "IMP"),
+            Eqv => write!(f, "EQV"),
         }
     }
 }
