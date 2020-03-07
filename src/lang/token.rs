@@ -158,6 +158,16 @@ pub enum Operator {
     Imp,
 }
 
+impl Operator {
+    pub fn is_word(&self) -> bool {
+        use Operator::*;
+        match self {
+            Equals | Plus | Minus | Multiply | Divide | DivideInt | Caret => false,
+            Modulus | Not | And | Or | Xor | Eqv | Imp => true,
+        }
+    }
+}
+
 impl std::fmt::Display for Operator {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         use Operator::*;

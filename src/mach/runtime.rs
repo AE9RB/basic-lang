@@ -46,8 +46,8 @@ impl Runtime {
         }
     }
 
-    fn execute(&mut self) -> Result<(), Vec<Error>> {
-        let (mut pc, indirect_errors, direct_errors) = self.program.link();
+    fn execute(&mut self) -> Result<(), &Vec<Error>> {
+        let (mut pc, ops, indirect_errors, direct_errors) = self.program.link();
         let watermark = pc;
         let has_indirect_errors = if !indirect_errors.is_empty() {
             self.dirty = true;
@@ -56,10 +56,10 @@ impl Runtime {
             false
         };
         if !direct_errors.is_empty() {
-            return Err(direct_errors.to_owned());
+            return Err(direct_errors);
         }
         loop {
-            let op = self.program.op(pc);
+            let op = &ops[pc];
             pc += 1;
             match op {
                 Op::Literal(val) => self.stack.push(val.clone()),
@@ -83,8 +83,7 @@ impl Runtime {
                 }
                 Op::Run => {
                     if has_indirect_errors {
-                        let (_, indirect_errors, _) = self.program.link();
-                        return Err(indirect_errors.to_owned());
+                        return Err(indirect_errors);
                     }
                     self.stack.clear();
                     self.vars.clear();
@@ -93,8 +92,7 @@ impl Runtime {
                 Op::Jump(addr) => {
                     pc = *addr;
                     if has_indirect_errors && pc < watermark {
-                        let (_, indirect_errors, _) = self.program.link();
-                        return Err(indirect_errors.to_owned());
+                        return Err(indirect_errors);
                     }
                 }
                 Op::End => {

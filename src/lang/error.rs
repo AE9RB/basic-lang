@@ -1,6 +1,5 @@
 use super::{Column, LineNumber};
 
-#[derive(Debug, Clone)]
 pub struct Error {
     code: u16,
     line_number: LineNumber,
@@ -14,27 +13,35 @@ macro_rules! error {
     ($err:ident) => {
         $crate::lang::Error::new($crate::lang::ErrorCode::$err)
     };
+    ($err:ident, ..$col:expr) => {
+        $crate::lang::Error::new($crate::lang::ErrorCode::$err).in_column($col)
+    };
     ($err:ident, $line:expr) => {
         $crate::lang::Error::new($crate::lang::ErrorCode::$err).in_line_number($line)
     };
-    ($err:ident, $line:expr, $col:expr) => {
-        $crate::lang::Error::new($crate::lang::ErrorCode::$err)
-            .in_line_number($line)
-            .in_column($col)
-    };
-    ($err:ident, $line:expr ; $msg:expr) => {
-        $crate::lang::Error::new($crate::lang::ErrorCode::$err)
-            .in_line_number($line)
-            .message($msg)
-    };
-    ($err:ident, $line:expr, $col:expr;  $msg:expr) => {
-        $crate::lang::Error::new($crate::lang::ErrorCode::$err)
-            .in_line_number($line)
-            .in_column($col)
-            .message($msg)
-    };
     ($err:ident; $msg:expr) => {
         $crate::lang::Error::new($crate::lang::ErrorCode::$err).message($msg)
+    };
+    ($err:ident, ..$col:expr;  $msg:expr) => {
+        $crate::lang::Error::new($crate::lang::ErrorCode::$err)
+            .in_column($col)
+            .message($msg)
+    };
+    ($err:ident, $line:expr, ..$col:expr) => {
+        $crate::lang::Error::new($crate::lang::ErrorCode::$err)
+            .in_line_number($line)
+            .in_column($col)
+    };
+    ($err:ident, $line:expr; $msg:expr) => {
+        $crate::lang::Error::new($crate::lang::ErrorCode::$err)
+            .in_line_number($line)
+            .message($msg)
+    };
+    ($err:ident, $line:expr, ..$col:expr;  $msg:expr) => {
+        $crate::lang::Error::new($crate::lang::ErrorCode::$err)
+            .in_line_number($line)
+            .in_column($col)
+            .message($msg)
     };
 }
 
@@ -72,7 +79,6 @@ impl Error {
         }
     }
     pub fn message(&self, message: &'static str) -> Error {
-        debug_assert_eq!(self.column, 0..0);
         Error {
             code: self.code,
             line_number: self.line_number,
@@ -87,6 +93,13 @@ pub enum ErrorCode {
     Overflow = 6,
     OutOfMemory = 7,
     UndefinedLine = 8,
+    TypeMismatch = 13,
+}
+
+impl std::fmt::Debug for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Error {{ {} }}", self.to_string())
+    }
 }
 
 impl std::fmt::Display for Error {

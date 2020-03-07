@@ -30,12 +30,8 @@ impl Program {
             line_number: None,
         }
     }
-    pub fn op(&self, addr: Address) -> &Op {
-        &self.ops[addr]
-    }
-    pub fn error(&mut self, col: &Column, error: Error) {
-        self.errors
-            .push(error.in_line_number(self.line_number).in_column(col));
+    pub fn error(&mut self, error: Error) {
+        self.errors.push(error.in_line_number(self.line_number));
     }
     pub fn append(&mut self, ops: &mut Vec<Op>) {
         self.ops.append(ops)
@@ -105,7 +101,7 @@ impl Program {
             }
         }
     }
-    pub fn link(&mut self) -> (Address, &Vec<Error>, &Vec<Error>) {
+    pub fn link(&mut self) -> (Address, &Vec<Op>, &Vec<Error>, &Vec<Error>) {
         match self.ops.last() {
             Some(Op::End) => {}
             _ => self.ops.push(Op::End),
@@ -118,7 +114,7 @@ impl Program {
         for (op_addr, (col, symbol)) in std::mem::take(&mut self.unlinked) {
             let dest = self.symbols.get(&symbol);
             if dest.is_none() && symbol >= 0 {
-                let error = error!(UndefinedLine, self.line_number_for(op_addr)).in_column(&col);
+                let error = error!(UndefinedLine, self.line_number_for(op_addr), ..&col);
                 self.errors.push(error);
                 continue;
             }
@@ -136,7 +132,12 @@ impl Program {
         }
         self.symbols = self.symbols.split_off(&0);
         self.current_symbol = 0;
-        (self.direct_address, &self.indirect_errors, &self.errors)
+        (
+            self.direct_address,
+            &self.ops,
+            &self.indirect_errors,
+            &self.errors,
+        )
     }
     pub fn line_number_for(&self, op_addr: Address) -> LineNumber {
         if op_addr < self.direct_address {

@@ -46,16 +46,18 @@ fn upgrade_tokens(t: &mut Vec<Token>) {
 fn separate_words(t: &mut Vec<Token>) {
     let mut ins: Vec<usize> = vec![];
     for (i, tt) in t.windows(2).enumerate() {
-        let w1 = match tt[0] {
+        let w1 = match &tt[0] {
             Token::Word(_) => true,
             Token::Ident(_) => true,
             Token::Literal(_) => true,
+            Token::Operator(op) => op.is_word(),
             _ => false,
         };
-        let w2 = match tt[1] {
+        let w2 = match &tt[1] {
             Token::Word(_) => true,
             Token::Ident(_) => true,
             Token::Literal(_) => true,
+            Token::Operator(op) => op.is_word(),
             _ => false,
         };
         if w1 && w2 {
@@ -308,7 +310,7 @@ impl<'a> Lexer<'a> {
                     }
                     continue;
                 }
-                if is_basic_digit(*p) || *p == '$' || *p == '%' {
+                if is_basic_digit(*p) || *p == '$' || *p == '!' || *p == '#' || *p == '%' {
                     continue;
                 }
             }

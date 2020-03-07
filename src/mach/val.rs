@@ -24,7 +24,7 @@ impl std::fmt::Display for Val {
             Single(n) => write!(f, "{}", n),
             Double(n) => write!(f, "{}", n),
             Char(c) => write!(f, "{}", c),
-            Return(..) => panic!(),
+            Return(..) => write!(f, "PANIC"),
         }
     }
 }
@@ -32,15 +32,11 @@ impl std::fmt::Display for Val {
 impl TryFrom<Val> for LineNumber {
     type Error = Error;
     fn try_from(val: Val) -> Result<Self, Self::Error> {
-        match u16::try_from(val) {
-            Ok(num) => {
-                if num <= LineNumber::max_value() {
-                    Ok(Some(num))
-                } else {
-                    Err(error!(Overflow))
-                }
-            }
-            Err(e) => Err(e),
+        let num = u16::try_from(val)?;
+        if num <= LineNumber::max_value() {
+            Ok(Some(num))
+        } else {
+            Err(error!(Overflow))
         }
     }
 }
@@ -70,7 +66,7 @@ impl TryFrom<Val> for u16 {
                     Err(error!(Overflow))
                 }
             }
-            Val::Char(_) | Val::String(_) | Val::Return(_) => Err(error!(SyntaxError)),
+            Val::Char(_) | Val::String(_) | Val::Return(_) => Err(error!(TypeMismatch)),
         }
     }
 }
