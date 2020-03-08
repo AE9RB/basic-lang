@@ -3,26 +3,43 @@ use crate::lang::Error;
 
 type Result<T> = std::result::Result<T, Error>;
 
+#[derive(Debug)]
 pub struct Stack<T> {
+    overflow_message: &'static str,
     stack: Vec<T>,
 }
 
 impl<T> Stack<T> {
     fn overflow_check(&self) -> Result<()> {
         if self.stack.len() > u16::max_value() as usize {
-            Err(error!(OutOfMemory; "STACK OVERFLOW"))
+            Err(error!(OutOfMemory; self.overflow_message))
         } else {
             Ok(())
         }
     }
     fn underflow_error(&self) -> Error {
-        error!(OutOfMemory; "STACK UNDERFLOW")
+        error!(InternalError; "UNDERFLOW")
     }
-    pub fn new() -> Stack<T> {
-        Stack { stack: vec![] }
+    pub fn new(overflow_message: &'static str) -> Stack<T> {
+        Stack {
+            overflow_message: overflow_message,
+            stack: vec![],
+        }
+    }
+    pub fn vec(&self) -> &Vec<T> {
+        &self.stack
+    }
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
+        self.stack.get_mut(index)
     }
     pub fn clear(&mut self) {
         self.stack.clear()
+    }
+    pub fn drain<R>(&mut self, range: R) -> std::vec::Drain<'_, T>
+    where
+        R: std::ops::RangeBounds<usize>,
+    {
+        self.stack.drain(range)
     }
     pub fn len(&self) -> usize {
         self.stack.len()
@@ -52,41 +69,6 @@ impl<T> Stack<T> {
         } else {
             let range = (self.stack.len() - len as usize)..;
             Ok(self.stack.drain(range).collect())
-        }
-    }
-}
-
-impl<T> Default for Stack<T> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<T> From<Vec<T>> for Stack<T> {
-    fn from(vec: Vec<T>) -> Self {
-        Stack { stack: vec }
-    }
-}
-
-impl<T> Into<Vec<T>> for Stack<T> {
-    fn into(self) -> Vec<T> {
-        self.stack
-    }
-}
-
-impl<T> std::iter::IntoIterator for Stack<T> {
-    type Item = T;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.stack.into_iter()
-    }
-}
-
-impl<T> std::iter::FromIterator<T> for Stack<T> {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        Stack {
-            stack: iter.into_iter().collect(),
         }
     }
 }

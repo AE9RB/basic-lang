@@ -31,13 +31,11 @@ impl<'a> ast::Visitor for Visitor<'a> {
     fn visit_statement(&mut self, statement: &ast::Statement) {
         match self.comp.statement(statement, self.prog) {
             Ok(_col) => {
-                let ops = std::mem::take(&mut self.comp.ops);
-                self.prog.append(&mut ops.into());
+                debug_assert_eq!(0, self.comp.ident.len());
+                debug_assert_eq!(0, self.comp.expr.len());
             }
             Err(e) => self.prog.error(e),
         };
-        debug_assert_eq!(0, self.comp.ident.len());
-        debug_assert_eq!(0, self.comp.expr.len());
     }
     fn visit_ident(&mut self, ident: &ast::Ident) {
         use ast::Ident;
@@ -54,12 +52,9 @@ impl<'a> ast::Visitor for Visitor<'a> {
         };
     }
     fn visit_expression(&mut self, expression: &ast::Expression) {
-        match self.comp.expression(expression) {
-            Ok(col) => match self
-                .comp
-                .expr
-                .push((col, std::mem::take(&mut self.comp.ops)))
-            {
+        let mut prog: Stack<Op> = Stack::new("COMPILED EXPRESSION TOO LARGE");
+        match self.comp.expression(&mut prog, expression) {
+            Ok(col) => match self.comp.expr.push((col, prog)) {
                 Ok(_) => {}
                 Err(e) => self.prog.error(e),
             },
@@ -69,7 +64,6 @@ impl<'a> ast::Visitor for Visitor<'a> {
 }
 
 struct Compiler {
-    ops: Stack<Op>,
     ident: Stack<String>,
     expr: Stack<(Column, Stack<Op>)>,
 }
@@ -77,72 +71,70 @@ struct Compiler {
 impl Compiler {
     fn new() -> Compiler {
         Compiler {
-            ops: Stack::new(),
-            ident: Stack::new(),
-            expr: Stack::new(),
+            ident: Stack::new("COMPILER IDENT STACK OVERFLOW"),
+            expr: Stack::new("COMPILER EXPRESSION STACK OVERFLOW"),
         }
     }
-    fn expression(&mut self, expr: &ast::Expression) -> Result<Column> {
+
+    fn expression(&mut self, prog: &mut Stack<Op>, expr: &ast::Expression) -> Result<Column> {
+        fn binary_expression(this: &mut Compiler, prog: &mut Stack<Op>, op: Op) -> Result<Column> {
+            let (col_rhs, mut rhs) = this.expr.pop()?;
+            let (col_lhs, mut lhs) = this.expr.pop()?;
+            prog.append(&mut rhs)?;
+            prog.append(&mut lhs)?;
+            prog.push(op)?;
+            Ok(col_lhs.start..col_rhs.end)
+        }
+        fn op(prog: &mut Stack<Op>, col: &Column, op: Op) -> Result<Column> {
+            prog.push(op)?;
+            Ok(col.clone())
+        }
         use ast::Expression;
         match expr {
-            Expression::Single(col, val) => self.operation(col, Op::Literal(Val::Single(*val))),
-            Expression::Double(col, val) => self.operation(col, Op::Literal(Val::Double(*val))),
-            Expression::Integer(col, val) => self.operation(col, Op::Literal(Val::Integer(*val))),
-            Expression::String(col, val) => {
-                self.operation(col, Op::Literal(Val::String(val.clone())))
-            }
-            Expression::Char(col, val) => self.operation(col, Op::Literal(Val::Char(*val))),
+            Expression::Single(col, val) => op(prog, col, Op::Literal(Val::Single(*val))),
+            Expression::Double(col, val) => op(prog, col, Op::Literal(Val::Double(*val))),
+            Expression::Integer(col, val) => op(prog, col, Op::Literal(Val::Integer(*val))),
+            Expression::String(col, val) => op(prog, col, Op::Literal(Val::String(val.clone()))),
+            Expression::Char(col, val) => op(prog, col, Op::Literal(Val::Char(*val))),
             Expression::Var(col, _) => {
                 let ident = self.ident.pop()?;
-                self.operation(col, Op::Push(ident))
+                op(prog, col, Op::Push(ident))
             }
             Expression::Negation(col, ..) => {
                 let (expr_col, mut ops) = self.expr.pop()?;
-                self.ops.append(&mut ops)?;
+                prog.append(&mut ops)?;
                 Ok(col.start..expr_col.end)
             }
-            Expression::Add(..) => self.binary_expression(Op::Add),
-            Expression::Subtract(..) => self.binary_expression(Op::Sub),
-            Expression::Multiply(..) => self.binary_expression(Op::Mul),
-            Expression::Divide(..) => self.binary_expression(Op::Div),
+            Expression::Add(..) => binary_expression(self, prog, Op::Add),
+            Expression::Subtract(..) => binary_expression(self, prog, Op::Sub),
+            Expression::Multiply(..) => binary_expression(self, prog, Op::Mul),
+            Expression::Divide(..) => binary_expression(self, prog, Op::Div),
             _ => {
                 dbg!(expr);
                 Err(error!(SyntaxError; "EXPRESSION NOT YET COMPILING; PANIC"))
             }
         }
     }
-    fn binary_expression(&mut self, op: Op) -> Result<Column> {
-        let (col_rhs, mut rhs) = self.expr.pop()?;
-        let (col_lhs, mut lhs) = self.expr.pop()?;
-        self.ops.append(&mut rhs)?;
-        self.ops.append(&mut lhs)?;
-        self.ops.push(op)?;
-        Ok(col_lhs.start..col_rhs.end)
-    }
-    fn operation(&mut self, col: &Column, op: Op) -> Result<Column> {
-        self.ops.push(op)?;
-        Ok(col.clone())
-    }
 
     fn statement(&mut self, statement: &ast::Statement, prog: &mut Program) -> Result<Column> {
         use ast::Statement;
         match statement {
-            Statement::Goto(col, ..) => self.r#goto(col, prog),
-            Statement::Let(col, ..) => self.r#let(col),
-            Statement::Print(col, ..) => self.r#print(col),
-            Statement::Run(col) => self.r#run(col),
+            Statement::Goto(col, ..) => self.r#goto(prog, col),
+            Statement::Let(col, ..) => self.r#let(prog, col),
+            Statement::Print(col, ..) => self.r#print(prog, col),
+            Statement::Run(col) => self.r#run(prog, col),
         }
     }
 
-    fn r#goto(&mut self, col: &Column, prog: &mut Program) -> Result<Column> {
+    fn r#goto(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
         let (sub_col, mut v) = self.expr.pop()?;
         if v.len() == 1 {
             if let Op::Literal(value) = v.pop()? {
                 match LineNumber::try_from(value) {
                     Ok(line_number) => {
-                        let sym = prog.symbol_for_line_number(line_number);
+                        let sym = prog.symbol_for_line_number(line_number)?;
                         prog.link_next_op_to(&sub_col, sym);
-                        prog.push(Op::Jump(0));
+                        prog.push(Op::Jump(0))?;
                         return Ok(col.start..sub_col.end);
                     }
                     Err(e) => return Err(e.in_column(&sub_col).message("INVALID LINE NUMBER")),
@@ -152,28 +144,32 @@ impl Compiler {
         Err(error!(SyntaxError, ..&sub_col; "EXPECTED LINE NUMBER"))
     }
 
-    fn r#let(&mut self, col: &Column) -> Result<Column> {
-        let (sub_col, mut v) = self.expr.pop().unwrap();
-        self.ops.append(&mut v)?;
+    fn r#let(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
+        let (sub_col, v) = self.expr.pop()?;
+        prog.append(&mut v.into())?;
         let ident = self.ident.pop()?;
-        self.ops.push(Op::Pop(ident))?;
+        prog.push(Op::Pop(ident))?;
         Ok(col.start..sub_col.end)
     }
 
-    fn r#print(&mut self, col: &Column) -> Result<Column> {
+    fn r#print(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
         let len = self.expr.len();
-        let mut exprs = self.expr.pop_n(len).unwrap();
-        self.ops
-            .append(&mut exprs.drain(..).map(|(_c, v)| v).flatten().collect())?;
+        let mut exprs = self.expr.pop_n(len)?;
+        let mut col = col.clone();
+        for (sub_col, mut expr) in exprs.drain(..) {
+            prog.append(&mut expr)?;
+            col.end = sub_col.end;
+        }
         match i16::try_from(len) {
-            Ok(len) => self.ops.push(Op::Literal(Val::Integer(len)))?,
-            Err(_) => return Err(error!(Overflow, ..col; "TOO MANY ELEMENTS")),
+            Ok(len) => prog.push(Op::Literal(Val::Integer(len)))?,
+            Err(_) => return Err(error!(Overflow, ..&col; "TOO MANY ELEMENTS")),
         };
-        self.ops.push(Op::Print)?;
-        Ok(col.clone())
+        prog.push(Op::Print)?;
+        Ok(col)
     }
 
-    fn r#run(&mut self, col: &Column) -> Result<Column> {
-        self.operation(col, Op::Run)
+    fn r#run(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
+        prog.push(Op::Run)?;
+        Ok(col.clone())
     }
 }

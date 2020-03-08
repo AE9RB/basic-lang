@@ -23,7 +23,7 @@ impl Runtime {
             source: BTreeMap::new(),
             dirty: false,
             program: Program::new(),
-            stack: Stack::new(),
+            stack: Stack::new("STACK OVERFLOW"),
             vars: HashMap::new(),
         }
     }

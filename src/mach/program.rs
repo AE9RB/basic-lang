@@ -1,4 +1,4 @@
-use super::{compile, Address, Op, Symbol};
+use super::{compile, Address, Op, Stack, Symbol};
 use crate::error;
 use crate::lang::{Column, Error, Line, LineNumber};
 use std::collections::{BTreeMap, HashMap};
@@ -7,7 +7,7 @@ use std::collections::{BTreeMap, HashMap};
 
 #[derive(Debug)]
 pub struct Program {
-    ops: Vec<Op>,
+    ops: Stack<Op>,
     pub errors: Vec<Error>,
     pub indirect_errors: Vec<Error>,
     direct_address: Address,
@@ -20,7 +20,7 @@ pub struct Program {
 impl Program {
     pub fn new() -> Program {
         Program {
-            ops: vec![],
+            ops: Stack::new("PROGRAM TOO LARGE"),
             errors: vec![],
             indirect_errors: vec![],
             direct_address: 0,
@@ -33,14 +33,17 @@ impl Program {
     pub fn error(&mut self, error: Error) {
         self.errors.push(error.in_line_number(self.line_number));
     }
-    pub fn append(&mut self, ops: &mut Vec<Op>) {
+    pub fn append(&mut self, ops: &mut Stack<Op>) -> Result<(), Error> {
         self.ops.append(ops)
     }
-    pub fn push(&mut self, op: Op) {
+    pub fn push(&mut self, op: Op) -> Result<(), Error> {
         self.ops.push(op)
     }
-    pub fn symbol_for_line_number(&mut self, line_number: LineNumber) -> Symbol {
-        line_number.unwrap() as Symbol
+    pub fn symbol_for_line_number(&mut self, line_number: LineNumber) -> Result<Symbol, Error> {
+        match line_number {
+            Some(n) => Ok(n as Symbol),
+            None => Err(error!(InternalError; "NO SYMBOL FOR LINE NUMBER")),
+        }
     }
     pub fn symbol_for_here(&mut self) -> Symbol {
         self.current_symbol -= 1;
@@ -102,39 +105,53 @@ impl Program {
         }
     }
     pub fn link(&mut self) -> (Address, &Vec<Op>, &Vec<Error>, &Vec<Error>) {
-        match self.ops.last() {
-            Some(Op::End) => {}
-            _ => self.ops.push(Op::End),
-        };
-        if self.direct_address == 0 {
-            self.indirect_errors = std::mem::take(&mut self.errors);
-            self.direct_address = self.ops.len();
-            self.ops.push(Op::End)
+        match || -> Result<(), Error> {
+            match self.ops.vec().last() {
+                Some(Op::End) => {}
+                _ => self.ops.push(Op::End)?,
+            };
+            if self.direct_address == 0 {
+                self.indirect_errors = std::mem::take(&mut self.errors);
+                self.direct_address = self.ops.len();
+                self.ops.push(Op::End)?
+            }
+            Ok(())
+        }() {
+            Ok(_) => {}
+            Err(e) => self.error(e),
         }
         for (op_addr, (col, symbol)) in std::mem::take(&mut self.unlinked) {
-            let dest = self.symbols.get(&symbol);
-            if dest.is_none() && symbol >= 0 {
-                let error = error!(UndefinedLine, self.line_number_for(op_addr), ..&col);
-                self.errors.push(error);
-                continue;
+            match self.symbols.get(&symbol) {
+                None => {
+                    if symbol >= 0 {
+                        let error = error!(UndefinedLine, self.line_number_for(op_addr), ..&col);
+                        self.errors.push(error);
+                        continue;
+                    }
+                }
+                Some(dest) => {
+                    if let Some(op) = self.ops.get_mut(op_addr) {
+                        if let Some(new_op) = match op {
+                            Op::If(_) => Some(Op::If(*dest)),
+                            Op::IfNot(_) => Some(Op::IfNot(*dest)),
+                            Op::Jump(_) => Some(Op::Jump(*dest)),
+                            _ => None,
+                        } {
+                            *op = new_op;
+                            continue;
+                        }
+                    }
+                }
             }
-            let dest = *dest.unwrap();
-            if let Some(new_op) = match self.ops[op_addr] {
-                Op::If(_) => Some(Op::If(dest)),
-                Op::IfNot(_) => Some(Op::IfNot(dest)),
-                Op::Jump(_) => Some(Op::Jump(dest)),
-                _ => None,
-            } {
-                self.ops[op_addr] = new_op;
-                continue;
-            }
-            panic!();
+            let error =
+                error!(InternalError, self.line_number_for(op_addr), ..&col; "LINK FAILURE");
+            self.errors.push(error);
         }
         self.symbols = self.symbols.split_off(&0);
         self.current_symbol = 0;
         (
             self.direct_address,
-            &self.ops,
+            self.ops.vec(),
             &self.indirect_errors,
             &self.errors,
         )
