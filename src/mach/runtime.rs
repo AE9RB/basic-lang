@@ -8,7 +8,7 @@ pub struct Runtime {
     source: BTreeMap<LineNumber, Line>,
     dirty: bool,
     program: Program,
-    stack: Stack,
+    stack: Stack<Val>,
     vars: HashMap<String, Val>,
 }
 
@@ -115,11 +115,14 @@ impl Runtime {
                 Op::End => {
                     return Ok(Event::End);
                 }
-                Op::Print => {
-                    for item in self.stack.pop_vec()? {
-                        print!("{}", item);
+                Op::Print => match self.stack.pop()? {
+                    Val::Integer(len) => {
+                        for item in self.stack.pop_n(len as usize)? {
+                            print!("{}", item);
+                        }
                     }
-                }
+                    _ => return Err(error!(InternalError; "EXPECTED VECTOR ON STACK")),
+                },
                 _ => {
                     dbg!(&op);
                     return Err(error!(InternalError; "OP NOT YET RUNNING; PANIC"));
