@@ -18,18 +18,34 @@ pub enum Val {
 }
 
 impl Val {
+    pub fn neg(val: Val) -> Result<Val> {
+        use Val::*;
+        match val {
+            Integer(l) => Ok(Integer(-l)),
+            Single(l) => Ok(Single(-l)),
+            Double(l) => Ok(Double(-l)),
+            String(_) | Char(_) | Return(_) => Err(error!(TypeMismatch)),
+        }
+    }
     pub fn add(lhs: Val, rhs: Val) -> Result<Val> {
         use Val::*;
         loop {
             return match lhs {
-                String(l) => match rhs {
+                String(mut l) => match rhs {
                     String(r) => Ok(String(l + &r)),
-                    Char(r) => Ok(String(l + &r.to_string())),
+                    Char(r) => Ok(String({
+                        l.push(r);
+                        l
+                    })),
                     _ => break,
                 },
                 Char(l) => match rhs {
                     String(r) => Ok(String(l.to_string() + &r)),
-                    Char(r) => Ok(String(l.to_string() + &r.to_string())),
+                    Char(r) => Ok(String({
+                        let mut l = l.to_string();
+                        l.push(r);
+                        l
+                    })),
                     _ => break,
                 },
                 Integer(l) => match rhs {
@@ -66,7 +82,10 @@ impl std::fmt::Display for Val {
             Single(n) => write!(f, "{}", n),
             Double(n) => write!(f, "{}", n),
             Char(c) => write!(f, "{}", c),
-            Return(..) => write!(f, "PANIC"),
+            Return(..) => {
+                debug_assert!(false);
+                write!(f, "")
+            }
         }
     }
 }

@@ -18,6 +18,7 @@ pub enum Expression {
     Char(Column, char),
     Var(Column, Ident),
     Function(Column, Ident, Vec<Expression>),
+    Negation(Column, Box<Expression>),
     Add(Column, Box<Expression>, Box<Expression>),
     Subtract(Column, Box<Expression>, Box<Expression>),
     Multiply(Column, Box<Expression>, Box<Expression>),
@@ -76,6 +77,7 @@ impl AcceptVisitor for Expression {
                     expr.accept(visitor);
                 }
             }
+            Negation(_, expr) => expr.accept(visitor),
             Add(_, expr1, expr2)
             | Subtract(_, expr1, expr2)
             | Multiply(_, expr1, expr2)

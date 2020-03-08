@@ -79,7 +79,7 @@ impl Error {
         }
     }
     pub fn message(&self, message: &'static str) -> Error {
-        debug_assert_eq!(message.len(), 0);
+        debug_assert_eq!(self.message.len(), 0);
         Error {
             code: self.code,
             line_number: self.line_number,

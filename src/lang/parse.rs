@@ -176,21 +176,31 @@ impl Expression {
                         _ => Expression::Var(column, i.clone()),
                     }
                 }
-                Some(Token::Literal(l)) => Expression::for_literal(parse.column(), l),
+                Some(Token::Operator(Operator::Plus)) => {
+                    let op_prec = Expression::binary_op_prec(&Operator::Caret) - 1;
+                    descend(parse, op_prec)?
+                }
+                Some(Token::Operator(Operator::Minus)) => {
+                    let column = parse.column();
+                    let op_prec = Expression::binary_op_prec(&Operator::Caret) - 1;
+                    let expr = descend(parse, op_prec)?;
+                    Expression::Negation(column, Box::new(expr))
+                }
+                Some(Token::Literal(lit)) => Expression::for_literal(parse.column(), lit),
                 _ => return Err(error!(SyntaxError, ..&parse.column(); "EXPECTED EXPRESSION")),
             };
             let mut rhs;
             loop {
                 match parse.peek() {
                     Some(Token::Operator(op)) => {
-                        let op_precedence = Expression::binary_op_precedence(op);
-                        if op_precedence < precedence {
+                        let op_prec = Expression::binary_op_prec(op);
+                        if op_prec < precedence {
                             break;
                         }
                         parse.next();
                         let column = parse.column();
-                        rhs = descend(parse, op_precedence)?;
-                        lhs = Expression::for_binary_op(column, op, lhs, rhs);
+                        rhs = descend(parse, op_prec)?;
+                        lhs = Expression::for_binary_op(column, op, lhs, rhs)?;
                     }
                     _ => break,
                 }
@@ -200,33 +210,41 @@ impl Expression {
         descend(parse, 0)
     }
 
-    fn for_binary_op(col: Column, op: &Operator, lhs: Expression, rhs: Expression) -> Expression {
+    fn for_binary_op(
+        col: Column,
+        op: &Operator,
+        lhs: Expression,
+        rhs: Expression,
+    ) -> Result<Expression> {
         use Operator::*;
-        match op {
+        Ok(match op {
             Plus => Expression::Add(col, Box::new(lhs), Box::new(rhs)),
             Minus => Expression::Subtract(col, Box::new(lhs), Box::new(rhs)),
             Multiply => Expression::Multiply(col, Box::new(lhs), Box::new(rhs)),
             Divide => Expression::Divide(col, Box::new(lhs), Box::new(rhs)),
-            _ => unimplemented!(),
-        }
+            _ => {
+                dbg!(&op);
+                return Err(error!(InternalError, ..&col; "OPERATOR NOT YET PARSING; PANIC"));
+            }
+        })
     }
 
-    fn binary_op_precedence(op: &Operator) -> usize {
+    fn binary_op_prec(op: &Operator) -> usize {
         use Operator::*;
         match op {
-            Caret => 220,
-            // Unary identity and negation => 210
-            Multiply | Divide => 200,
-            DivideInt => 190,
-            Modulus => 180,
-            Plus | Minus => 170,
-            Equal | NotEqual | Less | LessEqual | Greater | GreaterEqual => 160,
-            Not => 150,
-            And => 140,
-            Or => 130,
-            Xor => 120,
-            Imp => 110,
-            Eqv => 100,
+            Caret => 13,
+            // Unary identity and negation = Caret - 1
+            Multiply | Divide => 11,
+            DivideInt => 10,
+            Modulus => 9,
+            Plus | Minus => 8,
+            Equal | NotEqual | Less | LessEqual | Greater | GreaterEqual => 7,
+            Not => 6,
+            And => 5,
+            Or => 4,
+            Xor => 3,
+            Imp => 2,
+            Eqv => 1,
         }
     }
 
@@ -271,9 +289,10 @@ impl Statement {
                     Run => return Self::r#run(parse),
                     Data | Def | Dim | End | For | Gosub1 | Gosub2 | If | Input | Next | On
                     | Read | Restore | Return | Stop => {
+                        dbg!(&word);
                         return Err(
-                            error!(SyntaxError, ..&parse.column(); "STATEMENT NOT YET PARSING; PANIC"),
-                        )
+                            error!(InternalError, ..&parse.column(); "STATEMENT NOT YET PARSING; PANIC"),
+                        );
                     }
                     Else | Rem1 | Rem2 | To | Then => {}
                 }
@@ -316,7 +335,10 @@ mod tests {
                 assert!(v.len() == 1);
                 v.pop().unwrap()
             }
-            Err(e) => panic!("{:?}", e),
+            Err(e) => {
+                assert!(false, "{:?}", e);
+                Statement::Run(0..0)
+            }
         }
     }
 
@@ -371,6 +393,23 @@ mod tests {
             parse_str("A=798347598234765983475983248592d-234721398742391847982344"),
             answer
         );
+    }
+
+    #[test]
+    fn test_unary() {
+        let answer = Statement::Let(
+            0..1,
+            (0..1, Ident::Plain("A".to_string())),
+            Expression::Negation(
+                2..3,
+                Box::new(Expression::Add(
+                    5..6,
+                    Box::new(Expression::Integer(4..5, 1)),
+                    Box::new(Expression::Integer(7..8, 1)),
+                )),
+            ),
+        );
+        assert_eq!(parse_str("A=-(1++1)"), answer);
     }
 
     #[test]

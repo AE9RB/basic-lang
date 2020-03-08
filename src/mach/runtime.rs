@@ -1,7 +1,7 @@
 use super::{Op, Program, Stack, Val};
+use crate::error;
 use crate::lang::{Error, Line, LineNumber};
 use std::collections::{BTreeMap, HashMap};
-
 type Result<T> = std::result::Result<T, Error>;
 
 pub struct Runtime {
@@ -71,6 +71,10 @@ impl Runtime {
             let op = &ops[pc];
             pc += 1;
             match op {
+                Op::Neg => {
+                    let val = self.stack.pop()?;
+                    self.stack.push(Val::neg(val)?)?;
+                }
                 Op::Add => {
                     let (lhs, rhs) = self.stack.pop_2()?;
                     self.stack.push(Val::add(lhs, rhs)?)?;
@@ -116,7 +120,10 @@ impl Runtime {
                         print!("{}", item);
                     }
                 }
-                _ => unimplemented!("{:?}", op),
+                _ => {
+                    dbg!(&op);
+                    return Err(error!(InternalError; "OP NOT YET RUNNING; PANIC"));
+                }
             }
         }
     }
