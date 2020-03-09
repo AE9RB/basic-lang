@@ -1,4 +1,4 @@
-use super::{Op, Program, Stack, Val};
+use super::{Address, Op, Program, Stack, Val};
 use crate::error;
 use crate::lang::{Error, Line, LineNumber};
 use std::collections::{BTreeMap, HashMap};
@@ -12,8 +12,9 @@ pub struct Runtime {
     vars: HashMap<String, Val>,
 }
 
-enum Event<'a> {
-    Error(&'a Vec<Error>),
+enum Event {
+    IndirectErrors,
+    DirectErrors,
     End,
 }
 
@@ -27,6 +28,7 @@ impl Runtime {
             vars: HashMap::new(),
         }
     }
+
     pub fn enter(&mut self, line: Line) {
         if line.is_direct() {
             if self.dirty {
@@ -36,9 +38,16 @@ impl Runtime {
                 self.dirty = false;
             }
             self.program.compile(&line);
-            match self.execute() {
+            match self.start() {
                 Ok(event) => match event {
-                    Event::Error(errors) => {
+                    Event::IndirectErrors => {
+                        let (_, errors, _) = self.program.link();
+                        for error in errors {
+                            println!("?{}", error);
+                        }
+                    }
+                    Event::DirectErrors => {
+                        let (_, _, errors) = self.program.link();
                         for error in errors {
                             println!("?{}", error);
                         }
@@ -55,9 +64,27 @@ impl Runtime {
             self.dirty = true;
         }
     }
-    fn execute(&mut self) -> Result<Event> {
-        let (mut pc, ops, indirect_errors, direct_errors) = self.program.link();
-        let watermark = pc;
+
+    fn start(&mut self) -> Result<Event> {
+        let (mut pc, _, _) = self.program.link();
+        self.resume(&mut pc)
+    }
+
+    fn resume(&mut self, pc: &mut Address) -> Result<Event> {
+        match self.execute(pc) {
+            Ok(e) => Ok(e),
+            Err(e) => {
+                let line_number = self
+                    .program
+                    .line_number_for(if *pc > 0 { *pc - 1 } else { *pc });
+                Err(e.in_line_number(line_number))
+            }
+        }
+    }
+
+    fn execute(&mut self, pc: &mut Address) -> Result<Event> {
+        let (_, indirect_errors, direct_errors) = self.program.link();
+        let watermark = *pc;
         let has_indirect_errors = if !indirect_errors.is_empty() {
             self.dirty = true;
             true
@@ -65,20 +92,15 @@ impl Runtime {
             false
         };
         if !direct_errors.is_empty() {
-            return Ok(Event::Error(direct_errors));
+            return Ok(Event::DirectErrors);
         }
         loop {
-            let op = &ops[pc];
-            pc += 1;
+            let op = match self.program.ops().get(*pc) {
+                Some(v) => v,
+                None => return Err(error!(InternalError; "INVALID PC ADDRESS")),
+            };
+            *pc += 1;
             match op {
-                Op::Neg => {
-                    let val = self.stack.pop()?;
-                    self.stack.push(Val::neg(val)?)?;
-                }
-                Op::Add => {
-                    let (lhs, rhs) = self.stack.pop_2()?;
-                    self.stack.push(Val::add(lhs, rhs)?)?;
-                }
                 Op::Literal(val) => self.stack.push(val.clone())?,
                 Op::Push(var_name) => {
                     self.stack.push(match self.vars.get(var_name) {
@@ -100,34 +122,51 @@ impl Runtime {
                 }
                 Op::Run => {
                     if has_indirect_errors {
-                        return Ok(Event::Error(indirect_errors));
+                        return Ok(Event::IndirectErrors);
                     }
                     self.stack.clear();
                     self.vars.clear();
-                    pc = 0;
+                    *pc = 0;
                 }
                 Op::Jump(addr) => {
-                    pc = *addr;
-                    if has_indirect_errors && pc < watermark {
-                        return Ok(Event::Error(indirect_errors));
+                    *pc = *addr;
+                    if has_indirect_errors && *pc < watermark {
+                        return Ok(Event::IndirectErrors);
                     }
                 }
-                Op::End => {
-                    return Ok(Event::End);
-                }
-                Op::Print => match self.stack.pop()? {
-                    Val::Integer(len) => {
-                        for item in self.stack.pop_n(len as usize)? {
-                            print!("{}", item);
-                        }
-                    }
-                    _ => return Err(error!(InternalError; "EXPECTED VECTOR ON STACK")),
-                },
+                Op::End => return Ok(Event::End),
+                Op::Neg => self.r#neg()?,
+                Op::Add => self.r#add()?,
+                Op::Print => self.r#print()?,
                 _ => {
                     dbg!(&op);
                     return Err(error!(InternalError; "OP NOT YET RUNNING; PANIC"));
                 }
             }
+        }
+    }
+
+    fn r#neg(&mut self) -> Result<()> {
+        let val = self.stack.pop()?;
+        self.stack.push(Val::neg(val)?)?;
+        Ok(())
+    }
+
+    fn r#add(&mut self) -> Result<()> {
+        let (lhs, rhs) = self.stack.pop_2()?;
+        self.stack.push(Val::add(lhs, rhs)?)?;
+        Ok(())
+    }
+
+    fn r#print(&mut self) -> Result<()> {
+        match self.stack.pop()? {
+            Val::Integer(len) => {
+                for item in self.stack.pop_n(len as usize)? {
+                    print!("{}", item);
+                }
+                Ok(())
+            }
+            _ => return Err(error!(InternalError; "EXPECTED VECTOR ON STACK")),
         }
     }
 }

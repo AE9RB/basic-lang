@@ -39,6 +39,9 @@ impl Program {
     pub fn push(&mut self, op: Op) -> Result<(), Error> {
         self.ops.push(op)
     }
+    pub fn ops(&self) -> &Vec<Op> {
+        &self.ops.vec()
+    }
     pub fn symbol_for_line_number(&mut self, line_number: LineNumber) -> Result<Symbol, Error> {
         match line_number {
             Some(n) => Ok(n as Symbol),
@@ -104,7 +107,7 @@ impl Program {
             }
         }
     }
-    pub fn link(&mut self) -> (Address, &Vec<Op>, &Vec<Error>, &Vec<Error>) {
+    pub fn link(&mut self) -> (Address, &Vec<Error>, &Vec<Error>) {
         match || -> Result<(), Error> {
             match self.ops.vec().last() {
                 Some(Op::End) => {}
@@ -150,7 +153,6 @@ impl Program {
         self.current_symbol = 0;
         (
             self.direct_address,
-            self.ops.vec(),
             &self.indirect_errors,
             &self.errors,
         )
