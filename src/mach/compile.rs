@@ -46,18 +46,18 @@ impl<'a> ast::Visitor for Visitor<'a> {
             | Ident::Double(s)
             | Ident::Integer(s) => s.clone(),
         };
-        match self.comp.ident.push(ident) {
-            Ok(_) => {}
-            Err(e) => self.prog.error(e),
-        };
+        if let Some(error) = self.comp.ident.push(ident).err() {
+            self.prog.error(error)
+        }
     }
     fn visit_expression(&mut self, expression: &ast::Expression) {
         let mut prog: Stack<Op> = Stack::new("COMPILED EXPRESSION TOO LARGE");
         match self.comp.expression(&mut prog, expression) {
-            Ok(col) => match self.comp.expr.push((col, prog)) {
-                Ok(_) => {}
-                Err(e) => self.prog.error(e),
-            },
+            Ok(col) => {
+                if let Some(error) = self.comp.expr.push((col.clone(), prog)).err() {
+                    self.prog.error(error.in_column(&col))
+                }
+            }
             Err(e) => self.prog.error(e),
         };
     }
@@ -128,10 +128,10 @@ impl Compiler {
     }
 
     fn r#goto(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
-        let (sub_col, mut v) = self.expr.pop()?;
-        if v.len() == 1 {
-            if let Op::Literal(value) = v.pop()? {
-                match LineNumber::try_from(value) {
+        let (sub_col, mut ops) = self.expr.pop()?;
+        if ops.len() == 1 {
+            if let Op::Literal(val) = ops.pop()? {
+                match LineNumber::try_from(val) {
                     Ok(line_number) => {
                         let sym = prog.symbol_for_line_number(line_number)?;
                         prog.link_next_op_to(&sub_col, sym);
@@ -146,8 +146,8 @@ impl Compiler {
     }
 
     fn r#let(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
-        let (sub_col, v) = self.expr.pop()?;
-        prog.append(&mut v.into())?;
+        let (sub_col, mut ops) = self.expr.pop()?;
+        prog.append(&mut ops)?;
         let ident = self.ident.pop()?;
         prog.push(Op::Pop(ident))?;
         Ok(col.start..sub_col.end)

@@ -4,6 +4,8 @@ use crate::lang::{Error, Line, LineNumber};
 use std::collections::{BTreeMap, HashMap};
 type Result<T> = std::result::Result<T, Error>;
 
+/// ## Virtual machine
+
 pub struct Runtime {
     source: BTreeMap<LineNumber, Line>,
     dirty: bool,

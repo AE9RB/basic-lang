@@ -25,23 +25,19 @@ impl<'a> Parser<'a> {
             rem2: false,
             col: 0..0,
         };
-        let mut r: Vec<Statement> = vec![];
+        let mut statements: Vec<Statement> = vec![];
         loop {
             match parse.peek() {
-                None | Some(Token::Word(Word::Rem1)) => return Ok(r),
+                None | Some(Token::Word(Word::Rem1)) => return Ok(statements),
                 Some(Token::Colon) => {
                     parse.next();
                     continue;
                 }
                 Some(_) => {
-                    r.push(parse.expect_statement()?);
+                    statements.push(parse.expect_statement()?);
                 }
             }
         }
-    }
-
-    fn column(&self) -> Column {
-        self.col.clone()
     }
 
     fn next(&mut self) -> Option<&'a Token> {
@@ -50,18 +46,18 @@ impl<'a> Parser<'a> {
         }
         loop {
             self.col.start = self.col.end;
-            let t = self.token_stream.next()?;
-            self.col.end += t.to_string().chars().count();
+            let token = self.token_stream.next()?;
+            self.col.end += token.to_string().chars().count();
             if self.rem2 {
                 continue;
             }
-            match t {
+            match token {
                 Token::Word(Word::Rem2) => {
                     self.rem2 = true;
                     continue;
                 }
                 Token::Whitespace(_) => continue,
-                _ => return Some(t),
+                _ => return Some(token),
             }
         }
     }
@@ -83,31 +79,33 @@ impl<'a> Parser<'a> {
 
     fn expect_expression_list(&mut self) -> Result<Vec<Expression>> {
         self.expect(Token::LParen)?;
-        let mut v: Vec<Expression> = vec![];
+        let mut expressions: Vec<Expression> = vec![];
         loop {
-            v.push(self.expect_expression()?);
+            expressions.push(self.expect_expression()?);
             match self.next() {
-                Some(Token::RParen) => return Ok(v),
+                Some(Token::RParen) => return Ok(expressions),
                 Some(Token::Comma) => continue,
                 _ => {
-                    return Err(error!(SyntaxError, ..&self.column(); "EXPECTED END OR SEPARATOR"))
+                    return Err(
+                        error!(SyntaxError, ..&self.col; "EXPECTED RIGHT PARENTHESIS OR COMMA"),
+                    )
                 }
             }
         }
     }
 
     fn expect_print_list(&mut self) -> Result<Vec<Expression>> {
-        let mut v: Vec<Expression> = vec![];
+        let mut expressions: Vec<Expression> = vec![];
         let mut linefeed = true;
         loop {
             match self.peek() {
                 None | Some(Token::Colon) => {
                     if linefeed {
-                        let mut column = self.column();
+                        let mut column = self.col.clone();
                         column.end = column.start;
-                        v.push(Expression::Char(column, '\n'));
+                        expressions.push(Expression::Char(column, '\n'));
                     }
-                    return Ok(v);
+                    return Ok(expressions);
                 }
                 Some(Token::Semicolon) => {
                     linefeed = false;
@@ -116,11 +114,11 @@ impl<'a> Parser<'a> {
                 Some(Token::Comma) => {
                     linefeed = false;
                     self.next();
-                    v.push(Expression::Char(self.column(), '\t'));
+                    expressions.push(Expression::Char(self.col.clone(), '\t'));
                 }
                 _ => {
                     linefeed = true;
-                    v.push(self.expect_expression()?);
+                    expressions.push(self.expect_expression()?);
                 }
             };
         }
@@ -128,10 +126,10 @@ impl<'a> Parser<'a> {
 
     fn expect_ident(&mut self) -> Result<(Column, Ident)> {
         let ident = match self.next() {
-            Some(Token::Ident(i)) => i.clone(),
-            _ => return Err(error!(SyntaxError, ..&self.column(); "EXPECTED IDENT")),
+            Some(Token::Ident(ident)) => ident.clone(),
+            _ => return Err(error!(SyntaxError, ..&self.col; "EXPECTED IDENT")),
         };
-        Ok((self.column(), ident))
+        Ok((self.col.clone(), ident))
     }
 
     fn expect(&mut self, token: Token) -> Result<()> {
@@ -141,7 +139,7 @@ impl<'a> Parser<'a> {
             }
         }
         use Token::*;
-        Err(error!(SyntaxError, ..&self.column();
+        Err(error!(SyntaxError, ..&self.col;
             match token {
                 Unknown(_) | Whitespace(_) => {"PANIC"}
                 Literal(_) => {"EXPECTED LITERAL"}
@@ -167,27 +165,29 @@ impl Expression {
                     parse.expect(Token::RParen)?;
                     expr
                 }
-                Some(Token::Ident(i)) => {
-                    let column = parse.column();
+                Some(Token::Ident(ident)) => {
+                    let col = parse.col.clone();
                     match parse.peek() {
-                        Some(&&Token::LParen) => {
-                            Expression::Function(column, i.clone(), parse.expect_expression_list()?)
-                        }
-                        _ => Expression::Var(column, i.clone()),
+                        Some(&&Token::LParen) => Expression::Function(
+                            col,
+                            ident.clone(),
+                            parse.expect_expression_list()?,
+                        ),
+                        _ => Expression::Var(col, ident.clone()),
                     }
                 }
                 Some(Token::Operator(Operator::Plus)) => {
-                    let op_prec = Expression::binary_op_prec(&Operator::Caret) - 1;
+                    let op_prec = Expression::unary_op_prec(&Operator::Plus);
                     descend(parse, op_prec)?
                 }
                 Some(Token::Operator(Operator::Minus)) => {
-                    let column = parse.column();
-                    let op_prec = Expression::binary_op_prec(&Operator::Caret) - 1;
+                    let col = parse.col.clone();
+                    let op_prec = Expression::unary_op_prec(&Operator::Minus);
                     let expr = descend(parse, op_prec)?;
-                    Expression::Negation(column, Box::new(expr))
+                    Expression::Negation(col, Box::new(expr))
                 }
-                Some(Token::Literal(lit)) => Expression::for_literal(parse.column(), lit)?,
-                _ => return Err(error!(SyntaxError, ..&parse.column(); "EXPECTED EXPRESSION")),
+                Some(Token::Literal(lit)) => Expression::for_literal(parse.col.clone(), lit)?,
+                _ => return Err(error!(SyntaxError, ..&parse.col; "EXPECTED EXPRESSION")),
             };
             let mut rhs;
             loop {
@@ -198,7 +198,7 @@ impl Expression {
                             break;
                         }
                         parse.next();
-                        let column = parse.column();
+                        let column = parse.col.clone();
                         rhs = descend(parse, op_prec)?;
                         lhs = Expression::for_binary_op(column, op, lhs, rhs)?;
                     }
@@ -229,11 +229,22 @@ impl Expression {
         })
     }
 
+    fn unary_op_prec(op: &Operator) -> usize {
+        use Operator::*;
+        match op {
+            Plus | Minus => 12,
+            _ => {
+                debug_assert!(false, "NOT A UNARY OP");
+                0
+            }
+        }
+    }
+
     fn binary_op_prec(op: &Operator) -> usize {
         use Operator::*;
         match op {
             Caret => 13,
-            // Unary identity and negation = Caret - 1
+            // Unary identity and negation => 12
             Multiply | Divide => 11,
             DivideInt => 10,
             Modulus => 9,
@@ -273,7 +284,6 @@ impl Expression {
 
 impl Statement {
     fn expect(parse: &mut Parser) -> Result<Statement> {
-        parse.peek();
         match parse.peek() {
             Some(Token::Ident(_)) => return Self::r#let(parse),
             Some(Token::Word(word)) => {
@@ -288,7 +298,7 @@ impl Statement {
                     | Read | Restore | Return | Stop => {
                         dbg!(&word);
                         return Err(
-                            error!(InternalError, ..&parse.column(); "STATEMENT NOT YET PARSING; PANIC"),
+                            error!(InternalError, ..&parse.col; "STATEMENT NOT YET PARSING; PANIC"),
                         );
                     }
                     Else | Rem1 | Rem2 | To | Then => {}
@@ -296,11 +306,11 @@ impl Statement {
             }
             _ => {}
         }
-        Err(error!(SyntaxError, ..&parse.column(); "EXPECTED STATEMENT"))
+        Err(error!(SyntaxError, ..&parse.col; "EXPECTED STATEMENT"))
     }
 
     fn r#let(parse: &mut Parser) -> Result<Statement> {
-        let column = parse.column();
+        let column = parse.col.clone();
         let ident = parse.expect_ident()?;
         parse.expect(Token::Operator(Operator::Equal))?;
         let expr = parse.expect_expression()?;
@@ -308,15 +318,21 @@ impl Statement {
     }
 
     fn r#print(parse: &mut Parser) -> Result<Statement> {
-        Ok(Statement::Print(parse.column(), parse.expect_print_list()?))
+        Ok(Statement::Print(
+            parse.col.clone(),
+            parse.expect_print_list()?,
+        ))
     }
 
     fn r#goto(parse: &mut Parser) -> Result<Statement> {
-        Ok(Statement::Goto(parse.column(), parse.expect_expression()?))
+        Ok(Statement::Goto(
+            parse.col.clone(),
+            parse.expect_expression()?,
+        ))
     }
 
     fn r#run(parse: &mut Parser) -> Result<Statement> {
-        Ok(Statement::Run(parse.column()))
+        Ok(Statement::Run(parse.col.clone()))
     }
 }
 

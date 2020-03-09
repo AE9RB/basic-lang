@@ -16,12 +16,10 @@ YourEnum::iter() to return all variants that don't have data.
 pub fn derive_enum_iter(item: TokenStream) -> TokenStream {
     let mut scan = item.into_iter();
     let mut enum_name: Option<String> = None;
-    let mut is_pub = false;
     loop {
         if let Some(t) = scan.next() {
             if let TokenTree::Ident(t) = t {
                 if t.to_string() == "pub" {
-                    is_pub = true;
                     continue;
                 } else if t.to_string() == "enum" {
                     if let Some(t) = scan.next() {
@@ -68,10 +66,6 @@ pub fn derive_enum_iter(item: TokenStream) -> TokenStream {
     let mut code = String::new();
 
     code.push_str(&format!("impl {} {{ ", enum_name));
-
-    if is_pub {
-        code.push_str("pub ");
-    }
 
     code.push_str(&format!(
         "fn field_less() -> ::std::vec::Vec<{}> {{ vec![\n",

@@ -1,4 +1,4 @@
-use super::{compile, Address, Op, Stack, Symbol};
+use super::{compile::compile, Address, Op, Stack, Symbol};
 use crate::error;
 use crate::lang::{Column, Error, Line, LineNumber};
 use std::collections::{BTreeMap, HashMap};
@@ -8,8 +8,8 @@ use std::collections::{BTreeMap, HashMap};
 #[derive(Debug)]
 pub struct Program {
     ops: Stack<Op>,
-    pub errors: Vec<Error>,
-    pub indirect_errors: Vec<Error>,
+    errors: Vec<Error>,
+    indirect_errors: Vec<Error>,
     direct_address: Address,
     current_symbol: Symbol,
     symbols: BTreeMap<Symbol, Address>,
@@ -44,7 +44,7 @@ impl Program {
     }
     pub fn symbol_for_line_number(&mut self, line_number: LineNumber) -> Result<Symbol, Error> {
         match line_number {
-            Some(n) => Ok(n as Symbol),
+            Some(number) => Ok(number as Symbol),
             None => Err(error!(InternalError; "NO SYMBOL FOR LINE NUMBER")),
         }
     }
@@ -95,8 +95,8 @@ impl Program {
             }
             let ast = match line.ast() {
                 Ok(ast) => ast,
-                Err(e) => {
-                    self.errors.push(e);
+                Err(error) => {
+                    self.errors.push(error);
                     continue;
                 }
             };
@@ -108,7 +108,7 @@ impl Program {
         }
     }
     pub fn link(&mut self) -> (Address, &Vec<Error>, &Vec<Error>) {
-        match || -> Result<(), Error> {
+        if let Some(error) = || -> Result<(), Error> {
             match self.ops.vec().last() {
                 Some(Op::End) => {}
                 _ => self.ops.push(Op::End)?,
@@ -119,10 +119,11 @@ impl Program {
                 self.ops.push(Op::End)?
             }
             Ok(())
-        }() {
-            Ok(_) => {}
-            Err(e) => self.error(e),
-        }
+        }()
+        .err()
+        {
+            self.error(error);
+        };
         for (op_addr, (col, symbol)) in std::mem::take(&mut self.unlinked) {
             match self.symbols.get(&symbol) {
                 None => {
@@ -145,17 +146,13 @@ impl Program {
                     }
                 }
             }
-            let error =
-                error!(InternalError, self.line_number_for(op_addr), ..&col; "LINK FAILURE");
-            self.errors.push(error);
+            let line_number = self.line_number_for(op_addr);
+            self.errors
+                .push(error!(InternalError, line_number, ..&col; "LINK FAILURE"));
         }
         self.symbols = self.symbols.split_off(&0);
         self.current_symbol = 0;
-        (
-            self.direct_address,
-            &self.indirect_errors,
-            &self.errors,
-        )
+        (self.direct_address, &self.indirect_errors, &self.errors)
     }
     pub fn line_number_for(&self, op_addr: Address) -> LineNumber {
         if op_addr < self.direct_address {

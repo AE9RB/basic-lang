@@ -13,28 +13,28 @@ pub fn lex(s: &str) -> (LineNumber, Vec<Token>) {
     (line_number, tokens)
 }
 
-fn collapse_go(t: &mut Vec<Token>) {
+fn collapse_go(tokens: &mut Vec<Token>) {
     let mut ins: Vec<(usize, Token)> = vec![];
-    for (i, ttt) in t.windows(3).enumerate() {
+    for (index, ttt) in tokens.windows(3).enumerate() {
         if ttt[0] == Token::Ident(Ident::Plain("GO".to_string())) {
             if let Token::Whitespace(_) = ttt[1] {
                 if ttt[2] == Token::Word(Word::To) {
-                    ins.push((i, Token::Word(Word::Goto2)));
+                    ins.push((index, Token::Word(Word::Goto2)));
                 }
                 if ttt[2] == Token::Ident(Ident::Plain("SUB".to_string())) {
-                    ins.push((i, Token::Word(Word::Gosub2)));
+                    ins.push((index, Token::Word(Word::Gosub2)));
                 }
             }
         }
     }
-    while let Some((i, ttt)) = ins.pop() {
-        t.drain(i..i + 3);
-        t.insert(i, ttt);
+    while let Some((index, ttt)) = ins.pop() {
+        tokens.drain(index..index + 3);
+        tokens.insert(index, ttt);
     }
 }
 
-fn upgrade_tokens(t: &mut Vec<Token>) {
-    for token in t.iter_mut() {
+fn upgrade_tokens(tokens: &mut Vec<Token>) {
+    for token in tokens.iter_mut() {
         match token {
             Token::Word(Word::Print2) => *token = Token::Word(Word::Print1),
             Token::Word(Word::Goto2) => *token = Token::Word(Word::Goto1),
@@ -44,25 +44,25 @@ fn upgrade_tokens(t: &mut Vec<Token>) {
     }
 }
 
-fn separate_words(t: &mut Vec<Token>) {
+fn separate_words(tokens: &mut Vec<Token>) {
     let mut ins: Vec<usize> = vec![];
-    for (i, tt) in t.windows(2).enumerate() {
-        if tt.iter().all(|y| y.is_reserved_word()) {
-            ins.push(i);
+    for (index, tt) in tokens.windows(2).enumerate() {
+        if tt.iter().all(|y| y.is_word()) {
+            ins.push(index);
         }
     }
-    while let Some(i) = ins.pop() {
-        t.insert(i + 1, Token::Whitespace(1));
+    while let Some(index) = ins.pop() {
+        tokens.insert(index + 1, Token::Whitespace(1));
     }
 }
 
-fn trim_end(t: &mut Vec<Token>) {
-    if let Some(Token::Whitespace(_)) = t.last() {
-        t.pop();
+fn trim_end(tokens: &mut Vec<Token>) {
+    if let Some(Token::Whitespace(_)) = tokens.last() {
+        tokens.pop();
     }
-    if let Some(Token::Unknown(_)) = t.last() {
-        if let Some(Token::Unknown(s)) = t.pop() {
-            t.push(Token::Unknown(s.trim_end().to_string()));
+    if let Some(Token::Unknown(_)) = tokens.last() {
+        if let Some(Token::Unknown(s)) = tokens.pop() {
+            tokens.push(Token::Unknown(s.trim_end().to_string()));
         }
     }
 }
@@ -83,7 +83,7 @@ fn take_line_number(tokens: &mut Vec<Token>) -> LineNumber {
                     if val <= LineNumber::max_value() {
                         tokens.drain(0..=pos);
                         let whitespace_len: usize = match tokens.get(0) {
-                            Some(Token::Whitespace(x)) => *x,
+                            Some(Token::Whitespace(len)) => *len,
                             _ => 0,
                         };
                         if whitespace_len == 1 {
@@ -124,24 +124,24 @@ impl<'a> Iterator for Lexer<'a> {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let p = self.chars.peek()?;
+        let pk = self.chars.peek()?;
         if self.remark {
             return Some(Token::Unknown(self.chars.by_ref().collect::<String>()));
         }
-        if is_basic_whitespace(*p) {
+        if is_basic_whitespace(*pk) {
             return self.whitespace();
         }
-        if is_basic_digit(*p) || *p == '.' {
+        if is_basic_digit(*pk) || *pk == '.' {
             return self.number();
         }
-        if is_basic_alphabetic(*p) {
+        if is_basic_alphabetic(*pk) {
             let r = self.alphabetic();
             if r == Some(Token::Word(Word::Rem1)) {
                 self.remark = true;
             }
             return r;
         }
-        if *p == '"' {
+        if *pk == '"' {
             return self.string();
         }
         let r = self.minutia();
@@ -168,16 +168,16 @@ impl<'a> Lexer<'a> {
     }
 
     fn whitespace(&mut self) -> Option<Token> {
-        let mut spaces = 0;
+        let mut len = 0;
         loop {
             self.chars.next();
-            spaces += 1;
-            if let Some(p) = self.chars.peek() {
-                if is_basic_whitespace(*p) {
+            len += 1;
+            if let Some(pk) = self.chars.peek() {
+                if is_basic_whitespace(*pk) {
                     continue;
                 }
             }
-            return Some(Token::Whitespace(spaces));
+            return Some(Token::Whitespace(len));
         }
     }
 
@@ -187,55 +187,55 @@ impl<'a> Lexer<'a> {
         let mut decimal = false;
         let mut exp = false;
         loop {
-            let mut c = match self.chars.next() {
+            let mut ch = match self.chars.next() {
                 Some(c) => c,
                 None => {
                     debug_assert!(false, "Failed to tokenize number.");
                     return None;
                 }
             };
-            if c == 'e' {
-                c = 'E'
+            if ch == 'e' {
+                ch = 'E'
             }
-            if c == 'd' {
-                c = 'D'
+            if ch == 'd' {
+                ch = 'D'
             }
-            s.push(c);
-            if !exp && is_basic_digit(c) {
+            s.push(ch);
+            if !exp && is_basic_digit(ch) {
                 digits += 1;
             }
-            if c == '.' {
+            if ch == '.' {
                 decimal = true
             }
-            if c == 'D' {
+            if ch == 'D' {
                 digits += 8;
             }
-            if c == '!' {
+            if ch == '!' {
                 return Some(Token::Literal(Literal::Single(s)));
             }
-            if c == '#' {
+            if ch == '#' {
                 return Some(Token::Literal(Literal::Double(s)));
             }
-            if c == '%' {
+            if ch == '%' {
                 return Some(Token::Literal(Literal::Integer(s)));
             }
-            if let Some(p) = self.chars.peek() {
-                if c == 'E' || c == 'D' {
+            if let Some(pk) = self.chars.peek() {
+                if ch == 'E' || ch == 'D' {
                     exp = true;
-                    if *p == '+' || *p == '-' {
+                    if *pk == '+' || *pk == '-' {
                         continue;
                     }
                 }
-                if is_basic_digit(*p) {
+                if is_basic_digit(*pk) {
                     continue;
                 }
-                if !decimal && *p == '.' {
+                if !decimal && *pk == '.' {
                     continue;
                 }
-                if !exp && *p == 'E' || *p == 'e' || *p == 'D' || *p == 'd' {
+                if !exp && *pk == 'E' || *pk == 'e' || *pk == 'D' || *pk == 'd' {
                     continue;
                 }
-                if *p == '!' || *p == '#' || *p == '%' {
+                if *pk == '!' || *pk == '#' || *pk == '%' {
                     continue;
                 }
             }
@@ -256,9 +256,9 @@ impl<'a> Lexer<'a> {
         let mut s = String::new();
         self.chars.next();
         loop {
-            if let Some(c) = self.chars.next() {
-                if c != '"' {
-                    s.push(c);
+            if let Some(ch) = self.chars.next() {
+                if ch != '"' {
+                    s.push(ch);
                     continue;
                 }
             }
@@ -270,41 +270,40 @@ impl<'a> Lexer<'a> {
         let mut s = String::new();
         let mut digit = false;
         loop {
-            let c = match self.chars.next() {
-                Some(c) => c,
+            let ch = match self.chars.next() {
+                Some(ch) => ch.to_ascii_uppercase(),
                 None => {
                     debug_assert!(false, "Failed to tokenize alphabetic.");
                     return None;
                 }
-            }
-            .to_ascii_uppercase();
-            s.push(c);
-            if is_basic_digit(c) {
+            };
+            s.push(ch);
+            if is_basic_digit(ch) {
                 digit = true;
             }
-            if let Some(t) = Token::from_string(&s) {
-                return Some(t);
+            if let Some(token) = Token::from_string(&s) {
+                return Some(token);
             }
-            if c == '$' {
+            if ch == '$' {
                 return Some(Token::Ident(Ident::String(s)));
             }
-            if c == '!' {
+            if ch == '!' {
                 return Some(Token::Ident(Ident::Single(s)));
             }
-            if c == '#' {
+            if ch == '#' {
                 return Some(Token::Ident(Ident::Double(s)));
             }
-            if c == '%' {
+            if ch == '%' {
                 return Some(Token::Ident(Ident::Integer(s)));
             }
-            if let Some(p) = self.chars.peek() {
-                if is_basic_alphabetic(*p) {
+            if let Some(pk) = self.chars.peek() {
+                if is_basic_alphabetic(*pk) {
                     if digit {
                         break;
                     }
                     continue;
                 }
-                if is_basic_digit(*p) || *p == '$' || *p == '!' || *p == '#' || *p == '%' {
+                if is_basic_digit(*pk) || *pk == '$' || *pk == '!' || *pk == '#' || *pk == '%' {
                     continue;
                 }
             }
@@ -316,19 +315,19 @@ impl<'a> Lexer<'a> {
     fn minutia(&mut self) -> Option<Token> {
         let mut s = String::new();
         loop {
-            if let Some(c) = self.chars.next() {
-                s.push(c);
+            if let Some(ch) = self.chars.next() {
+                s.push(ch);
                 if let Some(t) = Token::from_string(&s) {
                     return Some(t);
                 }
-                if let Some(p) = self.chars.peek() {
-                    if is_basic_alphabetic(*p) {
+                if let Some(pk) = self.chars.peek() {
+                    if is_basic_alphabetic(*pk) {
                         break;
                     }
-                    if is_basic_digit(*p) {
+                    if is_basic_digit(*pk) {
                         break;
                     }
-                    if is_basic_whitespace(*p) {
+                    if is_basic_whitespace(*pk) {
                         break;
                     }
                     continue;

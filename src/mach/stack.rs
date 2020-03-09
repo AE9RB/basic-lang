@@ -3,6 +3,8 @@ use crate::lang::Error;
 
 type Result<T> = std::result::Result<T, Error>;
 
+/// ## Stack enforced and size limited vector
+
 #[derive(Debug)]
 pub struct Stack<T> {
     overflow_message: &'static str,
@@ -10,6 +12,12 @@ pub struct Stack<T> {
 }
 
 impl<T> Stack<T> {
+    pub fn new(overflow_message: &'static str) -> Stack<T> {
+        Stack {
+            overflow_message: overflow_message,
+            stack: vec![],
+        }
+    }
     fn overflow_check(&self) -> Result<()> {
         if self.stack.len() > u16::max_value() as usize {
             Err(error!(OutOfMemory; self.overflow_message))
@@ -19,12 +27,6 @@ impl<T> Stack<T> {
     }
     fn underflow_error(&self) -> Error {
         error!(InternalError; "UNDERFLOW")
-    }
-    pub fn new(overflow_message: &'static str) -> Stack<T> {
-        Stack {
-            overflow_message: overflow_message,
-            stack: vec![],
-        }
     }
     pub fn vec(&self) -> &Vec<T> {
         &self.stack
@@ -39,6 +41,7 @@ impl<T> Stack<T> {
     where
         R: std::ops::RangeBounds<usize>,
     {
+        debug_assert!(range.end_bound() == std::ops::Bound::Unbounded);
         self.stack.drain(range)
     }
     pub fn len(&self) -> usize {

@@ -3,9 +3,9 @@ use crate::error;
 use crate::lang::{Error, LineNumber, MaxValue};
 use std::convert::TryFrom;
 
-/// ## Stack values
-
 type Result<T> = std::result::Result<T, Error>;
+
+/// ## Runtime stack values
 
 #[derive(Debug, Clone)]
 pub enum Val {

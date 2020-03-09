@@ -15,7 +15,6 @@ mod runtime;
 mod stack;
 mod val;
 
-pub use compile::compile;
 pub use op::Op;
 pub use program::Program;
 pub use runtime::Runtime;
