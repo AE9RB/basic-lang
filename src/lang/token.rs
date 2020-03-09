@@ -38,6 +38,15 @@ impl Token {
             None => None,
         })
     }
+    pub fn is_reserved_word(&self) -> bool {
+        match self {
+            Token::Word(_) => true,
+            Token::Ident(_) => true,
+            Token::Literal(_) => true,
+            Token::Operator(op) => op.is_reserved_word(),
+            _ => false,
+        }
+    }
 }
 
 impl std::fmt::Display for Token {
@@ -191,7 +200,7 @@ pub enum Operator {
 }
 
 impl Operator {
-    pub fn is_word(&self) -> bool {
+    pub fn is_reserved_word(&self) -> bool {
         use Operator::*;
         match self {
             Caret | Multiply | Divide | DivideInt | Plus | Minus | Equal | NotEqual | Less

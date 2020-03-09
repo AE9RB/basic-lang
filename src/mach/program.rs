@@ -133,7 +133,6 @@ impl Program {
                     if let Some(op) = self.ops.get_mut(op_addr) {
                         if let Some(new_op) = match op {
                             Op::If(_) => Some(Op::If(*dest)),
-                            Op::IfNot(_) => Some(Op::IfNot(*dest)),
                             Op::Jump(_) => Some(Op::Jump(*dest)),
                             _ => None,
                         } {

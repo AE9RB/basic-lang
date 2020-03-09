@@ -186,7 +186,7 @@ impl Expression {
                     let expr = descend(parse, op_prec)?;
                     Expression::Negation(column, Box::new(expr))
                 }
-                Some(Token::Literal(lit)) => Expression::for_literal(parse.column(), lit),
+                Some(Token::Literal(lit)) => Expression::for_literal(parse.column(), lit)?,
                 _ => return Err(error!(SyntaxError, ..&parse.column(); "EXPECTED EXPRESSION")),
             };
             let mut rhs;
@@ -248,8 +248,8 @@ impl Expression {
         }
     }
 
-    fn for_literal(col: Column, lit: &Literal) -> Expression {
-        fn parse<T: std::str::FromStr + std::default::Default>(s: &str) -> T {
+    fn for_literal(col: Column, lit: &Literal) -> Result<Expression> {
+        fn parse<T: std::str::FromStr>(col: Column, s: &str) -> Result<T> {
             let mut s = String::from(s).replace("D", "E");
             match s.chars().last() {
                 Some('!') | Some('#') | Some('%') => {
@@ -257,19 +257,16 @@ impl Expression {
                 }
                 _ => {}
             };
-            match s.parse::<T>() {
-                Ok(num) => num,
-                Err(_) => {
-                    debug_assert!(false, "Failed to parse numeric literal.");
-                    T::default()
-                }
+            match s.parse() {
+                Ok(num) => Ok(num),
+                Err(_) => return Err(error!(TypeMismatch, ..&col)),
             }
         }
         match lit {
-            Literal::Single(s) => Expression::Single(col, parse(s)),
-            Literal::Double(s) => Expression::Double(col, parse(s)),
-            Literal::Integer(s) => Expression::Integer(col, parse(s)),
-            Literal::String(s) => Expression::String(col, s.to_string()),
+            Literal::Single(s) => Ok(Expression::Single(col.clone(), parse(col, s)?)),
+            Literal::Double(s) => Ok(Expression::Double(col.clone(), parse(col, s)?)),
+            Literal::Integer(s) => Ok(Expression::Integer(col.clone(), parse(col, s)?)),
+            Literal::String(s) => Ok(Expression::String(col, s.to_string())),
         }
     }
 }
@@ -328,17 +325,11 @@ mod tests {
     use super::super::lex::*;
     use super::*;
 
-    fn parse_str(s: &str) -> Statement {
+    fn parse_str(s: &str) -> Option<Statement> {
         let (lin, tokens) = lex(s);
         match parse(lin, &tokens) {
-            Ok(mut v) => {
-                assert!(v.len() == 1);
-                v.pop().unwrap()
-            }
-            Err(e) => {
-                assert!(false, "{:?}", e);
-                Statement::Run(0..0)
-            }
+            Ok(mut v) => v.pop(),
+            Err(_) => None,
         }
     }
 
@@ -349,13 +340,13 @@ mod tests {
             (3..6, Ident::Plain("TER".to_string())),
             Expression::Var(7..10, Ident::Plain("BAR".to_string())),
         );
-        assert_eq!(parse_str("letter=bar:"), answer);
+        assert_eq!(parse_str("letter=bar:"), Some(answer));
         let answer = Statement::Let(
             0..3,
             (0..3, Ident::Plain("TER".to_string())),
             Expression::Var(4..7, Ident::Plain("BAR".to_string())),
         );
-        assert_eq!(parse_str("ter=bar:"), answer);
+        assert_eq!(parse_str("ter=bar:"), Some(answer));
     }
 
     #[test]
@@ -365,25 +356,25 @@ mod tests {
             (0..1, Ident::Plain("A".to_string())),
             Expression::Integer(2..4, 12),
         );
-        assert_eq!(parse_str("A=12"), answer);
+        assert_eq!(parse_str("A=12"), Some(answer));
         let answer = Statement::Let(
             0..1,
             (0..1, Ident::Plain("A".to_string())),
             Expression::Single(2..5, 12.0),
         );
-        assert_eq!(parse_str("A=12!"), answer);
+        assert_eq!(parse_str("A=12!"), Some(answer));
         let answer = Statement::Let(
             0..1,
             (0..1, Ident::Plain("A".to_string())),
             Expression::Double(2..6, 12e4),
         );
-        assert_eq!(parse_str("A=12d4"), answer);
+        assert_eq!(parse_str("A=12d4"), Some(answer));
         let answer = Statement::Let(
             0..1,
             (0..1, Ident::Plain("A".to_string())),
             Expression::String(2..8, "food".to_string()),
         );
-        assert_eq!(parse_str("A=\"food\""), answer);
+        assert_eq!(parse_str("A=\"food\""), Some(answer));
         let answer = Statement::Let(
             0..1,
             (0..1, Ident::Plain("A".to_string())),
@@ -391,7 +382,7 @@ mod tests {
         );
         assert_eq!(
             parse_str("A=798347598234765983475983248592d-234721398742391847982344"),
-            answer
+            Some(answer)
         );
     }
 
@@ -409,7 +400,7 @@ mod tests {
                 )),
             ),
         );
-        assert_eq!(parse_str("A=-(1++1)"), answer);
+        assert_eq!(parse_str("A=-(1++1)"), Some(answer));
     }
 
     #[test]
@@ -423,7 +414,7 @@ mod tests {
                 vec![Expression::Single(6..10, 3.14)],
             ),
         );
-        assert_eq!(parse_str("A=cos(3.14)"), answer);
+        assert_eq!(parse_str("A=cos(3.14)"), Some(answer));
     }
 
     #[test]
@@ -449,15 +440,15 @@ mod tests {
                 )),
             ),
         );
-        assert_eq!(parse_str("let A=(2-(3+cos(3.14))*4)"), answer);
+        assert_eq!(parse_str("let A=(2-(3+cos(3.14))*4)"), Some(answer));
     }
 
     #[test]
     fn test_printer_list() {
         let (lin, tokens) = lex("? 1 2,3;:?");
         assert_eq!(
-            parse(lin, &tokens).unwrap(),
-            vec!(
+            parse(lin, &tokens).ok(),
+            Some(vec!(
                 Statement::Print(
                     0..1,
                     vec!(
@@ -468,7 +459,7 @@ mod tests {
                     )
                 ),
                 Statement::Print(9..10, vec!(Expression::Char(10..10, '\n'),)),
-            )
+            ))
         );
     }
 }

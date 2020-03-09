@@ -80,8 +80,8 @@ impl Compiler {
         fn binary_expression(this: &mut Compiler, prog: &mut Stack<Op>, op: Op) -> Result<Column> {
             let (col_rhs, mut rhs) = this.expr.pop()?;
             let (col_lhs, mut lhs) = this.expr.pop()?;
-            prog.append(&mut rhs)?;
             prog.append(&mut lhs)?;
+            prog.append(&mut rhs)?;
             prog.push(op)?;
             Ok(col_lhs.start..col_rhs.end)
         }
@@ -103,6 +103,7 @@ impl Compiler {
             Expression::Negation(col, ..) => {
                 let (expr_col, mut ops) = self.expr.pop()?;
                 prog.append(&mut ops)?;
+                prog.push(Op::Neg)?;
                 Ok(col.start..expr_col.end)
             }
             Expression::Add(..) => binary_expression(self, prog, Op::Add),

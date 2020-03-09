@@ -9,7 +9,6 @@ use super::{Address, Val};
 ///
 /// See <https://en.wikipedia.org/wiki/Reverse_Polish_notation>
 
-#[derive(Debug)]
 pub enum Op {
     // *** Stack manipulation
     /// Push literal value on to the stack.
@@ -27,10 +26,8 @@ pub enum Op {
     /// Modify the variable using the step then check for end.
     /// If not done, push it all back on stack and jump to Address.
     Next(String),
-    /// Pop stack and branch to Address if zero.
-    If(Address),
     /// Pop stack and branch to Address if not zero.
-    IfNot(Address),
+    If(Address),
     /// Unconditional branch to Address.
     Jump(Address),
     /// Expect Return(Address) on stack or else error: RETURN WITHOUT GOSUB.
@@ -50,9 +47,41 @@ pub enum Op {
     Div,
 
     // *** Built-in functions
-    FnSin,
-    FnCos,
-    FnStrS,
+    Sin,
+    Cos,
+    StrS,
+}
+
+impl std::fmt::Debug for Op {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_string())
+    }
+}
+
+impl std::fmt::Display for Op {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use Op::*;
+        match self {
+            Literal(v) => write!(f, "{}", format!("{:?}", v).to_ascii_uppercase()),
+            Push(s) => write!(f, "PUSH({})", s),
+            Pop(s) => write!(f, "POP({})", s),
+            Next(s) => write!(f, "NEXT({})", s),
+            If(a) => write!(f, "IF({})", a),
+            Jump(a) => write!(f, "JUMP({})", a),
+            Return => write!(f, "RETURN"),
+            Run => write!(f, "RUN"),
+            End => write!(f, "END"),
+            Print => write!(f, "PRINT"),
+            Neg => write!(f, "NEG"),
+            Add => write!(f, "ADD"),
+            Sub => write!(f, "SUB"),
+            Mul => write!(f, "MUL"),
+            Div => write!(f, "DIV"),
+            Sin => write!(f, "SIN"),
+            Cos => write!(f, "COS"),
+            StrS => write!(f, "STR$"),
+        }
+    }
 }
 
 /*

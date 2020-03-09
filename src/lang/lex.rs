@@ -47,21 +47,7 @@ fn upgrade_tokens(t: &mut Vec<Token>) {
 fn separate_words(t: &mut Vec<Token>) {
     let mut ins: Vec<usize> = vec![];
     for (i, tt) in t.windows(2).enumerate() {
-        let w1 = match &tt[0] {
-            Token::Word(_) => true,
-            Token::Ident(_) => true,
-            Token::Literal(_) => true,
-            Token::Operator(op) => op.is_word(),
-            _ => false,
-        };
-        let w2 = match &tt[1] {
-            Token::Word(_) => true,
-            Token::Ident(_) => true,
-            Token::Literal(_) => true,
-            Token::Operator(op) => op.is_word(),
-            _ => false,
-        };
-        if w1 && w2 {
+        if tt.iter().all(|y| y.is_reserved_word()) {
             ins.push(i);
         }
     }
@@ -104,7 +90,9 @@ fn take_line_number(tokens: &mut Vec<Token>) -> LineNumber {
                             tokens.remove(0);
                         }
                         if whitespace_len > 1 {
-                            tokens[0] = Token::Whitespace(whitespace_len - 1);
+                            if let Some(token) = tokens.get_mut(0) {
+                                *token = Token::Whitespace(whitespace_len - 1);
+                            }
                         }
                         return line;
                     }
@@ -251,16 +239,17 @@ impl<'a> Lexer<'a> {
                     continue;
                 }
             }
-            if digits > 7 {
-                return Some(Token::Literal(Literal::Double(s)));
-            }
-            if !exp && !decimal {
-                if let Ok(_) = s.parse::<i16>() {
-                    return Some(Token::Literal(Literal::Integer(s)));
-                }
-            }
-            return Some(Token::Literal(Literal::Single(s)));
+            break;
         }
+        if digits > 7 {
+            return Some(Token::Literal(Literal::Double(s)));
+        }
+        if !exp && !decimal {
+            if let Ok(_) = s.parse::<i16>() {
+                return Some(Token::Literal(Literal::Integer(s)));
+            }
+        }
+        return Some(Token::Literal(Literal::Single(s)));
     }
 
     fn string(&mut self) -> Option<Token> {
@@ -355,67 +344,67 @@ impl<'a> Lexer<'a> {
 mod tests {
     use super::*;
 
-    fn token(s: &str) -> Token {
+    fn token(s: &str) -> Option<Token> {
         let s = format!("?{}", s);
         let (_, mut tokens) = lex(&s);
-        let tok = tokens.drain(1..2).next();
-        tok.unwrap()
+        let mut t = tokens.drain(1..2);
+        t.next()
     }
 
     #[test]
-    fn test_go_to1() {
+    fn test_go_to_1() {
         let (ln, v) = lex("10 go to");
         assert_eq!(ln, Some(10));
         let mut x = v.iter();
-        assert_eq!(x.next().unwrap(), &Token::Word(Word::Goto1));
+        assert_eq!(x.next(), Some(&Token::Word(Word::Goto1)));
         assert_eq!(x.next(), None);
     }
 
     #[test]
-    fn test_go_to2() {
-        assert_eq!(token("GO TO"), Token::Word(Word::Goto2));
+    fn test_go_to_2() {
+        assert_eq!(token("GO TO"), Some(Token::Word(Word::Goto2)));
     }
 
     #[test]
-    fn test_go_sub2() {
-        assert_eq!(token("GO SUB"), Token::Word(Word::Gosub2));
+    fn test_go_sub_2() {
+        assert_eq!(token("GO SUB"), Some(Token::Word(Word::Gosub2)));
     }
 
     #[test]
-    fn test_print1() {
+    fn test_print_1() {
         let (ln, v) = lex("10 ?");
         assert_eq!(ln, Some(10));
         let mut x = v.iter();
-        assert_eq!(x.next().unwrap(), &Token::Word(Word::Print1));
+        assert_eq!(x.next(), Some(&Token::Word(Word::Print1)));
         assert_eq!(x.next(), None);
     }
 
     #[test]
-    fn test_print2() {
-        assert_eq!(token("?"), Token::Word(Word::Print2));
+    fn test_print_2() {
+        assert_eq!(token("?"), Some(Token::Word(Word::Print2)));
     }
 
     #[test]
     fn test_numbers() {
         assert_eq!(
             token("3.141593"),
-            Token::Literal(Literal::Single("3.141593".to_string()))
+            Some(Token::Literal(Literal::Single("3.141593".to_string())))
         );
         assert_eq!(
             token("3.1415926"),
-            Token::Literal(Literal::Double("3.1415926".to_string()))
+            Some(Token::Literal(Literal::Double("3.1415926".to_string())))
         );
         assert_eq!(
             token("32767"),
-            Token::Literal(Literal::Integer("32767".to_string()))
+            Some(Token::Literal(Literal::Integer("32767".to_string())))
         );
         assert_eq!(
             token("32768"),
-            Token::Literal(Literal::Single("32768".to_string()))
+            Some(Token::Literal(Literal::Single("32768".to_string())))
         );
         assert_eq!(
             token("24e9"),
-            Token::Literal(Literal::Single("24E9".to_string()))
+            Some(Token::Literal(Literal::Single("24E9".to_string())))
         );
     }
 
@@ -423,15 +412,15 @@ mod tests {
     fn test_annotated_numbers() {
         assert_eq!(
             token("12334567890!"),
-            Token::Literal(Literal::Single("12334567890!".to_string()))
+            Some(Token::Literal(Literal::Single("12334567890!".to_string())))
         );
         assert_eq!(
             token("0#"),
-            Token::Literal(Literal::Double("0#".to_string()))
+            Some(Token::Literal(Literal::Double("0#".to_string())))
         );
         assert_eq!(
             token("24e9%"),
-            Token::Literal(Literal::Integer("24E9%".to_string()))
+            Some(Token::Literal(Literal::Integer("24E9%".to_string())))
         );
     }
 
@@ -440,10 +429,10 @@ mod tests {
         let (ln, v) = lex("100 REM  A fortunate comment \n");
         assert_eq!(ln, Some(100));
         let mut x = v.iter();
-        assert_eq!(x.next().unwrap(), &Token::Word(Word::Rem1));
+        assert_eq!(x.next(), Some(&Token::Word(Word::Rem1)));
         assert_eq!(
-            x.next().unwrap(),
-            &Token::Unknown("  A fortunate comment".to_string())
+            x.next(),
+            Some(&Token::Unknown("  A fortunate comment".to_string()))
         );
         assert_eq!(x.next(), None);
     }
@@ -453,12 +442,9 @@ mod tests {
         let (ln, v) = lex("100  'The comment  \r\n");
         assert_eq!(ln, Some(100));
         let mut x = v.iter();
-        assert_eq!(x.next().unwrap(), &Token::Whitespace(1));
-        assert_eq!(x.next().unwrap(), &Token::Word(Word::Rem2));
-        assert_eq!(
-            x.next().unwrap(),
-            &Token::Unknown("The comment".to_string())
-        );
+        assert_eq!(x.next(), Some(&Token::Whitespace(1)));
+        assert_eq!(x.next(), Some(&Token::Word(Word::Rem2)));
+        assert_eq!(x.next(), Some(&Token::Unknown("The comment".to_string())));
         assert_eq!(x.next(), None);
     }
 
@@ -468,8 +454,8 @@ mod tests {
         assert_eq!(ln, None);
         let mut x = v.iter();
         assert_eq!(
-            x.next().unwrap(),
-            &Token::Ident(Ident::Plain("BANDS".to_string()))
+            x.next(),
+            Some(&Token::Ident(Ident::Plain("BANDS".to_string())))
         );
         assert_eq!(x.next(), None);
     }
@@ -479,20 +465,20 @@ mod tests {
         let (ln, v) = lex("forI%=1to30");
         assert_eq!(ln, None);
         let mut x = v.iter();
-        assert_eq!(x.next().unwrap(), &Token::Word(Word::For));
+        assert_eq!(x.next(), Some(&Token::Word(Word::For)));
         assert_eq!(
-            x.next().unwrap(),
-            &Token::Ident(Ident::Integer("I%".to_string()))
+            x.next(),
+            Some(&Token::Ident(Ident::Integer("I%".to_string())))
         );
-        assert_eq!(x.next().unwrap(), &Token::Operator(Operator::Equal));
+        assert_eq!(x.next(), Some(&Token::Operator(Operator::Equal)));
         assert_eq!(
-            x.next().unwrap(),
-            &Token::Literal(Literal::Integer("1".to_string()))
+            x.next(),
+            Some(&Token::Literal(Literal::Integer("1".to_string())))
         );
-        assert_eq!(x.next().unwrap(), &Token::Word(Word::To));
+        assert_eq!(x.next(), Some(&Token::Word(Word::To)));
         assert_eq!(
-            x.next().unwrap(),
-            &Token::Literal(Literal::Integer("30".to_string()))
+            x.next(),
+            Some(&Token::Literal(Literal::Integer("30".to_string())))
         );
         assert_eq!(x.next(), None);
     }
@@ -502,8 +488,8 @@ mod tests {
         let (ln, v) = lex(" 10 PRINT 10");
         assert_eq!(ln, Some(10));
         let mut x = v.iter();
-        assert_eq!(x.next().unwrap(), &Token::Word(Word::Print1));
-        assert_eq!(x.next().unwrap(), &Token::Whitespace(1));
+        assert_eq!(x.next(), Some(&Token::Word(Word::Print1)));
+        assert_eq!(x.next(), Some(&Token::Whitespace(1)));
     }
 
     #[test]
@@ -511,9 +497,9 @@ mod tests {
         let (ln, v) = lex("  PRINT 10");
         assert_eq!(ln, None);
         let mut x = v.iter();
-        assert_eq!(x.next().unwrap(), &Token::Whitespace(2));
-        assert_eq!(x.next().unwrap(), &Token::Word(Word::Print1));
-        assert_eq!(x.next().unwrap(), &Token::Whitespace(1));
+        assert_eq!(x.next(), Some(&Token::Whitespace(2)));
+        assert_eq!(x.next(), Some(&Token::Word(Word::Print1)));
+        assert_eq!(x.next(), Some(&Token::Whitespace(1)));
     }
 
     #[test]
@@ -537,13 +523,10 @@ mod tests {
         let (ln, v) = lex("10 for %w");
         assert_eq!(ln, Some(10));
         let mut x = v.iter();
-        assert_eq!(x.next().unwrap(), &Token::Word(Word::For));
-        assert_eq!(x.next().unwrap(), &Token::Whitespace(1));
-        assert_eq!(x.next().unwrap(), &Token::Unknown("%".to_string()));
-        assert_eq!(
-            x.next().unwrap(),
-            &Token::Ident(Ident::Plain("W".to_string()))
-        );
+        assert_eq!(x.next(), Some(&Token::Word(Word::For)));
+        assert_eq!(x.next(), Some(&Token::Whitespace(1)));
+        assert_eq!(x.next(), Some(&Token::Unknown("%".to_string())));
+        assert_eq!(x.next(), Some(&Token::Ident(Ident::Plain("W".to_string()))));
         assert_eq!(x.next(), None);
     }
 
@@ -552,11 +535,8 @@ mod tests {
         let (ln, v) = lex("printJ");
         assert_eq!(ln, None);
         let mut x = v.iter();
-        assert_eq!(x.next().unwrap(), &Token::Word(Word::Print1));
-        assert_eq!(
-            x.next().unwrap(),
-            &Token::Ident(Ident::Plain("J".to_string()))
-        );
+        assert_eq!(x.next(), Some(&Token::Word(Word::Print1)));
+        assert_eq!(x.next(), Some(&Token::Ident(Ident::Plain("J".to_string()))));
         assert_eq!(x.next(), None);
     }
 
@@ -565,19 +545,13 @@ mod tests {
         let (ln, v) = lex("10 printJ:printK");
         assert_eq!(ln, Some(10));
         let mut x = v.iter();
-        assert_eq!(x.next().unwrap(), &Token::Word(Word::Print1));
-        assert_eq!(x.next().unwrap(), &Token::Whitespace(1));
-        assert_eq!(
-            x.next().unwrap(),
-            &Token::Ident(Ident::Plain("J".to_string()))
-        );
-        assert_eq!(x.next().unwrap(), &Token::Colon);
-        assert_eq!(x.next().unwrap(), &Token::Word(Word::Print1));
-        assert_eq!(x.next().unwrap(), &Token::Whitespace(1));
-        assert_eq!(
-            x.next().unwrap(),
-            &Token::Ident(Ident::Plain("K".to_string()))
-        );
+        assert_eq!(x.next(), Some(&Token::Word(Word::Print1)));
+        assert_eq!(x.next(), Some(&Token::Whitespace(1)));
+        assert_eq!(x.next(), Some(&Token::Ident(Ident::Plain("J".to_string()))));
+        assert_eq!(x.next(), Some(&Token::Colon));
+        assert_eq!(x.next(), Some(&Token::Word(Word::Print1)));
+        assert_eq!(x.next(), Some(&Token::Whitespace(1)));
+        assert_eq!(x.next(), Some(&Token::Ident(Ident::Plain("K".to_string()))));
         assert_eq!(x.next(), None);
     }
 }
