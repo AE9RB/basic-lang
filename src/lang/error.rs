@@ -1,5 +1,6 @@
 use super::{Column, LineNumber};
 
+#[derive(Clone)]
 pub struct Error {
     code: u16,
     line_number: LineNumber,
@@ -91,6 +92,7 @@ impl Error {
 }
 
 pub enum ErrorCode {
+    Break = 0,
     SyntaxError = 2,
     Overflow = 6,
     OutOfMemory = 7,
@@ -108,6 +110,7 @@ impl std::fmt::Debug for Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let code_str = match self.code {
+            0 => "BREAK",
             1 => "NEXT WITHOUT FOR",
             2 => "SYNTAX ERROR",
             3 => "RETURN WITHOUT GOSUB",
@@ -162,21 +165,16 @@ impl std::fmt::Display for Error {
         if (0..0) != self.column {
             suffix.push_str(&format!(" ({}..{})", self.column.start, self.column.end));
         }
+        if !suffix.is_empty() {
+            suffix.insert_str(0, " IN");
+        }
         if !self.message.is_empty() {
             suffix.push_str(&format!("; {}", self.message));
         }
         if code_str.is_empty() {
-            if suffix.is_empty() {
-                write!(f, "PROGRAM ERROR {}", self.code)
-            } else {
-                write!(f, "PROGRAM ERROR {} IN{}", self.code, suffix)
-            }
+            write!(f, "PROGRAM ERROR {}{}", self.code, suffix)
         } else {
-            if suffix.is_empty() {
-                write!(f, "{}", code_str)
-            } else {
-                write!(f, "{} IN{}", code_str, suffix)
-            }
+            write!(f, "{}{}", code_str, suffix)
         }
     }
 }

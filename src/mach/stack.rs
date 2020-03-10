@@ -8,18 +8,18 @@ type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug)]
 pub struct Stack<T> {
     overflow_message: &'static str,
-    stack: Vec<T>,
+    vec: Vec<T>,
 }
 
 impl<T> Stack<T> {
     pub fn new(overflow_message: &'static str) -> Stack<T> {
         Stack {
             overflow_message: overflow_message,
-            stack: vec![],
+            vec: vec![],
         }
     }
     fn overflow_check(&self) -> Result<()> {
-        if self.stack.len() > u16::max_value() as usize {
+        if self.vec.len() > u16::max_value() as usize {
             Err(error!(OutOfMemory; self.overflow_message))
         } else {
             Ok(())
@@ -29,34 +29,34 @@ impl<T> Stack<T> {
         error!(InternalError; "UNDERFLOW")
     }
     pub fn vec(&self) -> &Vec<T> {
-        &self.stack
+        &self.vec
     }
     pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
-        self.stack.get_mut(index)
+        self.vec.get_mut(index)
     }
     pub fn clear(&mut self) {
-        self.stack.clear()
+        self.vec.clear()
     }
     pub fn drain<R>(&mut self, range: R) -> std::vec::Drain<'_, T>
     where
         R: std::ops::RangeBounds<usize>,
     {
         debug_assert!(range.end_bound() == std::ops::Bound::Unbounded);
-        self.stack.drain(range)
+        self.vec.drain(range)
     }
     pub fn len(&self) -> usize {
-        self.stack.len()
+        self.vec.len()
     }
     pub fn append(&mut self, other: &mut Stack<T>) -> Result<()> {
-        self.stack.append(&mut other.stack);
+        self.vec.append(&mut other.vec);
         self.overflow_check()
     }
     pub fn push(&mut self, val: T) -> Result<()> {
-        self.stack.push(val);
+        self.vec.push(val);
         self.overflow_check()
     }
     pub fn pop(&mut self) -> Result<T> {
-        match self.stack.pop() {
+        match self.vec.pop() {
             Some(v) => Ok(v),
             None => Err(self.underflow_error()),
         }
@@ -67,11 +67,11 @@ impl<T> Stack<T> {
         Ok((one, two))
     }
     pub fn pop_n(&mut self, len: usize) -> Result<Vec<T>> {
-        if len > self.stack.len() {
+        if len > self.vec.len() {
             Err(self.underflow_error())
         } else {
-            let range = (self.stack.len() - len as usize)..;
-            Ok(self.stack.drain(range).collect())
+            let range = (self.vec.len() - len as usize)..;
+            Ok(self.vec.drain(range).collect())
         }
     }
 }

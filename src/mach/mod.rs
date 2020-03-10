@@ -1,7 +1,7 @@
 /*!
 ## Rust Machine Module
 
-This Rust module is a process virtual machine for BASIC.
+This Rust module is a compiler and virtual machine for BASIC.
 
 */
 
@@ -17,6 +17,7 @@ mod val;
 
 pub use op::Op;
 pub use program::Program;
+pub use runtime::Event;
 pub use runtime::Runtime;
 pub use stack::Stack;
 pub use val::Val;

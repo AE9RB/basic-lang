@@ -5,7 +5,7 @@ use super::{Address, Val};
 /// The BASIC virtual machine has no registers.
 /// Every operation is performed on the stack.
 ///
-/// For example: `LET A=3*B` compiles to `[Literal(3), Push("B"), Mul, Pop("A")]`
+/// For example: `LET A=3*B` compiles to `[Literal(3), Push(B), Mul, Pop(A)]`
 ///
 /// See <https://en.wikipedia.org/wiki/Reverse_Polish_notation>
 

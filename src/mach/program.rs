@@ -81,7 +81,7 @@ impl Program {
                 if let Some(self_line_number) = self.line_number {
                     debug_assert!(line_number > self_line_number, "Lines out of order.");
                 }
-            } else if self.line_number.is_some() {
+            } else {
                 self.link();
             }
             self.line_number = line.number();
@@ -101,29 +101,30 @@ impl Program {
                 }
             };
             compile(self, &ast);
+            if self.line_number.is_none() {
+                if let Err(e) = self.ops.push(Op::End) {
+                    self.error(e);
+                }
+            }
             if is_out_of_mem(self) {
-                self.errors.push(error!(OutOfMemory, self.line_number));
+                self.error(error!(OutOfMemory));
                 return;
             }
         }
     }
     pub fn link(&mut self) -> (Address, &Vec<Error>, &Vec<Error>) {
-        if let Some(error) = || -> Result<(), Error> {
-            match self.ops.vec().last() {
-                Some(Op::End) => {}
-                _ => self.ops.push(Op::End)?,
-            };
-            if self.direct_address == 0 {
-                self.indirect_errors = std::mem::take(&mut self.errors);
-                self.direct_address = self.ops.len();
-                self.ops.push(Op::End)?
+        match self.ops.vec().last() {
+            Some(Op::End) => {}
+            _ => {
+                if let Err(error) = self.ops.push(Op::End) {
+                    self.errors.push(error);
+                }
             }
-            Ok(())
-        }()
-        .err()
-        {
-            self.error(error);
         };
+        if self.direct_address == 0 {
+            self.indirect_errors = std::mem::take(&mut self.errors);
+            self.direct_address = self.ops.len();
+        }
         for (op_addr, (col, symbol)) in std::mem::take(&mut self.unlinked) {
             match self.symbols.get(&symbol) {
                 None => {

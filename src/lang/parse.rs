@@ -138,19 +138,19 @@ impl<'a> Parser<'a> {
                 return Ok(());
             }
         }
-        use Token::*;
         Err(error!(SyntaxError, ..&self.col;
             match token {
-                Unknown(_) | Whitespace(_) => {"PANIC"}
-                Literal(_) => {"EXPECTED LITERAL"}
-                Word(_) => {"EXPECTED STATEMENT WORD"}
-                Operator(_) => {"EXPECTED OPERATOR"}
-                Ident(_) => {"EXPECTED IDENTIFIER"}
-                LParen => {"EXPECTED LEFT PARENTHESIS"}
-                RParen => {"EXPECTED RIGHT PARENTHESIS"}
-                Comma => {"EXPECTED COMMA"}
-                Colon => {"EXPECTED COLON"}
-                Semicolon => {"EXPECTED SEMICOLON"}
+                Token::Unknown(_) | Token::Whitespace(_) => {"PANIC"}
+                Token::Literal(_) => {"EXPECTED LITERAL"}
+                Token::Word(_) => {"EXPECTED STATEMENT WORD"}
+                Token::Operator(Operator::Equal) => {"EXPECTED EQUALS SIGN"}
+                Token::Operator(_) => {"EXPECTED OPERATOR"}
+                Token::Ident(_) => {"EXPECTED IDENTIFIER"}
+                Token::LParen => {"EXPECTED LEFT PARENTHESIS"}
+                Token::RParen => {"EXPECTED RIGHT PARENTHESIS"}
+                Token::Comma => {"EXPECTED COMMA"}
+                Token::Colon => {"EXPECTED COLON"}
+                Token::Semicolon => {"EXPECTED SEMICOLON"}
             }
         ))
     }

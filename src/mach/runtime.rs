@@ -10,14 +10,30 @@ pub struct Runtime {
     source: BTreeMap<LineNumber, Line>,
     dirty: bool,
     program: Program,
+    pc: Address,
+    direct: Address,
+    has_indirect_errors: bool,
     stack: Stack<Val>,
     vars: HashMap<String, Val>,
+    state: Status,
 }
 
-enum Event {
-    IndirectErrors,
+/// ## Events for the user interface
+
+pub enum Event {
+    Errors(Vec<Error>),
+    PrintLn(String),
+    Stopped,
+    Running,
+}
+
+#[derive(PartialEq)]
+enum Status {
+    Intro,
+    Stopped,
+    Running,
     DirectErrors,
-    End,
+    Interrupt,
 }
 
 impl Runtime {
@@ -26,12 +42,17 @@ impl Runtime {
             source: BTreeMap::new(),
             dirty: false,
             program: Program::new(),
+            pc: 0,
+            direct: 0,
+            has_indirect_errors: false,
             stack: Stack::new("STACK OVERFLOW"),
             vars: HashMap::new(),
+            state: Status::Intro,
         }
     }
 
-    pub fn enter(&mut self, line: Line) {
+    pub fn enter(&mut self, s: &str) {
+        let line = Line::new(s);
         if line.is_direct() {
             if self.dirty {
                 self.program.clear();
@@ -40,68 +61,69 @@ impl Runtime {
                 self.dirty = false;
             }
             self.program.compile(&line);
-            match self.start() {
-                Ok(event) => match event {
-                    Event::IndirectErrors => {
-                        let (_, errors, _) = self.program.link();
-                        for error in errors {
-                            println!("?{}", error);
-                        }
-                    }
-                    Event::DirectErrors => {
-                        let (_, _, errors) = self.program.link();
-                        for error in errors {
-                            println!("?{}", error);
-                        }
-                    }
-                    Event::End => {}
-                },
-                Err(error) => {
-                    println!("?{}", error);
-                }
+            let (pc, indirect_errors, direct_errors) = self.program.link();
+            self.pc = pc;
+            self.direct = pc;
+            self.has_indirect_errors = !indirect_errors.is_empty();
+            if !direct_errors.is_empty() {
+                self.state = Status::DirectErrors;
+            } else {
+                self.state = Status::Running;
             }
         } else {
             self.source.insert(line.number(), line);
             self.stack.clear();
             self.dirty = true;
+        };
+    }
+
+    pub fn interrupt(&mut self) {
+        self.state = Status::Interrupt;
+    }
+
+    pub fn execute(&mut self, iterations: usize) -> Event {
+        fn adj(pc: Address) -> Address {
+            if pc > 0 {
+                pc - 1
+            } else {
+                pc
+            }
         }
-    }
-
-    fn start(&mut self) -> Result<Event> {
-        let (mut pc, _, _) = self.program.link();
-        self.resume(&mut pc)
-    }
-
-    fn resume(&mut self, pc: &mut Address) -> Result<Event> {
-        match self.execute(pc) {
-            Ok(e) => Ok(e),
+        match self.state {
+            Status::Intro => {
+                self.state = Status::Stopped;
+                return Event::PrintLn("64K BASIC SYSTEM".to_string());
+            }
+            Status::Stopped => return Event::Stopped,
+            Status::Running => {}
+            Status::DirectErrors => {
+                self.state = Status::Stopped;
+                let (_, _, direct_errors) = self.program.link();
+                return Event::Errors(direct_errors.clone());
+            }
+            Status::Interrupt => {
+                self.state = Status::Stopped;
+                let line_number = self.program.line_number_for(adj(self.pc));
+                return Event::Errors(vec![error!(Break, line_number)]);
+            }
+        }
+        match self.execute_loop(iterations) {
+            Ok(e) => e,
             Err(e) => {
-                let line_number = self
-                    .program
-                    .line_number_for(if *pc > 0 { *pc - 1 } else { *pc });
-                Err(e.in_line_number(line_number))
+                self.state = Status::Stopped;
+                let line_number = self.program.line_number_for(adj(self.pc));
+                Event::Errors(vec![e.in_line_number(line_number)])
             }
         }
     }
 
-    fn execute(&mut self, pc: &mut Address) -> Result<Event> {
-        let (_, indirect_errors, direct_errors) = self.program.link();
-        let watermark = *pc;
-        let has_indirect_errors = if !indirect_errors.is_empty() {
-            self.dirty = true;
-            true
-        } else {
-            false
-        };
-        if !direct_errors.is_empty() {
-            return Ok(Event::DirectErrors);
-        }
-        loop {
-            let op = match self.program.ops().get(*pc) {
+    fn execute_loop(&mut self, iterations: usize) -> Result<Event> {
+        for _ in 0..iterations {
+            let op = match self.program.ops().get(self.pc) {
                 Some(v) => v,
                 None => return Err(error!(InternalError; "INVALID PC ADDRESS")),
             };
-            *pc += 1;
+            self.pc += 1;
             match op {
                 Op::Literal(val) => self.stack.push(val.clone())?,
                 Op::Push(var_name) => {
@@ -123,20 +145,28 @@ impl Runtime {
                     })?;
                 }
                 Op::Run => {
-                    if has_indirect_errors {
-                        return Ok(Event::IndirectErrors);
+                    if self.has_indirect_errors {
+                        self.state = Status::Stopped;
+                        let (_, indirect_errors, _) = self.program.link();
+                        return Ok(Event::Errors(indirect_errors.clone()));
                     }
                     self.stack.clear();
                     self.vars.clear();
-                    *pc = 0;
+                    self.pc = 0;
                 }
                 Op::Jump(addr) => {
-                    *pc = *addr;
-                    if has_indirect_errors && *pc < watermark {
-                        return Ok(Event::IndirectErrors);
+                    self.pc = *addr;
+                    if self.has_indirect_errors && self.pc < self.direct {
+                        self.state = Status::Stopped;
+                        let (_, indirect_errors, _) = self.program.link();
+                        return Ok(Event::Errors(indirect_errors.clone()));
                     }
                 }
-                Op::End => return Ok(Event::End),
+                Op::End => {
+                    self.pc -= 1;
+                    self.state = Status::Stopped;
+                    return Ok(Event::Stopped);
+                }
                 Op::Neg => self.r#neg()?,
                 Op::Add => self.r#add()?,
                 Op::Print => self.r#print()?,
@@ -146,6 +176,7 @@ impl Runtime {
                 }
             }
         }
+        Ok(Event::Running)
     }
 
     fn r#neg(&mut self) -> Result<()> {
