@@ -90,6 +90,16 @@ impl std::fmt::Display for Val {
     }
 }
 
+impl TryFrom<LineNumber> for Val {
+    type Error = Error;
+    fn try_from(line_number: LineNumber) -> std::result::Result<Self, Self::Error> {
+        match line_number {
+            Some(number) => Ok(Val::Single(number as f32)),
+            None => Err(error!(UndefinedLine)),
+        }
+    }
+}
+
 impl TryFrom<Val> for LineNumber {
     type Error = Error;
     fn try_from(val: Val) -> std::result::Result<Self, Self::Error> {
@@ -97,7 +107,7 @@ impl TryFrom<Val> for LineNumber {
         if num <= LineNumber::max_value() {
             Ok(Some(num))
         } else {
-            Err(error!(Overflow))
+            Err(error!(UndefinedLine))
         }
     }
 }

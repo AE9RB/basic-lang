@@ -122,27 +122,28 @@ impl Compiler {
         match statement {
             Statement::Goto(col, ..) => self.r#goto(prog, col),
             Statement::Let(col, ..) => self.r#let(prog, col),
+            Statement::List(col, ..) => self.r#list(prog, col),
             Statement::Print(col, ..) => self.r#print(prog, col),
             Statement::Run(col) => self.r#run(prog, col),
         }
     }
 
-    fn r#goto(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
+    fn expr_pop_line_number(&mut self) -> Result<(Column, LineNumber)> {
         let (sub_col, mut ops) = self.expr.pop()?;
         if ops.len() == 1 {
             if let Op::Literal(val) = ops.pop()? {
-                match LineNumber::try_from(val) {
-                    Ok(line_number) => {
-                        let sym = prog.symbol_for_line_number(line_number)?;
-                        prog.link_next_op_to(&sub_col, sym);
-                        prog.push(Op::Jump(0))?;
-                        return Ok(col.start..sub_col.end);
-                    }
-                    Err(e) => return Err(e.in_column(&sub_col).message("INVALID LINE NUMBER")),
-                }
+                return Ok((sub_col, LineNumber::try_from(val)?));
             }
         }
-        Err(error!(SyntaxError, ..&sub_col; "EXPECTED LINE NUMBER"))
+        Err(error!(UndefinedLine, ..&sub_col; "INVALID LINE NUMBER"))
+    }
+
+    fn r#goto(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
+        let (sub_col, line_number) = self.expr_pop_line_number()?;
+        let sym = prog.symbol_for_line_number(line_number)?;
+        prog.link_next_op_to(&sub_col, sym);
+        prog.push(Op::Jump(0))?;
+        return Ok(col.start..sub_col.end);
     }
 
     fn r#let(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
@@ -151,6 +152,15 @@ impl Compiler {
         let ident = self.ident.pop()?;
         prog.push(Op::Pop(ident))?;
         Ok(col.start..sub_col.end)
+    }
+
+    fn r#list(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
+        let (col_to, ln_to) = self.expr_pop_line_number()?;
+        let (_col_from, ln_from) = self.expr_pop_line_number()?;
+        prog.push(Op::Literal(Val::try_from(ln_from)?))?;
+        prog.push(Op::Literal(Val::try_from(ln_to)?))?;
+        prog.push(Op::List)?;
+        Ok(col.start..col_to.end)
     }
 
     fn r#print(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {

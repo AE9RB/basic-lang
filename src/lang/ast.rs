@@ -5,6 +5,7 @@ use super::Column;
 pub enum Statement {
     Goto(Column, Expression),
     Let(Column, (Column, Ident), Expression),
+    List(Column, Expression, Expression),
     Print(Column, Vec<Expression>),
     Run(Column),
 }
@@ -56,6 +57,10 @@ impl AcceptVisitor for Statement {
                 for expr in vec_expr {
                     expr.accept(visitor);
                 }
+            }
+            List(_, expr1, expr2) => {
+                expr1.accept(visitor);
+                expr2.accept(visitor);
             }
             Run(_) => {}
         }

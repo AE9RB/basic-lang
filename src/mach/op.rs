@@ -35,6 +35,7 @@ pub enum Op {
     Return,
 
     // *** Statements
+    List,
     Run,
     End,
     Print,
@@ -69,6 +70,7 @@ impl std::fmt::Display for Op {
             If(a) => write!(f, "IF({})", a),
             Jump(a) => write!(f, "JUMP({})", a),
             Return => write!(f, "RETURN"),
+            List => write!(f, "LIST"),
             Run => write!(f, "RUN"),
             End => write!(f, "END"),
             Print => write!(f, "PRINT"),

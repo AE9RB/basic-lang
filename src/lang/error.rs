@@ -60,6 +60,10 @@ impl Error {
         self.line_number.is_none()
     }
 
+    pub fn line_number(&self) -> LineNumber {
+        self.line_number
+    }
+
     pub fn in_line_number(&self, line: LineNumber) -> Error {
         debug_assert!(self.line_number.is_none());
         Error {
@@ -68,6 +72,10 @@ impl Error {
             column: self.column.clone(),
             message: self.message,
         }
+    }
+
+    pub fn column(&self) -> Column {
+        self.column.clone()
     }
 
     pub fn in_column(&self, column: &Column) -> Error {

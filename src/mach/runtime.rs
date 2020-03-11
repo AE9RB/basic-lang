@@ -1,8 +1,9 @@
 use super::{Address, Op, Program, Stack, Val};
 use crate::error;
-use crate::lang::{Error, Line, LineNumber};
+use crate::lang::{Column, Error, Line, LineNumber};
 use std::collections::{BTreeMap, HashMap};
 type Result<T> = std::result::Result<T, Error>;
+use std::rc::Rc;
 
 /// ## Virtual machine
 
@@ -12,7 +13,9 @@ pub struct Runtime {
     program: Program,
     pc: Address,
     direct: Address,
-    has_indirect_errors: bool,
+    indirect_errors: Rc<Vec<Error>>,
+    direct_errors: Rc<Vec<Error>>,
+    errors: Rc<Vec<Error>>,
     stack: Stack<Val>,
     vars: HashMap<String, Val>,
     state: Status,
@@ -21,7 +24,7 @@ pub struct Runtime {
 /// ## Events for the user interface
 
 pub enum Event {
-    Errors(Vec<Error>),
+    Errors(Rc<Vec<Error>>),
     PrintLn(String),
     Stopped,
     Running,
@@ -44,11 +47,46 @@ impl Runtime {
             program: Program::new(),
             pc: 0,
             direct: 0,
-            has_indirect_errors: false,
+            indirect_errors: Rc::new(vec![]),
+            direct_errors: Rc::new(vec![]),
+            errors: Rc::new(vec![]),
             stack: Stack::new("STACK OVERFLOW"),
             vars: HashMap::new(),
             state: Status::Intro,
         }
+    }
+
+    pub fn lines<T: std::ops::RangeBounds<LineNumber>>(
+        &self,
+        range: T,
+    ) -> Vec<(String, Vec<Column>)> {
+        let mut r: Vec<(String, Vec<Column>)> = vec![];
+        for (line_number, line) in self.source.range(range) {
+            let iter = self
+                .indirect_errors
+                .iter()
+                .chain(self.direct_errors.iter().chain(self.errors.iter()));
+            let mut columns: Vec<Column> = iter
+                .filter_map(|e| {
+                    if e.line_number() == *line_number {
+                        Some(e.column())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            match line_number {
+                Some(num) => {
+                    let offset = num.to_string().len() + 1;
+                    for column in &mut columns {
+                        *column = (column.start + offset)..(column.end + offset);
+                    }
+                }
+                None => {}
+            };
+            r.push((line.to_string(), columns));
+        }
+        r
     }
 
     pub fn enter(&mut self, s: &str) {
@@ -64,17 +102,23 @@ impl Runtime {
             let (pc, indirect_errors, direct_errors) = self.program.link();
             self.pc = pc;
             self.direct = pc;
-            self.has_indirect_errors = !indirect_errors.is_empty();
-            if !direct_errors.is_empty() {
-                self.state = Status::DirectErrors;
-            } else {
+            self.indirect_errors = indirect_errors;
+            self.direct_errors = direct_errors;
+            self.errors = Rc::new(vec![]);
+            if self.direct_errors.is_empty() {
                 self.state = Status::Running;
+            } else {
+                self.state = Status::DirectErrors;
             }
         } else {
             self.source.insert(line.number(), line);
             self.stack.clear();
             self.dirty = true;
         };
+    }
+
+    pub fn is_stopped(&self) -> bool {
+        self.state == Status::Stopped
     }
 
     pub fn interrupt(&mut self) {
@@ -98,13 +142,12 @@ impl Runtime {
             Status::Running => {}
             Status::DirectErrors => {
                 self.state = Status::Stopped;
-                let (_, _, direct_errors) = self.program.link();
-                return Event::Errors(direct_errors.clone());
+                return Event::Errors(Rc::clone(&self.direct_errors));
             }
             Status::Interrupt => {
                 self.state = Status::Stopped;
                 let line_number = self.program.line_number_for(adj(self.pc));
-                return Event::Errors(vec![error!(Break, line_number)]);
+                return Event::Errors(Rc::new(vec![error!(Break, line_number)]));
             }
         }
         match self.execute_loop(iterations) {
@@ -112,12 +155,14 @@ impl Runtime {
             Err(e) => {
                 self.state = Status::Stopped;
                 let line_number = self.program.line_number_for(adj(self.pc));
-                Event::Errors(vec![e.in_line_number(line_number)])
+                Rc::make_mut(&mut self.errors).push(e.in_line_number(line_number));
+                Event::Errors(Rc::clone(&self.errors))
             }
         }
     }
 
     fn execute_loop(&mut self, iterations: usize) -> Result<Event> {
+        let has_indirect_errors = !self.indirect_errors.is_empty();
         for _ in 0..iterations {
             let op = match self.program.ops().get(self.pc) {
                 Some(v) => v,
@@ -145,10 +190,9 @@ impl Runtime {
                     })?;
                 }
                 Op::Run => {
-                    if self.has_indirect_errors {
+                    if has_indirect_errors {
                         self.state = Status::Stopped;
-                        let (_, indirect_errors, _) = self.program.link();
-                        return Ok(Event::Errors(indirect_errors.clone()));
+                        return Ok(Event::Errors(Rc::clone(&self.indirect_errors)));
                     }
                     self.stack.clear();
                     self.vars.clear();
@@ -156,10 +200,9 @@ impl Runtime {
                 }
                 Op::Jump(addr) => {
                     self.pc = *addr;
-                    if self.has_indirect_errors && self.pc < self.direct {
+                    if has_indirect_errors && self.pc < self.direct {
                         self.state = Status::Stopped;
-                        let (_, indirect_errors, _) = self.program.link();
-                        return Ok(Event::Errors(indirect_errors.clone()));
+                        return Ok(Event::Errors(Rc::clone(&self.indirect_errors)));
                     }
                 }
                 Op::End => {
@@ -169,6 +212,10 @@ impl Runtime {
                 }
                 Op::Neg => self.r#neg()?,
                 Op::Add => self.r#add()?,
+                Op::List => {
+                    dbg!(self.stack.pop()?);
+                    dbg!(self.stack.pop()?);
+                }
                 Op::Print => self.r#print()?,
                 _ => {
                     dbg!(&op);

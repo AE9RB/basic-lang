@@ -1,8 +1,11 @@
+extern crate ansi_term;
 extern crate ctrlc;
 extern crate linefeed;
 use crate::mach::{Event, Runtime};
-use linefeed::interface::Interface;
-use linefeed::reader::ReadResult;
+use ansi_term::Style;
+use linefeed::complete::{Completer, Completion};
+use linefeed::terminal::Terminal;
+use linefeed::{Interface, Prompter, ReadResult};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -20,6 +23,7 @@ pub fn main() {
 
 fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
     let interface = Interface::new("BASIC")?;
+    interface.set_completer(Arc::new(LineCompleter));
     let mut runtime = Runtime::new();
     let mut print_ready = true;
 
@@ -38,18 +42,45 @@ fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
                     interface.write_fmt(format_args!("READY.\n"))?;
                 }
                 match interface.read_line()? {
-                    ReadResult::Input(input) => runtime.enter(&input),
+                    ReadResult::Input(input) => {
+                        runtime.enter(&input);
+                        if !runtime.is_stopped() {
+                            print_ready = true;
+                        }
+                    }
                     ReadResult::Signal(_) | ReadResult::Eof => break,
                 }
             }
             Event::Errors(errors) => {
-                for error in errors {
-                    interface.write_fmt(format_args!("?{}\n", error))?;
+                for error in errors.iter() {
+                    let error = format!("?{}", error);
+                    interface.write_fmt(format_args!("{}\n", Style::new().bold().paint(error)))?;
                 }
-                print_ready = true;
             }
             Event::Running => {}
         }
     }
     Ok(())
+}
+
+struct LineCompleter;
+
+impl<Term: Terminal> Completer<Term> for LineCompleter {
+    fn complete(
+        &self,
+        _word: &str,
+        prompter: &Prompter<Term>,
+        _start: usize,
+        _end: usize,
+    ) -> Option<Vec<Completion>> {
+        let line = prompter.buffer();
+        if line == "10" {
+            let mut compls = Vec::new();
+            let mut c = Completion::simple("10 PRINT \"HELLO WORLD\"".to_owned());
+            c.suffix = linefeed::complete::Suffix::None;
+            compls.push(c);
+            return Some(compls);
+        }
+        None
+    }
 }

@@ -14,6 +14,7 @@ edition = "2018"
 panic = "abort"
 
 [dependencies]
+ansi_term = "0.12"
 ctrlc = "3"
 linefeed = "0.6"
 

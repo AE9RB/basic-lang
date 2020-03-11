@@ -1,4 +1,4 @@
-use super::{ast::*, token::*, Column, Error, LineNumber};
+use super::{ast::*, token::*, Column, Error, LineNumber, MaxValue};
 use crate::error;
 
 type Result<T> = std::result::Result<T, Error>;
@@ -26,15 +26,21 @@ impl<'a> Parser<'a> {
             col: 0..0,
         };
         let mut statements: Vec<Statement> = vec![];
+        let mut expect_colon = false;
         loop {
             match parse.peek() {
                 None | Some(Token::Word(Word::Rem1)) => return Ok(statements),
                 Some(Token::Colon) => {
+                    expect_colon = false;
                     parse.next();
                     continue;
                 }
                 Some(_) => {
+                    if expect_colon {
+                        return Err(error!(SyntaxError, ..&parse.col; "UNEXPECTED TOKEN"));
+                    }
                     statements.push(parse.expect_statement()?);
+                    expect_colon = true;
                 }
             }
         }
@@ -130,6 +136,49 @@ impl<'a> Parser<'a> {
             _ => return Err(error!(SyntaxError, ..&self.col; "EXPECTED IDENT")),
         };
         Ok((self.col.clone(), ident))
+    }
+
+    fn maybe_line_number(&mut self) -> Result<LineNumber> {
+        if let Some(str) = match self.peek() {
+            Some(Token::Literal(Literal::Integer(s))) => Some(s),
+            Some(Token::Literal(Literal::Single(s))) => Some(s),
+            _ => None,
+        } {
+            self.next();
+            if let Ok(num) = str.parse::<u16>() {
+                if num <= LineNumber::max_value() {
+                    return Ok(Some(num));
+                }
+            }
+        }
+        Ok(None)
+    }
+
+    fn expect_line_number_range(&mut self) -> Result<(Expression, Expression)> {
+        let from;
+        let from_num;
+        let to;
+        if let Some(num) = self.maybe_line_number()? {
+            from_num = num as f32;
+            from = Expression::Single(self.col.clone(), num as f32);
+        } else {
+            from_num = LineNumber::max_value() as f32;
+            let col = self.col.start..self.col.start;
+            from = Expression::Single(col, 0.0);
+        };
+        if self.peek() == Some(&&Token::Operator(Operator::Minus)) {
+            self.next();
+            if let Some(ln) = self.maybe_line_number()? {
+                to = Expression::Single(self.col.clone(), ln as f32);
+            } else {
+                let col = self.col.start..self.col.start;
+                to = Expression::Single(col, LineNumber::max_value() as f32);
+            };
+        } else {
+            let col = self.col.start..self.col.start;
+            to = Expression::Single(col, from_num);
+        }
+        Ok((from, to))
     }
 
     fn expect(&mut self, token: Token) -> Result<()> {
@@ -291,6 +340,7 @@ impl Statement {
                 use Word::*;
                 match word {
                     Goto1 | Goto2 => return Self::r#goto(parse),
+                    List => return Self::r#list(parse),
                     Let => return Self::r#let(parse),
                     Print1 | Print2 => return Self::r#print(parse),
                     Run => return Self::r#run(parse),
@@ -309,6 +359,13 @@ impl Statement {
         Err(error!(SyntaxError, ..&parse.col; "EXPECTED STATEMENT"))
     }
 
+    fn r#goto(parse: &mut Parser) -> Result<Statement> {
+        Ok(Statement::Goto(
+            parse.col.clone(),
+            parse.expect_expression()?,
+        ))
+    }
+
     fn r#let(parse: &mut Parser) -> Result<Statement> {
         let column = parse.col.clone();
         let ident = parse.expect_ident()?;
@@ -317,17 +374,16 @@ impl Statement {
         Ok(Statement::Let(column, ident, expr))
     }
 
+    fn r#list(parse: &mut Parser) -> Result<Statement> {
+        let column = parse.col.clone();
+        let (from, to) = parse.expect_line_number_range()?;
+        Ok(Statement::List(column, from, to))
+    }
+
     fn r#print(parse: &mut Parser) -> Result<Statement> {
         Ok(Statement::Print(
             parse.col.clone(),
             parse.expect_print_list()?,
-        ))
-    }
-
-    fn r#goto(parse: &mut Parser) -> Result<Statement> {
-        Ok(Statement::Goto(
-            parse.col.clone(),
-            parse.expect_expression()?,
         ))
     }
 
