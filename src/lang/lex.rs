@@ -77,8 +77,8 @@ fn take_line_number(tokens: &mut Vec<Token>) -> LineNumber {
         pos = Some(0);
     }
     if let Some(pos) = pos {
-        if let Some(s) = tokens.get(pos) {
-            if let Ok(line) = LineNumber::try_from(s) {
+        if let Some(token) = tokens.get(pos) {
+            if let Ok(line) = LineNumber::try_from(token) {
                 if let Some(val) = line {
                     if val <= LineNumber::max_value() {
                         tokens.drain(0..=pos);
@@ -515,6 +515,17 @@ mod tests {
         assert_eq!(ln, Some(10));
         let mut x = v.iter();
         assert_eq!(x.next(), None);
+    }
+
+    #[test]
+    fn test_string_at_start() {
+        let (ln, v) = lex("\"HELLO\"");
+        assert_eq!(ln, None);
+        let mut x = v.iter();
+        assert_eq!(
+            x.next(),
+            Some(&Token::Literal(Literal::String("HELLO".to_string())))
+        );
     }
 
     #[test]

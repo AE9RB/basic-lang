@@ -25,6 +25,14 @@ impl<'a> Parser<'a> {
             rem2: false,
             col: 0..0,
         };
+        match parse.peek() {
+            Some(Token::Literal(Literal::Integer(_)))
+            | Some(Token::Literal(Literal::Single(_)))
+            | Some(Token::Literal(Literal::Double(_))) => {
+                return Err(error!(UndefinedLine, ..&parse.col; "INVALID LINE NUMBER"));
+            }
+            _ => {}
+        }
         let mut statements: Vec<Statement> = vec![];
         let mut expect_colon = false;
         loop {
@@ -142,6 +150,7 @@ impl<'a> Parser<'a> {
         if let Some(str) = match self.peek() {
             Some(Token::Literal(Literal::Integer(s))) => Some(s),
             Some(Token::Literal(Literal::Single(s))) => Some(s),
+            Some(Token::Literal(Literal::Double(s))) => Some(s),
             _ => None,
         } {
             self.next();
@@ -150,6 +159,7 @@ impl<'a> Parser<'a> {
                     return Ok(Some(num));
                 }
             }
+            return Err(error!(UndefinedLine; "INVALID LINE NUMBER"));
         }
         Ok(None)
     }

@@ -77,7 +77,7 @@ impl TryFrom<&Token> for LineNumber {
                 Literal::Integer(s) => s,
                 Literal::Single(s) => s,
                 Literal::Double(s) => s,
-                Literal::String(s) => s,
+                Literal::String(_) => "",
             };
             if s.chars().all(|c| c.is_ascii_digit()) {
                 if let Ok(line) = s.parse::<u16>() {

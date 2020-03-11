@@ -3,6 +3,7 @@ use crate::error;
 use crate::lang::{Column, Error, Line, LineNumber};
 use std::collections::{BTreeMap, HashMap};
 type Result<T> = std::result::Result<T, Error>;
+use std::convert::TryFrom;
 use std::rc::Rc;
 
 /// ## Virtual machine
@@ -26,6 +27,7 @@ pub struct Runtime {
 pub enum Event {
     Errors(Rc<Vec<Error>>),
     PrintLn(String),
+    List((String, Vec<std::ops::Range<usize>>)),
     Stopped,
     Running,
 }
@@ -34,6 +36,7 @@ pub enum Event {
 enum Status {
     Intro,
     Stopped,
+    Listing(std::ops::Range<LineNumber>),
     Running,
     DirectErrors,
     Interrupt,
@@ -56,12 +59,18 @@ impl Runtime {
         }
     }
 
-    pub fn lines<T: std::ops::RangeBounds<LineNumber>>(
+    pub fn line(
         &self,
-        range: T,
-    ) -> Vec<(String, Vec<Column>)> {
-        let mut r: Vec<(String, Vec<Column>)> = vec![];
-        for (line_number, line) in self.source.range(range) {
+        range: &mut std::ops::Range<LineNumber>,
+    ) -> Option<(String, Vec<std::ops::Range<usize>>)> {
+        if let Some((line_number, line)) = self.source.range(range.clone()).next() {
+            if let Some(num) = line_number {
+                range.start = Some(num + 1);
+            } else {
+                debug_assert!(false, "{:?}", range);
+                range.start = Some(0);
+                range.end = Some(0);
+            }
             let iter = self
                 .indirect_errors
                 .iter()
@@ -84,9 +93,9 @@ impl Runtime {
                 }
                 None => {}
             };
-            r.push((line.to_string(), columns));
+            return Some((line.to_string(), columns));
         }
-        r
+        None
     }
 
     pub fn enter(&mut self, s: &str) {
@@ -106,13 +115,18 @@ impl Runtime {
             self.direct_errors = direct_errors;
             self.errors = Rc::new(vec![]);
             if self.direct_errors.is_empty() {
-                self.state = Status::Running;
+                match self.program.ops().get(self.pc) {
+                    Some(v) => match v {
+                        Op::End => {}
+                        _ => self.state = Status::Running,
+                    },
+                    None => {}
+                };
             } else {
                 self.state = Status::DirectErrors;
             }
         } else {
             self.source.insert(line.number(), line);
-            self.stack.clear();
             self.dirty = true;
         };
     }
@@ -133,7 +147,16 @@ impl Runtime {
                 pc
             }
         }
-        match self.state {
+        match &self.state {
+            Status::Listing(range) => {
+                let mut range = range.clone();
+                if let Some((string, columns)) = self.line(&mut range) {
+                    self.state = Status::Listing(range);
+                    return Event::List((string, columns));
+                } else {
+                    self.state = Status::Running;
+                }
+            }
             Status::Intro => {
                 self.state = Status::Stopped;
                 return Event::PrintLn("64K BASIC SYSTEM".to_string());
@@ -151,11 +174,11 @@ impl Runtime {
             }
         }
         match self.execute_loop(iterations) {
-            Ok(e) => e,
-            Err(e) => {
+            Ok(event) => event,
+            Err(error) => {
                 self.state = Status::Stopped;
                 let line_number = self.program.line_number_for(adj(self.pc));
-                Rc::make_mut(&mut self.errors).push(e.in_line_number(line_number));
+                Rc::make_mut(&mut self.errors).push(error.in_line_number(line_number));
                 Event::Errors(Rc::clone(&self.errors))
             }
         }
@@ -212,10 +235,7 @@ impl Runtime {
                 }
                 Op::Neg => self.r#neg()?,
                 Op::Add => self.r#add()?,
-                Op::List => {
-                    dbg!(self.stack.pop()?);
-                    dbg!(self.stack.pop()?);
-                }
+                Op::List => return self.r#list(),
                 Op::Print => self.r#print()?,
                 _ => {
                     dbg!(&op);
@@ -236,6 +256,17 @@ impl Runtime {
         let (lhs, rhs) = self.stack.pop_2()?;
         self.stack.push(Val::add(lhs, rhs)?)?;
         Ok(())
+    }
+
+    fn r#list(&mut self) -> Result<Event> {
+        let (from, to) = self.stack.pop_2()?;
+        let from = LineNumber::try_from(from)?;
+        let to = LineNumber::try_from(to)?;
+        if to < from {
+            return Err(error!(UndefinedLine; "INVALID RANGE"));
+        }
+        self.state = Status::Listing(from..to);
+        Ok(Event::Running)
     }
 
     fn r#print(&mut self) -> Result<()> {

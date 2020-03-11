@@ -33,9 +33,6 @@ fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
             interrupted.store(false, Ordering::SeqCst);
         };
         match runtime.execute(5000) {
-            Event::PrintLn(s) => {
-                interface.write_fmt(format_args!("{}\n", s))?;
-            }
             Event::Stopped => {
                 if print_ready {
                     print_ready = false;
@@ -58,6 +55,12 @@ fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
                 }
             }
             Event::Running => {}
+            Event::PrintLn(s) => {
+                interface.write_fmt(format_args!("{}\n", s))?;
+            }
+            Event::List((s, _columns)) => {
+                interface.write_fmt(format_args!("{}\n", s))?;
+            }
         }
     }
     Ok(())

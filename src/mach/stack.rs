@@ -62,8 +62,8 @@ impl<T> Stack<T> {
         }
     }
     pub fn pop_2(&mut self) -> Result<(T, T)> {
-        let one = self.pop()?;
         let two = self.pop()?;
+        let one = self.pop()?;
         Ok((one, two))
     }
     pub fn pop_n(&mut self, len: usize) -> Result<Vec<T>> {

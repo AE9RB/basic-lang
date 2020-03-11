@@ -122,10 +122,6 @@ impl Program {
                 }
             }
         };
-        if self.direct_address == 0 {
-            self.indirect_errors = std::mem::take(&mut self.errors);
-            self.direct_address = self.ops.len();
-        }
         for (op_addr, (col, symbol)) in std::mem::take(&mut self.unlinked) {
             match self.symbols.get(&symbol) {
                 None => {
@@ -154,6 +150,10 @@ impl Program {
         }
         self.symbols = self.symbols.split_off(&0);
         self.current_symbol = 0;
+        if self.direct_address == 0 {
+            self.indirect_errors = std::mem::take(&mut self.errors);
+            self.direct_address = self.ops.len();
+        }
         (
             self.direct_address,
             Rc::clone(&self.indirect_errors),
@@ -161,7 +161,7 @@ impl Program {
         )
     }
     pub fn line_number_for(&self, op_addr: Address) -> LineNumber {
-        if op_addr < self.direct_address {
+        if self.direct_address == 0 || op_addr < self.direct_address {
             for (line_number, symbol_addr) in self.symbols.range(0..).rev() {
                 if op_addr >= *symbol_addr {
                     return Some(*line_number as u16);
