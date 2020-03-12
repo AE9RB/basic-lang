@@ -23,29 +23,28 @@ pub fn main() {
 
 fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
     let interface = Interface::new("BASIC")?;
-    interface.set_completer(Arc::new(LineCompleter));
-    let mut runtime = Runtime::new();
+    let mut runtime = Arc::new(Runtime::new());
     let mut print_ready = true;
 
     loop {
         if interrupted.load(Ordering::SeqCst) {
-            runtime.interrupt();
+            Arc::get_mut(&mut runtime).unwrap().interrupt();
             interrupted.store(false, Ordering::SeqCst);
         };
-        match runtime.execute(5000) {
+        match Arc::get_mut(&mut runtime).unwrap().execute(5000) {
             Event::Stopped => {
                 if print_ready {
-                    print_ready = false;
                     interface.write_fmt(format_args!("READY.\n"))?;
                 }
-                match interface.read_line()? {
-                    ReadResult::Input(input) => {
-                        runtime.enter(&input);
-                        if !runtime.is_stopped() {
-                            print_ready = true;
-                        }
-                    }
+                interface.set_completer(Arc::new(LineCompleter::new(Arc::clone(&runtime))));
+                let input = match interface.read_line()? {
+                    ReadResult::Input(input) => input,
                     ReadResult::Signal(_) | ReadResult::Eof => break,
+                };
+                interface.set_completer(Arc::new(NullCompleter));
+                print_ready = Arc::get_mut(&mut runtime).unwrap().enter(&input);
+                if print_ready {
+                    interface.add_history_unique(input);
                 }
             }
             Event::Errors(errors) => {
@@ -66,9 +65,25 @@ fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
     Ok(())
 }
 
-struct LineCompleter;
+struct NullCompleter;
 
-impl<Term: Terminal> Completer<Term> for LineCompleter {
+impl<'a, Term: Terminal> Completer<Term> for NullCompleter {
+    fn complete(&self, _: &str, _: &Prompter<Term>, _: usize, _: usize) -> Option<Vec<Completion>> {
+        None
+    }
+}
+
+struct LineCompleter {
+    runtime: Arc<Runtime>,
+}
+
+impl LineCompleter {
+    fn new(runtime: Arc<Runtime>) -> LineCompleter {
+        LineCompleter { runtime }
+    }
+}
+
+impl<'a, Term: Terminal> Completer<Term> for LineCompleter {
     fn complete(
         &self,
         _word: &str,
@@ -76,13 +91,14 @@ impl<Term: Terminal> Completer<Term> for LineCompleter {
         _start: usize,
         _end: usize,
     ) -> Option<Vec<Completion>> {
-        let line = prompter.buffer();
-        if line == "10" {
-            let mut compls = Vec::new();
-            let mut c = Completion::simple("10 PRINT \"HELLO WORLD\"".to_owned());
-            c.suffix = linefeed::complete::Suffix::None;
-            compls.push(c);
-            return Some(compls);
+        if let Ok(num) = prompter.buffer().parse::<usize>() {
+            if let Some((s, _)) = self.runtime.line(num) {
+                let mut comp_list = Vec::new();
+                let mut comp = Completion::simple(s);
+                comp.suffix = linefeed::complete::Suffix::None;
+                comp_list.push(comp);
+                return Some(comp_list);
+            }
         }
         None
     }

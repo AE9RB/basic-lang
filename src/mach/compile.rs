@@ -112,7 +112,7 @@ impl Compiler {
             Expression::Divide(..) => binary_expression(self, prog, Op::Div),
             _ => {
                 dbg!(expr);
-                Err(error!(SyntaxError; "EXPRESSION NOT YET COMPILING; PANIC"))
+                Err(error!(InternalError; "EXPRESSION NOT YET COMPILING; PANIC"))
             }
         }
     }

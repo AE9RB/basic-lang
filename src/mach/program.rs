@@ -2,15 +2,15 @@ use super::{compile::compile, Address, Op, Stack, Symbol};
 use crate::error;
 use crate::lang::{Column, Error, Line, LineNumber};
 use std::collections::{BTreeMap, HashMap};
-use std::rc::Rc;
+use std::sync::Arc;
 
 /// ## Program memory
 
 #[derive(Debug)]
 pub struct Program {
     ops: Stack<Op>,
-    errors: Rc<Vec<Error>>,
-    indirect_errors: Rc<Vec<Error>>,
+    errors: Arc<Vec<Error>>,
+    indirect_errors: Arc<Vec<Error>>,
     direct_address: Address,
     current_symbol: Symbol,
     symbols: BTreeMap<Symbol, Address>,
@@ -22,8 +22,8 @@ impl Program {
     pub fn new() -> Program {
         Program {
             ops: Stack::new("PROGRAM TOO LARGE"),
-            errors: Rc::new(vec![]),
-            indirect_errors: Rc::new(vec![]),
+            errors: Arc::new(vec![]),
+            indirect_errors: Arc::new(vec![]),
             direct_address: 0,
             current_symbol: 0,
             symbols: BTreeMap::new(),
@@ -32,7 +32,7 @@ impl Program {
         }
     }
     pub fn error(&mut self, error: Error) {
-        Rc::make_mut(&mut self.errors).push(error.in_line_number(self.line_number));
+        Arc::make_mut(&mut self.errors).push(error.in_line_number(self.line_number));
     }
     pub fn append(&mut self, ops: &mut Stack<Op>) -> Result<(), Error> {
         self.ops.append(ops)
@@ -59,8 +59,8 @@ impl Program {
     }
     pub fn clear(&mut self) {
         self.ops.clear();
-        self.errors = Rc::new(vec![]);
-        self.indirect_errors = Rc::new(vec![]);
+        self.errors = Arc::new(vec![]);
+        self.indirect_errors = Arc::new(vec![]);
         self.direct_address = 0;
         self.current_symbol = 0;
         self.symbols.clear();
@@ -92,33 +92,33 @@ impl Program {
                 debug_assert!(!direct_seen, "Can't handle multiple direct lines.");
                 direct_seen = true;
                 self.ops.drain(self.direct_address..);
-                Rc::make_mut(&mut self.errors).clear();
+                Arc::make_mut(&mut self.errors).clear();
             }
             let ast = match line.ast() {
                 Ok(ast) => ast,
                 Err(error) => {
-                    Rc::make_mut(&mut self.errors).push(error);
+                    Arc::make_mut(&mut self.errors).push(error);
                     continue;
                 }
             };
             compile(self, &ast);
             if self.line_number.is_none() {
                 if let Err(e) = self.ops.push(Op::End) {
-                    Rc::make_mut(&mut self.errors).push(e);
+                    Arc::make_mut(&mut self.errors).push(e);
                 }
             }
             if is_out_of_mem(self) {
-                Rc::make_mut(&mut self.errors).push(error!(OutOfMemory));
+                Arc::make_mut(&mut self.errors).push(error!(OutOfMemory));
                 return;
             }
         }
     }
-    pub fn link(&mut self) -> (Address, Rc<Vec<Error>>, Rc<Vec<Error>>) {
+    pub fn link(&mut self) -> (Address, Arc<Vec<Error>>, Arc<Vec<Error>>) {
         match self.ops.vec().last() {
             Some(Op::End) => {}
             _ => {
                 if let Err(error) = self.ops.push(Op::End) {
-                    Rc::make_mut(&mut self.errors).push(error);
+                    Arc::make_mut(&mut self.errors).push(error);
                 }
             }
         };
@@ -127,7 +127,7 @@ impl Program {
                 None => {
                     if symbol >= 0 {
                         let error = error!(UndefinedLine, self.line_number_for(op_addr), ..&col);
-                        Rc::make_mut(&mut self.errors).push(error);
+                        Arc::make_mut(&mut self.errors).push(error);
                         continue;
                     }
                 }
@@ -145,7 +145,7 @@ impl Program {
                 }
             }
             let line_number = self.line_number_for(op_addr);
-            Rc::make_mut(&mut self.errors)
+            Arc::make_mut(&mut self.errors)
                 .push(error!(InternalError, line_number, ..&col; "LINK FAILURE"));
         }
         self.symbols = self.symbols.split_off(&0);
@@ -156,8 +156,8 @@ impl Program {
         }
         (
             self.direct_address,
-            Rc::clone(&self.indirect_errors),
-            Rc::clone(&self.errors),
+            Arc::clone(&self.indirect_errors),
+            Arc::clone(&self.errors),
         )
     }
     pub fn line_number_for(&self, op_addr: Address) -> LineNumber {

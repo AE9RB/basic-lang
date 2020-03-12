@@ -1,10 +1,11 @@
 use super::{Address, Op, Program, Stack, Val};
 use crate::error;
-use crate::lang::{Column, Error, Line, LineNumber};
+use crate::lang::{Column, Error, Line, LineNumber, MaxValue};
 use std::collections::{BTreeMap, HashMap};
-type Result<T> = std::result::Result<T, Error>;
 use std::convert::TryFrom;
-use std::rc::Rc;
+use std::sync::Arc;
+
+type Result<T> = std::result::Result<T, Error>;
 
 /// ## Virtual machine
 
@@ -14,9 +15,9 @@ pub struct Runtime {
     program: Program,
     pc: Address,
     direct: Address,
-    indirect_errors: Rc<Vec<Error>>,
-    direct_errors: Rc<Vec<Error>>,
-    errors: Rc<Vec<Error>>,
+    indirect_errors: Arc<Vec<Error>>,
+    direct_errors: Arc<Vec<Error>>,
+    errors: Arc<Vec<Error>>,
     stack: Stack<Val>,
     vars: HashMap<String, Val>,
     state: Status,
@@ -25,7 +26,7 @@ pub struct Runtime {
 /// ## Events for the user interface
 
 pub enum Event {
-    Errors(Rc<Vec<Error>>),
+    Errors(Arc<Vec<Error>>),
     PrintLn(String),
     List((String, Vec<std::ops::Range<usize>>)),
     Stopped,
@@ -50,24 +51,68 @@ impl Runtime {
             program: Program::new(),
             pc: 0,
             direct: 0,
-            indirect_errors: Rc::new(vec![]),
-            direct_errors: Rc::new(vec![]),
-            errors: Rc::new(vec![]),
+            indirect_errors: Arc::new(vec![]),
+            direct_errors: Arc::new(vec![]),
+            errors: Arc::new(vec![]),
             stack: Stack::new("STACK OVERFLOW"),
             vars: HashMap::new(),
             state: Status::Intro,
         }
     }
 
-    pub fn line(
+    pub fn enter(&mut self, s: &str) -> bool {
+        let line = Line::new(s);
+        if line.is_direct() {
+            if self.dirty {
+                self.program.clear();
+                self.program
+                    .compile(self.source.iter().map(|(_, line)| line));
+                self.dirty = false;
+            }
+            self.program.compile(&line);
+            let (pc, indirect_errors, direct_errors) = self.program.link();
+            self.pc = pc;
+            self.direct = pc;
+            self.indirect_errors = indirect_errors;
+            self.direct_errors = direct_errors;
+            self.errors = Arc::new(vec![]);
+            if self.direct_errors.is_empty() {
+                self.state = Status::Running;
+                self.direct + 1 < self.program.ops().len()
+            } else {
+                self.state = Status::DirectErrors;
+                true
+            }
+        } else {
+            self.source.insert(line.number(), line);
+            self.dirty = true;
+            false
+        }
+    }
+
+    pub fn interrupt(&mut self) {
+        self.state = Status::Interrupt;
+    }
+
+    pub fn line(&self, num: usize) -> Option<(String, Vec<std::ops::Range<usize>>)> {
+        if num > LineNumber::max_value() as usize {
+            return None;
+        }
+        let mut range = Some(num as u16)..Some(num as u16);
+        self.list_line(&mut range)
+    }
+
+    fn list_line(
         &self,
         range: &mut std::ops::Range<LineNumber>,
     ) -> Option<(String, Vec<std::ops::Range<usize>>)> {
-        if let Some((line_number, line)) = self.source.range(range.clone()).next() {
-            if let Some(num) = line_number {
-                range.start = Some(num + 1);
+        let mut source_range = self.source.range(range.start..=range.end);
+        if let Some((line_number, line)) = source_range.next() {
+            if line_number < &range.end {
+                if let Some(num) = line_number {
+                    range.start = Some(num + 1);
+                }
             } else {
-                debug_assert!(false, "{:?}", range);
                 range.start = Some(0);
                 range.end = Some(0);
             }
@@ -98,47 +143,6 @@ impl Runtime {
         None
     }
 
-    pub fn enter(&mut self, s: &str) {
-        let line = Line::new(s);
-        if line.is_direct() {
-            if self.dirty {
-                self.program.clear();
-                self.program
-                    .compile(self.source.iter().map(|(_, line)| line));
-                self.dirty = false;
-            }
-            self.program.compile(&line);
-            let (pc, indirect_errors, direct_errors) = self.program.link();
-            self.pc = pc;
-            self.direct = pc;
-            self.indirect_errors = indirect_errors;
-            self.direct_errors = direct_errors;
-            self.errors = Rc::new(vec![]);
-            if self.direct_errors.is_empty() {
-                match self.program.ops().get(self.pc) {
-                    Some(v) => match v {
-                        Op::End => {}
-                        _ => self.state = Status::Running,
-                    },
-                    None => {}
-                };
-            } else {
-                self.state = Status::DirectErrors;
-            }
-        } else {
-            self.source.insert(line.number(), line);
-            self.dirty = true;
-        };
-    }
-
-    pub fn is_stopped(&self) -> bool {
-        self.state == Status::Stopped
-    }
-
-    pub fn interrupt(&mut self) {
-        self.state = Status::Interrupt;
-    }
-
     pub fn execute(&mut self, iterations: usize) -> Event {
         fn adj(pc: Address) -> Address {
             if pc > 0 {
@@ -150,7 +154,7 @@ impl Runtime {
         match &self.state {
             Status::Listing(range) => {
                 let mut range = range.clone();
-                if let Some((string, columns)) = self.line(&mut range) {
+                if let Some((string, columns)) = self.list_line(&mut range) {
                     self.state = Status::Listing(range);
                     return Event::List((string, columns));
                 } else {
@@ -165,12 +169,12 @@ impl Runtime {
             Status::Running => {}
             Status::DirectErrors => {
                 self.state = Status::Stopped;
-                return Event::Errors(Rc::clone(&self.direct_errors));
+                return Event::Errors(Arc::clone(&self.direct_errors));
             }
             Status::Interrupt => {
                 self.state = Status::Stopped;
                 let line_number = self.program.line_number_for(adj(self.pc));
-                return Event::Errors(Rc::new(vec![error!(Break, line_number)]));
+                return Event::Errors(Arc::new(vec![error!(Break, line_number)]));
             }
         }
         match self.execute_loop(iterations) {
@@ -178,8 +182,8 @@ impl Runtime {
             Err(error) => {
                 self.state = Status::Stopped;
                 let line_number = self.program.line_number_for(adj(self.pc));
-                Rc::make_mut(&mut self.errors).push(error.in_line_number(line_number));
-                Event::Errors(Rc::clone(&self.errors))
+                Arc::make_mut(&mut self.errors).push(error.in_line_number(line_number));
+                Event::Errors(Arc::clone(&self.errors))
             }
         }
     }
@@ -215,7 +219,7 @@ impl Runtime {
                 Op::Run => {
                     if has_indirect_errors {
                         self.state = Status::Stopped;
-                        return Ok(Event::Errors(Rc::clone(&self.indirect_errors)));
+                        return Ok(Event::Errors(Arc::clone(&self.indirect_errors)));
                     }
                     self.stack.clear();
                     self.vars.clear();
@@ -225,7 +229,7 @@ impl Runtime {
                     self.pc = *addr;
                     if has_indirect_errors && self.pc < self.direct {
                         self.state = Status::Stopped;
-                        return Ok(Event::Errors(Rc::clone(&self.indirect_errors)));
+                        return Ok(Event::Errors(Arc::clone(&self.indirect_errors)));
                     }
                 }
                 Op::End => {
