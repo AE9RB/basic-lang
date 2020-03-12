@@ -159,9 +159,16 @@ impl<'a> Parser<'a> {
                     return Ok(Some(num));
                 }
             }
-            return Err(error!(UndefinedLine; "INVALID LINE NUMBER"));
+            return Err(error!(UndefinedLine, ..&self.col; "INVALID LINE NUMBER"));
         }
         Ok(None)
+    }
+
+    fn expect_line_number(&mut self) -> Result<Expression> {
+        match self.maybe_line_number()? {
+            Some(num) => Ok(Expression::Single(self.col.clone(), num as f32)),
+            None => Err(error!(SyntaxError, ..&self.col; "EXPECTED LINE NUMBER")),
+        }
     }
 
     fn expect_line_number_range(&mut self) -> Result<(Expression, Expression)> {
@@ -372,7 +379,7 @@ impl Statement {
     fn r#goto(parse: &mut Parser) -> Result<Statement> {
         Ok(Statement::Goto(
             parse.col.clone(),
-            parse.expect_expression()?,
+            parse.expect_line_number()?,
         ))
     }
 

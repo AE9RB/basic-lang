@@ -171,7 +171,10 @@ impl std::fmt::Display for Error {
             suffix.push_str(&format!(" {}", line_number));
         }
         if (0..0) != self.column {
-            suffix.push_str(&format!(" ({}..{})", self.column.start, self.column.end));
+            if suffix.is_empty() {
+                suffix.push(' ');
+            }
+            suffix.push_str(&format!(":{}", self.column.start + 1));
         }
         if !suffix.is_empty() {
             suffix.insert_str(0, " IN");

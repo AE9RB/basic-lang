@@ -23,6 +23,10 @@ impl Line {
         self.number.is_none()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.tokens.is_empty()
+    }
+
     pub fn ast(&self) -> Result<Vec<ast::Statement>, Error> {
         parse(self.number, &self.tokens)
     }

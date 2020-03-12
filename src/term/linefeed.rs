@@ -58,8 +58,8 @@ fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
             Event::PrintLn(s) => {
                 interface.write_fmt(format_args!("{}\n", s))?;
             }
-            Event::List((s, _columns)) => {
-                interface.write_fmt(format_args!("{}\n", s))?;
+            Event::List((s, columns)) => {
+                interface.write_fmt(format_args!("{}\n", list(&s, &columns)))?;
             }
         }
     }
@@ -95,4 +95,38 @@ impl<'a, Term: Terminal> Completer<Term> for LineCompleter {
         }
         None
     }
+}
+
+
+fn list(ins: &str, columns: &Vec<std::ops::Range<usize>>) -> String {
+    let mut under_on = false;
+    let mut out = String::new();
+    let style = Style::new().underline();
+    let prefix = format!("{}", style.prefix());
+    let suffix = format!("{}", style.suffix());
+    let mut index = 0;
+    for char in ins.chars() {
+        let do_under = columns.iter().any(|c|c.contains(&index));
+        if under_on {
+            if !do_under {
+                out.push_str(&suffix);
+            }
+        } else {
+            if do_under {
+                out.push_str(&prefix);
+            }
+        }
+        under_on = do_under;
+        out.push(char);
+        index += 1;
+    }
+    if columns.iter().any(|c|c.start == index) {
+        under_on = true;
+        out.push_str(&prefix);
+        out.push(' ');
+    }
+    if under_on {
+        out.push_str(&suffix);
+    }
+    out
 }

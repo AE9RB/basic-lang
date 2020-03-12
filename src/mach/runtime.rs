@@ -84,8 +84,14 @@ impl Runtime {
                 true
             }
         } else {
-            self.source.insert(line.number(), line);
-            self.dirty = true;
+            if line.is_empty() {
+                if self.source.remove(&line.number()).is_some() {
+                    self.dirty = true;
+                }
+            }else {
+                self.source.insert(line.number(), line);
+                self.dirty = true;
+            }
             false
         }
     }
