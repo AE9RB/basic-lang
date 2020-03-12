@@ -36,12 +36,13 @@ fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
                 if print_ready {
                     interface.write_fmt(format_args!("READY.\n"))?;
                 }
+                let saved_completer = interface.completer();
                 interface.set_completer(Arc::new(LineCompleter::new(Arc::clone(&runtime))));
                 let input = match interface.read_line()? {
                     ReadResult::Input(input) => input,
                     ReadResult::Signal(_) | ReadResult::Eof => break,
                 };
-                interface.set_completer(Arc::new(NullCompleter));
+                interface.set_completer(saved_completer);
                 print_ready = Arc::get_mut(&mut runtime).unwrap().enter(&input);
                 if print_ready {
                     interface.add_history_unique(input);
@@ -63,14 +64,6 @@ fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
         }
     }
     Ok(())
-}
-
-struct NullCompleter;
-
-impl<'a, Term: Terminal> Completer<Term> for NullCompleter {
-    fn complete(&self, _: &str, _: &Prompter<Term>, _: usize, _: usize) -> Option<Vec<Completion>> {
-        None
-    }
 }
 
 struct LineCompleter {
