@@ -5,14 +5,14 @@ use std::convert::TryFrom;
 
 type Result<T> = std::result::Result<T, Error>;
 
-/// ## Runtime stack values
+/// ## Runtime values for stack and variables
 
 #[derive(Debug, Clone)]
 pub enum Val {
     String(String),
-    Integer(i16),
     Single(f32),
     Double(f64),
+    Integer(i16),
     Char(char),
     Return(Address),
 }
@@ -137,6 +137,54 @@ impl TryFrom<Val> for u16 {
                     Err(error!(Overflow))
                 }
             }
+            Val::Char(_) | Val::String(_) | Val::Return(_) => Err(error!(TypeMismatch)),
+        }
+    }
+}
+
+impl TryFrom<Val> for i16 {
+    type Error = Error;
+    fn try_from(val: Val) -> std::result::Result<Self, Self::Error> {
+        match val {
+            Val::Integer(i) => Ok(i),
+            Val::Single(f) => {
+                if f >= i16::min_value() as f32 && f <= i16::max_value() as f32 {
+                    Ok(f as i16)
+                } else {
+                    Err(error!(Overflow))
+                }
+            }
+            Val::Double(d) => {
+                if d >= i16::min_value() as f64 && d <= i16::max_value() as f64 {
+                    Ok(d as i16)
+                } else {
+                    Err(error!(Overflow))
+                }
+            }
+            Val::Char(_) | Val::String(_) | Val::Return(_) => Err(error!(TypeMismatch)),
+        }
+    }
+}
+
+impl TryFrom<Val> for f32 {
+    type Error = Error;
+    fn try_from(val: Val) -> std::result::Result<Self, Self::Error> {
+        match val {
+            Val::Integer(i) => Ok(i as f32),
+            Val::Single(f) => Ok(f),
+            Val::Double(d) => Ok(d as f32),
+            Val::Char(_) | Val::String(_) | Val::Return(_) => Err(error!(TypeMismatch)),
+        }
+    }
+}
+
+impl TryFrom<Val> for f64 {
+    type Error = Error;
+    fn try_from(val: Val) -> std::result::Result<Self, Self::Error> {
+        match val {
+            Val::Integer(i) => Ok(i as f64),
+            Val::Single(f) => Ok(f as f64),
+            Val::Double(d) => Ok(d),
             Val::Char(_) | Val::String(_) | Val::Return(_) => Err(error!(TypeMismatch)),
         }
     }

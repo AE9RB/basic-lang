@@ -14,6 +14,7 @@ mod program;
 mod runtime;
 mod stack;
 mod val;
+mod var;
 
 pub use op::Op;
 pub use program::Program;
@@ -21,3 +22,4 @@ pub use runtime::Event;
 pub use runtime::Runtime;
 pub use stack::Stack;
 pub use val::Val;
+pub use var::Var;

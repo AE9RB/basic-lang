@@ -343,7 +343,13 @@ impl Expression {
             Literal::Single(s) => Ok(Expression::Single(col.clone(), parse(col, s)?)),
             Literal::Double(s) => Ok(Expression::Double(col.clone(), parse(col, s)?)),
             Literal::Integer(s) => Ok(Expression::Integer(col.clone(), parse(col, s)?)),
-            Literal::String(s) => Ok(Expression::String(col, s.to_string())),
+            Literal::String(s) => {
+                if s.chars().count() > 255 {
+                    Err(error!(OutOfStringSpace, ..&col; "MAXIMUM LITERAL LENGTH IS 255"))
+                } else {
+                    Ok(Expression::String(col, s.to_string()))
+                }
+            }
         }
     }
 }

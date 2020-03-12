@@ -106,6 +106,7 @@ pub enum ErrorCode {
     OutOfMemory = 7,
     UndefinedLine = 8,
     TypeMismatch = 13,
+    OutOfStringSpace = 14,
     InternalError = 51,
 }
 

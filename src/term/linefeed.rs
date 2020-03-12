@@ -24,7 +24,6 @@ pub fn main() {
 fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
     let interface = Interface::new("BASIC")?;
     let mut runtime = Arc::new(Runtime::new());
-    let mut print_ready = true;
 
     loop {
         if interrupted.load(Ordering::SeqCst) {
@@ -33,9 +32,6 @@ fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
         };
         match Arc::get_mut(&mut runtime).unwrap().execute(5000) {
             Event::Stopped => {
-                if print_ready {
-                    interface.write_fmt(format_args!("READY.\n"))?;
-                }
                 let saved_completer = interface.completer();
                 interface.set_completer(Arc::new(LineCompleter::new(Arc::clone(&runtime))));
                 let input = match interface.read_line()? {
@@ -43,8 +39,7 @@ fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
                     ReadResult::Signal(_) | ReadResult::Eof => break,
                 };
                 interface.set_completer(saved_completer);
-                print_ready = Arc::get_mut(&mut runtime).unwrap().enter(&input);
-                if print_ready {
+                if Arc::get_mut(&mut runtime).unwrap().enter(&input) {
                     interface.add_history_unique(input);
                 }
             }
@@ -97,7 +92,6 @@ impl<'a, Term: Terminal> Completer<Term> for LineCompleter {
     }
 }
 
-
 fn list(ins: &str, columns: &Vec<std::ops::Range<usize>>) -> String {
     let mut under_on = false;
     let mut out = String::new();
@@ -106,7 +100,7 @@ fn list(ins: &str, columns: &Vec<std::ops::Range<usize>>) -> String {
     let suffix = format!("{}", style.suffix());
     let mut index = 0;
     for char in ins.chars() {
-        let do_under = columns.iter().any(|c|c.contains(&index));
+        let do_under = columns.iter().any(|c| c.contains(&index));
         if under_on {
             if !do_under {
                 out.push_str(&suffix);
@@ -120,7 +114,7 @@ fn list(ins: &str, columns: &Vec<std::ops::Range<usize>>) -> String {
         out.push(char);
         index += 1;
     }
-    if columns.iter().any(|c|c.start == index) {
+    if columns.iter().any(|c| c.start == index) {
         under_on = true;
         out.push_str(&prefix);
         out.push(' ');

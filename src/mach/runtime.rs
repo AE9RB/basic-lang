@@ -1,11 +1,15 @@
-use super::{Address, Op, Program, Stack, Val};
+use super::{Address, Op, Program, Stack, Val, Var};
 use crate::error;
 use crate::lang::{Column, Error, Line, LineNumber, MaxValue};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::convert::TryFrom;
+use std::ops::Range;
 use std::sync::Arc;
 
 type Result<T> = std::result::Result<T, Error>;
+
+const INTRO: &str = "64K BASIC";
+const READY: &str = "READY.";
 
 /// ## Virtual machine
 
@@ -14,12 +18,12 @@ pub struct Runtime {
     dirty: bool,
     program: Program,
     pc: Address,
-    direct: Address,
+    entry_address: Address,
     indirect_errors: Arc<Vec<Error>>,
     direct_errors: Arc<Vec<Error>>,
     errors: Arc<Vec<Error>>,
     stack: Stack<Val>,
-    vars: HashMap<String, Val>,
+    vars: Var,
     state: Status,
 }
 
@@ -28,7 +32,7 @@ pub struct Runtime {
 pub enum Event {
     Errors(Arc<Vec<Error>>),
     PrintLn(String),
-    List((String, Vec<std::ops::Range<usize>>)),
+    List((String, Vec<Range<usize>>)),
     Stopped,
     Running,
 }
@@ -37,7 +41,7 @@ pub enum Event {
 enum Status {
     Intro,
     Stopped,
-    Listing(std::ops::Range<LineNumber>),
+    Listing(Range<LineNumber>),
     Running,
     DirectErrors,
     Interrupt,
@@ -50,12 +54,12 @@ impl Runtime {
             dirty: false,
             program: Program::new(),
             pc: 0,
-            direct: 0,
+            entry_address: 1,
             indirect_errors: Arc::new(vec![]),
             direct_errors: Arc::new(vec![]),
             errors: Arc::new(vec![]),
             stack: Stack::new("STACK OVERFLOW"),
-            vars: HashMap::new(),
+            vars: Var::new(),
             state: Status::Intro,
         }
     }
@@ -72,23 +76,26 @@ impl Runtime {
             self.program.compile(&line);
             let (pc, indirect_errors, direct_errors) = self.program.link();
             self.pc = pc;
-            self.direct = pc;
+            self.entry_address = pc;
             self.indirect_errors = indirect_errors;
             self.direct_errors = direct_errors;
             self.errors = Arc::new(vec![]);
             if self.direct_errors.is_empty() {
-                self.state = Status::Running;
-                self.direct + 1 < self.program.ops().len()
+                if self.entry_address + 1 < self.program.ops().len() {
+                    self.state = Status::Running;
+                    true
+                } else {
+                    self.entry_address = 0;
+                    false
+                }
             } else {
                 self.state = Status::DirectErrors;
                 true
             }
         } else {
             if line.is_empty() {
-                if self.source.remove(&line.number()).is_some() {
-                    self.dirty = true;
-                }
-            }else {
+                self.dirty = self.source.remove(&line.number()).is_some();
+            } else {
                 self.source.insert(line.number(), line);
                 self.dirty = true;
             }
@@ -100,7 +107,7 @@ impl Runtime {
         self.state = Status::Interrupt;
     }
 
-    pub fn line(&self, num: usize) -> Option<(String, Vec<std::ops::Range<usize>>)> {
+    pub fn line(&self, num: usize) -> Option<(String, Vec<Range<usize>>)> {
         if num > LineNumber::max_value() as usize {
             return None;
         }
@@ -108,10 +115,7 @@ impl Runtime {
         self.list_line(&mut range)
     }
 
-    fn list_line(
-        &self,
-        range: &mut std::ops::Range<LineNumber>,
-    ) -> Option<(String, Vec<std::ops::Range<usize>>)> {
+    fn list_line(&self, range: &mut Range<LineNumber>) -> Option<(String, Vec<Range<usize>>)> {
         let mut source_range = self.source.range(range.start..=range.end);
         if let Some((line_number, line)) = source_range.next() {
             if line_number < &range.end {
@@ -158,21 +162,22 @@ impl Runtime {
             }
         }
         match &self.state {
-            Status::Listing(range) => {
-                let mut range = range.clone();
-                if let Some((string, columns)) = self.list_line(&mut range) {
-                    self.state = Status::Listing(range);
-                    return Event::List((string, columns));
-                } else {
-                    self.state = Status::Running;
-                }
-            }
             Status::Intro => {
                 self.state = Status::Stopped;
-                return Event::PrintLn("64K BASIC SYSTEM".to_string());
+                let mut s = INTRO.to_string();
+                if let Some(version) = option_env!("CARGO_PKG_VERSION") {
+                    s.push(' ');
+                    s.push_str(version);
+                }
+                return Event::PrintLn(s);
             }
-            Status::Stopped => return Event::Stopped,
-            Status::Running => {}
+            Status::Stopped => {
+                if self.entry_address != 0 {
+                    self.entry_address = 0;
+                    return Event::PrintLn(READY.to_string());
+                }
+                return Event::Stopped;
+            }
             Status::DirectErrors => {
                 self.state = Status::Stopped;
                 return Event::Errors(Arc::clone(&self.direct_errors));
@@ -182,9 +187,26 @@ impl Runtime {
                 let line_number = self.program.line_number_for(adj(self.pc));
                 return Event::Errors(Arc::new(vec![error!(Break, line_number)]));
             }
+            Status::Listing(range) => {
+                let mut range = range.clone();
+                if let Some((string, columns)) = self.list_line(&mut range) {
+                    self.state = Status::Listing(range);
+                    return Event::List((string, columns));
+                } else {
+                    self.state = Status::Running;
+                }
+            }
+            Status::Running => {}
         }
         match self.execute_loop(iterations) {
-            Ok(event) => event,
+            Ok(event) => {
+                if self.state == Status::Stopped {
+                    self.entry_address = 0;
+                    Event::PrintLn(READY.to_string())
+                } else {
+                    event
+                }
+            }
             Err(error) => {
                 self.state = Status::Stopped;
                 let line_number = self.program.line_number_for(adj(self.pc));
@@ -204,23 +226,11 @@ impl Runtime {
             self.pc += 1;
             match op {
                 Op::Literal(val) => self.stack.push(val.clone())?,
+                Op::Pop(var_name) => {
+                    self.vars.store(var_name, self.stack.pop()?)?;
+                }
                 Op::Push(var_name) => {
-                    self.stack.push(match self.vars.get(var_name) {
-                        Some(val) => val.clone(),
-                        None => {
-                            if var_name.ends_with("$") {
-                                Val::String("".to_string())
-                            } else if var_name.ends_with("!") {
-                                Val::Single(0.0)
-                            } else if var_name.ends_with("#") {
-                                Val::Double(0.0)
-                            } else if var_name.ends_with("%") {
-                                Val::Integer(0)
-                            } else {
-                                Val::Single(0.0)
-                            }
-                        }
-                    })?;
+                    self.stack.push(self.vars.fetch(var_name))?;
                 }
                 Op::Run => {
                     if has_indirect_errors {
@@ -233,7 +243,7 @@ impl Runtime {
                 }
                 Op::Jump(addr) => {
                     self.pc = *addr;
-                    if has_indirect_errors && self.pc < self.direct {
+                    if has_indirect_errors && self.pc < self.entry_address {
                         self.state = Status::Stopped;
                         return Ok(Event::Errors(Arc::clone(&self.indirect_errors)));
                     }
