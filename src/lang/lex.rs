@@ -16,24 +16,35 @@ pub fn lex(s: &str) -> (LineNumber, Vec<Token>) {
 
 fn collapse_lt_gt_equal(tokens: &mut Vec<Token>) {
     let mut locs: Vec<(usize, Token)> = vec![];
-    for (index, tt) in tokens.windows(2).enumerate() {
+    let mut tokens_iter = tokens.windows(2).enumerate();
+    while let Some((index,tt)) = tokens_iter.next() {
         if tt[0] == Token::Operator(Operator::Equal) {
             if tt[1] == Token::Operator(Operator::Greater) {
-                locs.push((index, Token::Operator(Operator::GreaterEqual)));
+                locs.push((index, Token::Operator(Operator::EqualGreater)));
+                tokens_iter.next();
             }
             if tt[1] == Token::Operator(Operator::Less) {
-                locs.push((index, Token::Operator(Operator::LessEqual)));
+                locs.push((index, Token::Operator(Operator::EqualLess)));
+                tokens_iter.next();
             }
         }
         if tt[1] == Token::Operator(Operator::Equal) {
             if tt[0] == Token::Operator(Operator::Greater) {
                 locs.push((index, Token::Operator(Operator::GreaterEqual)));
+                tokens_iter.next();
             }
             if tt[0] == Token::Operator(Operator::Less) {
                 locs.push((index, Token::Operator(Operator::LessEqual)));
+                tokens_iter.next();
             }
         }
-    }
+        if tt[0] == Token::Operator(Operator::Less) {
+            if tt[1] == Token::Operator(Operator::Greater) {
+                locs.push((index, Token::Operator(Operator::NotEqual)));
+                tokens_iter.next();
+            }
+        }
+    };
     while let Some((index, token)) = locs.pop() {
         tokens.splice(index..index + 2, Some(token));
     }
@@ -377,14 +388,16 @@ mod tests {
 
     #[test]
     fn test_eq_gt() {
-        let (ln, v) = lex("10 1=>2");
+        let (ln, v) = lex("10 1=<>=<>2");
         assert_eq!(ln, Some(10));
         let mut x = v.iter();
         assert_eq!(
             x.next(),
             Some(&Token::Literal(Literal::Integer("1".to_string())))
         );
+        assert_eq!(x.next(), Some(&Token::Operator(Operator::EqualLess)));
         assert_eq!(x.next(), Some(&Token::Operator(Operator::GreaterEqual)));
+        assert_eq!(x.next(), Some(&Token::Operator(Operator::NotEqual)));
         assert_eq!(
             x.next(),
             Some(&Token::Literal(Literal::Integer("2".to_string())))

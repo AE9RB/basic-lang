@@ -46,7 +46,7 @@ fn main_loop(interrupted: Arc<AtomicBool>) {
             }
             Event::Errors(errors) => {
                 for error in errors.iter() {
-                    println!("?{}", error);
+                    println!("{}", error);
                 }
             }
             Event::PrintLn(s) => {

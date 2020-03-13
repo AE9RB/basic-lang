@@ -191,9 +191,9 @@ impl std::fmt::Display for Error {
             suffix.push_str(&format!("; {}", self.message));
         }
         if code_str.is_empty() {
-            write!(f, "PROGRAM ERROR {}{}", self.code, suffix)
+            write!(f, "?PROGRAM ERROR {}{}", self.code, suffix)
         } else {
-            write!(f, "{}{}", code_str, suffix)
+            write!(f, "?{}{}", code_str, suffix)
         }
     }
 }

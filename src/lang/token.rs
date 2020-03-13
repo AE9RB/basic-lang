@@ -165,8 +165,10 @@ pub enum Operator {
     NotEqual,
     Less,
     LessEqual,
+    EqualLess,
     Greater,
     GreaterEqual,
+    EqualGreater,
     Not,
     And,
     Or,
@@ -180,7 +182,7 @@ impl Operator {
         use Operator::*;
         match self {
             Caret | Multiply | Divide | DivideInt | Plus | Minus | Equal | NotEqual | Less
-            | LessEqual | Greater | GreaterEqual => false,
+            | LessEqual | EqualLess | Greater | GreaterEqual | EqualGreater => false,
             Modulus | Not | And | Or | Xor | Imp | Eqv => true,
         }
     }
@@ -201,8 +203,10 @@ impl std::fmt::Display for Operator {
             NotEqual => write!(f, "<>"),
             Less => write!(f, "<"),
             LessEqual => write!(f, "<="),
+            EqualLess => write!(f, "=<"),
             Greater => write!(f, ">"),
             GreaterEqual => write!(f, ">="),
+            EqualGreater => write!(f, "=>"),
             Not => write!(f, "NOT"),
             And => write!(f, "AND"),
             Or => write!(f, "OR"),

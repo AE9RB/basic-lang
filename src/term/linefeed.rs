@@ -45,7 +45,7 @@ fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
             }
             Event::Errors(errors) => {
                 for error in errors.iter() {
-                    let error = format!("?{}", error);
+                    let error = format!("{}", error);
                     interface.write_fmt(format_args!("{}\n", Style::new().bold().paint(error)))?;
                 }
             }
