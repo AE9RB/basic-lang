@@ -20,12 +20,6 @@ pub enum Op {
     Pop(String),
 
     // *** Branch control
-    /// Expects Next(Address) on stack or else error: NEXT WITHOUT FOR.
-    /// Then pops variable ident, step value, and to value.
-    /// if wrong variable, repeat; to break out of a loop.
-    /// Modify the variable using the step then check for end.
-    /// If not done, push it all back on stack and jump to Address.
-    Next(String),
     /// Pop stack and branch to Address if not zero.
     If(Address),
     /// Unconditional branch to Address.
@@ -46,11 +40,7 @@ pub enum Op {
     Sub,
     Mul,
     Div,
-
     // *** Built-in functions
-    Sin,
-    Cos,
-    StrS,
 }
 
 impl std::fmt::Debug for Op {
@@ -66,7 +56,6 @@ impl std::fmt::Display for Op {
             Literal(v) => write!(f, "{}", format!("{:?}", v).to_ascii_uppercase()),
             Push(s) => write!(f, "PUSH({})", s),
             Pop(s) => write!(f, "POP({})", s),
-            Next(s) => write!(f, "NEXT({})", s),
             If(a) => write!(f, "IF({})", a),
             Jump(a) => write!(f, "JUMP({})", a),
             Return => write!(f, "RETURN"),
@@ -79,9 +68,6 @@ impl std::fmt::Display for Op {
             Sub => write!(f, "SUB"),
             Mul => write!(f, "MUL"),
             Div => write!(f, "DIV"),
-            Sin => write!(f, "SIN"),
-            Cos => write!(f, "COS"),
-            StrS => write!(f, "STR$"),
         }
     }
 }

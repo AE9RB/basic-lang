@@ -37,7 +37,7 @@ pub enum Event {
     Running,
 }
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 enum Status {
     Intro,
     Stopped,
@@ -64,6 +64,9 @@ impl Runtime {
         }
     }
 
+    /// Enters a line of BASIC.
+    /// Returns true if it was a non-blank direct line.
+    /// Return value is useful for command history.
     pub fn enter(&mut self, s: &str) -> bool {
         let line = Line::new(s);
         if line.is_direct() {
@@ -81,12 +84,12 @@ impl Runtime {
             self.direct_errors = direct_errors;
             self.errors = Arc::new(vec![]);
             if self.direct_errors.is_empty() {
-                if self.entry_address + 1 < self.program.ops().len() {
-                    self.state = Status::Running;
-                    true
-                } else {
+                if s.trim().len() == 0 {
                     self.entry_address = 0;
                     false
+                } else {
+                    self.state = Status::Running;
+                    true
                 }
             } else {
                 self.state = Status::DirectErrors;
@@ -154,7 +157,7 @@ impl Runtime {
     }
 
     pub fn execute(&mut self, iterations: usize) -> Event {
-        fn adj(pc: Address) -> Address {
+        fn prev_pc(pc: Address) -> Address {
             if pc > 0 {
                 pc - 1
             } else {
@@ -169,6 +172,8 @@ impl Runtime {
                     s.push(' ');
                     s.push_str(version);
                 }
+                #[cfg(debug_assertions)]
+                s.push_str("+debug");
                 return Event::PrintLn(s);
             }
             Status::Stopped => {
@@ -184,7 +189,7 @@ impl Runtime {
             }
             Status::Interrupt => {
                 self.state = Status::Stopped;
-                let line_number = self.program.line_number_for(adj(self.pc));
+                let line_number = self.program.line_number_for(prev_pc(self.pc));
                 return Event::Errors(Arc::new(vec![error!(Break, line_number)]));
             }
             Status::Listing(range) => {
@@ -198,18 +203,24 @@ impl Runtime {
             }
             Status::Running => {}
         }
+        debug_assert_eq!(self.state, Status::Running);
         match self.execute_loop(iterations) {
             Ok(event) => {
                 if self.state == Status::Stopped {
-                    self.entry_address = 0;
-                    Event::PrintLn(READY.to_string())
+                    match event {
+                        Event::Stopped => {
+                            self.entry_address = 0;
+                            Event::PrintLn(READY.to_string())
+                        }
+                        _ => event,
+                    }
                 } else {
                     event
                 }
             }
             Err(error) => {
                 self.state = Status::Stopped;
-                let line_number = self.program.line_number_for(adj(self.pc));
+                let line_number = self.program.line_number_for(prev_pc(self.pc));
                 Arc::make_mut(&mut self.errors).push(error.in_line_number(line_number));
                 Event::Errors(Arc::clone(&self.errors))
             }
@@ -253,28 +264,31 @@ impl Runtime {
                     self.state = Status::Stopped;
                     return Ok(Event::Stopped);
                 }
+                Op::Mul => self.pop_2_op(&Val::multiply)?,
+                Op::Div => self.pop_2_op(&Val::divide)?,
+                Op::Add => self.pop_2_op(&Val::add)?,
+                Op::Sub => self.pop_2_op(&Val::subtract)?,
                 Op::Neg => self.r#neg()?,
-                Op::Add => self.r#add()?,
                 Op::List => return self.r#list(),
                 Op::Print => self.r#print()?,
-                _ => {
-                    dbg!(&op);
-                    return Err(error!(InternalError; "OP NOT YET RUNNING; PANIC"));
+                Op::If(_) => return Err(error!(InternalError; "'IF' NOT YET IMPLEMENTED; PANIC")),
+                Op::Return => {
+                    return Err(error!(InternalError; "'RETURN' NOT YET IMPLEMENTED; PANIC"))
                 }
             }
         }
         Ok(Event::Running)
     }
 
-    fn r#neg(&mut self) -> Result<()> {
-        let val = self.stack.pop()?;
-        self.stack.push(Val::neg(val)?)?;
+    fn pop_2_op<T: Fn(Val, Val) -> Result<Val>>(&mut self, func: &T) -> Result<()> {
+        let (lhs, rhs) = self.stack.pop_2()?;
+        self.stack.push(func(lhs, rhs)?)?;
         Ok(())
     }
 
-    fn r#add(&mut self) -> Result<()> {
-        let (lhs, rhs) = self.stack.pop_2()?;
-        self.stack.push(Val::add(lhs, rhs)?)?;
+    fn r#neg(&mut self) -> Result<()> {
+        let val = self.stack.pop()?;
+        self.stack.push(Val::neg(val)?)?;
         Ok(())
     }
 

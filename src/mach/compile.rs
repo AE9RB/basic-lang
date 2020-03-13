@@ -106,10 +106,10 @@ impl Compiler {
                 prog.push(Op::Neg)?;
                 Ok(col.start..expr_col.end)
             }
-            Expression::Add(..) => binary_expression(self, prog, Op::Add),
-            Expression::Subtract(..) => binary_expression(self, prog, Op::Sub),
             Expression::Multiply(..) => binary_expression(self, prog, Op::Mul),
             Expression::Divide(..) => binary_expression(self, prog, Op::Div),
+            Expression::Add(..) => binary_expression(self, prog, Op::Add),
+            Expression::Subtract(..) => binary_expression(self, prog, Op::Sub),
             _ => {
                 dbg!(expr);
                 Err(error!(InternalError; "EXPRESSION NOT YET COMPILING; PANIC"))

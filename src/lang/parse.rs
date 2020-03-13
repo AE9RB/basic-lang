@@ -284,12 +284,11 @@ impl Expression {
     ) -> Result<Expression> {
         use Operator::*;
         Ok(match op {
-            Plus => Expression::Add(col, Box::new(lhs), Box::new(rhs)),
-            Minus => Expression::Subtract(col, Box::new(lhs), Box::new(rhs)),
             Multiply => Expression::Multiply(col, Box::new(lhs), Box::new(rhs)),
             Divide => Expression::Divide(col, Box::new(lhs), Box::new(rhs)),
+            Plus => Expression::Add(col, Box::new(lhs), Box::new(rhs)),
+            Minus => Expression::Subtract(col, Box::new(lhs), Box::new(rhs)),
             _ => {
-                dbg!(&op);
                 return Err(error!(InternalError, ..&col; "OPERATOR NOT YET PARSING; PANIC"));
             }
         })
@@ -363,18 +362,16 @@ impl Statement {
                 use Word::*;
                 match word {
                     Goto1 | Goto2 => return Self::r#goto(parse),
-                    List => return Self::r#list(parse),
                     Let => return Self::r#let(parse),
+                    List => return Self::r#list(parse),
                     Print1 | Print2 => return Self::r#print(parse),
                     Run => return Self::r#run(parse),
-                    Data | Def | Dim | End | For | Gosub1 | Gosub2 | If | Input | Next | On
-                    | Read | Restore | Return | Stop => {
-                        dbg!(&word);
+                    End | For | Gosub1 | Gosub2 => {
                         return Err(
                             error!(InternalError, ..&parse.col; "STATEMENT NOT YET PARSING; PANIC"),
                         );
                     }
-                    Else | Rem1 | Rem2 | To | Then => {}
+                    Rem1 | Rem2 | To => {}
                 }
             }
             _ => {}

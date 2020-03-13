@@ -19,11 +19,11 @@ pub enum Expression {
     Char(Column, char),
     Var(Column, Ident),
     Function(Column, Ident, Vec<Expression>),
-    Negation(Column, Box<Expression>),
-    Add(Column, Box<Expression>, Box<Expression>),
-    Subtract(Column, Box<Expression>, Box<Expression>),
     Multiply(Column, Box<Expression>, Box<Expression>),
     Divide(Column, Box<Expression>, Box<Expression>),
+    Add(Column, Box<Expression>, Box<Expression>),
+    Subtract(Column, Box<Expression>, Box<Expression>),
+    Negation(Column, Box<Expression>),
 }
 
 pub trait Visitor {
