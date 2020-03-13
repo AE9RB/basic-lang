@@ -71,8 +71,8 @@ struct Compiler {
 impl Compiler {
     fn new() -> Compiler {
         Compiler {
-            ident: Stack::new("COMPILER IDENT STACK OVERFLOW"),
-            expr: Stack::new("COMPILER EXPRESSION STACK OVERFLOW"),
+            ident: Stack::new("COMPILER IDENT OVERFLOW"),
+            expr: Stack::new("COMPILER EXPRESSION OVERFLOW"),
         }
     }
 
@@ -100,20 +100,34 @@ impl Compiler {
                 let ident = self.ident.pop()?;
                 op(prog, col, Op::Push(ident))
             }
+            Expression::Function(col, ..) => {
+                Err(error!(InternalError, ..col; "FUNCTIONS NOT YET COMPILING; PANIC"))
+            }
             Expression::Negation(col, ..) => {
                 let (expr_col, mut ops) = self.expr.pop()?;
                 prog.append(&mut ops)?;
                 prog.push(Op::Neg)?;
                 Ok(col.start..expr_col.end)
             }
+            Expression::Exponentiation(..) => binary_expression(self, prog, Op::Exp),
             Expression::Multiply(..) => binary_expression(self, prog, Op::Mul),
             Expression::Divide(..) => binary_expression(self, prog, Op::Div),
+            Expression::DivideInt(..) => binary_expression(self, prog, Op::DivInt),
+            Expression::Modulus(..) => binary_expression(self, prog, Op::Mod),
             Expression::Add(..) => binary_expression(self, prog, Op::Add),
             Expression::Subtract(..) => binary_expression(self, prog, Op::Sub),
-            _ => {
-                dbg!(expr);
-                Err(error!(InternalError; "EXPRESSION NOT YET COMPILING; PANIC"))
-            }
+            Expression::Equal(..) => binary_expression(self, prog, Op::Eq),
+            Expression::NotEqual(..) => binary_expression(self, prog, Op::NotEq),
+            Expression::Less(..) => binary_expression(self, prog, Op::Lt),
+            Expression::LessEqual(..) => binary_expression(self, prog, Op::LtEq),
+            Expression::Greater(..) => binary_expression(self, prog, Op::Gt),
+            Expression::GreaterEqual(..) => binary_expression(self, prog, Op::GtEq),
+            Expression::Not(..) => binary_expression(self, prog, Op::Not),
+            Expression::And(..) => binary_expression(self, prog, Op::And),
+            Expression::Or(..) => binary_expression(self, prog, Op::Or),
+            Expression::Xor(..) => binary_expression(self, prog, Op::Xor),
+            Expression::Imp(..) => binary_expression(self, prog, Op::Imp),
+            Expression::Eqv(..) => binary_expression(self, prog, Op::Eqv),
         }
     }
 

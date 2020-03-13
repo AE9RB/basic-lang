@@ -284,13 +284,25 @@ impl Expression {
     ) -> Result<Expression> {
         use Operator::*;
         Ok(match op {
+            Caret => Expression::Exponentiation(col, Box::new(lhs), Box::new(rhs)),
             Multiply => Expression::Multiply(col, Box::new(lhs), Box::new(rhs)),
             Divide => Expression::Divide(col, Box::new(lhs), Box::new(rhs)),
+            DivideInt => Expression::DivideInt(col, Box::new(lhs), Box::new(rhs)),
+            Modulus => Expression::Modulus(col, Box::new(lhs), Box::new(rhs)),
             Plus => Expression::Add(col, Box::new(lhs), Box::new(rhs)),
             Minus => Expression::Subtract(col, Box::new(lhs), Box::new(rhs)),
-            _ => {
-                return Err(error!(InternalError, ..&col; "OPERATOR NOT YET PARSING; PANIC"));
-            }
+            Equal => Expression::Equal(col, Box::new(lhs), Box::new(rhs)),
+            NotEqual => Expression::NotEqual(col, Box::new(lhs), Box::new(rhs)),
+            Less => Expression::Less(col, Box::new(lhs), Box::new(rhs)),
+            LessEqual => Expression::LessEqual(col, Box::new(lhs), Box::new(rhs)),
+            Greater => Expression::Greater(col, Box::new(lhs), Box::new(rhs)),
+            GreaterEqual => Expression::GreaterEqual(col, Box::new(lhs), Box::new(rhs)),
+            Not => Expression::Not(col, Box::new(lhs), Box::new(rhs)),
+            And => Expression::And(col, Box::new(lhs), Box::new(rhs)),
+            Or => Expression::Or(col, Box::new(lhs), Box::new(rhs)),
+            Xor => Expression::Xor(col, Box::new(lhs), Box::new(rhs)),
+            Imp => Expression::Imp(col, Box::new(lhs), Box::new(rhs)),
+            Eqv => Expression::Eqv(col, Box::new(lhs), Box::new(rhs)),
         })
     }
 

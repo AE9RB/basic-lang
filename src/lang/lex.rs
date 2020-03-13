@@ -6,6 +6,7 @@ pub fn lex(s: &str) -> (LineNumber, Vec<Token>) {
     let line_number = take_line_number(&mut tokens);
     trim_end(&mut tokens);
     collapse_go(&mut tokens);
+    collapse_lt_gt_equal(&mut tokens);
     if line_number.is_some() {
         separate_words(&mut tokens);
         upgrade_tokens(&mut tokens);
@@ -13,23 +14,47 @@ pub fn lex(s: &str) -> (LineNumber, Vec<Token>) {
     (line_number, tokens)
 }
 
+fn collapse_lt_gt_equal(tokens: &mut Vec<Token>) {
+    let mut locs: Vec<(usize, Token)> = vec![];
+    for (index, tt) in tokens.windows(2).enumerate() {
+        if tt[0] == Token::Operator(Operator::Equal) {
+            if tt[1] == Token::Operator(Operator::Greater) {
+                locs.push((index, Token::Operator(Operator::GreaterEqual)));
+            }
+            if tt[1] == Token::Operator(Operator::Less) {
+                locs.push((index, Token::Operator(Operator::LessEqual)));
+            }
+        }
+        if tt[1] == Token::Operator(Operator::Equal) {
+            if tt[0] == Token::Operator(Operator::Greater) {
+                locs.push((index, Token::Operator(Operator::GreaterEqual)));
+            }
+            if tt[0] == Token::Operator(Operator::Less) {
+                locs.push((index, Token::Operator(Operator::LessEqual)));
+            }
+        }
+    }
+    while let Some((index, token)) = locs.pop() {
+        tokens.splice(index..index + 2, Some(token));
+    }
+}
+
 fn collapse_go(tokens: &mut Vec<Token>) {
-    let mut ins: Vec<(usize, Token)> = vec![];
+    let mut locs: Vec<(usize, Token)> = vec![];
     for (index, ttt) in tokens.windows(3).enumerate() {
         if ttt[0] == Token::Ident(Ident::Plain("GO".to_string())) {
             if let Token::Whitespace(_) = ttt[1] {
                 if ttt[2] == Token::Word(Word::To) {
-                    ins.push((index, Token::Word(Word::Goto2)));
+                    locs.push((index, Token::Word(Word::Goto2)));
                 }
                 if ttt[2] == Token::Ident(Ident::Plain("SUB".to_string())) {
-                    ins.push((index, Token::Word(Word::Gosub2)));
+                    locs.push((index, Token::Word(Word::Gosub2)));
                 }
             }
         }
     }
-    while let Some((index, ttt)) = ins.pop() {
-        tokens.drain(index..index + 3);
-        tokens.insert(index, ttt);
+    while let Some((index, token)) = locs.pop() {
+        tokens.splice(index..index + 3, Some(token));
     }
 }
 
@@ -348,6 +373,23 @@ mod tests {
         let (_, mut tokens) = lex(&s);
         let mut t = tokens.drain(1..2);
         t.next()
+    }
+
+    #[test]
+    fn test_eq_gt() {
+        let (ln, v) = lex("10 1=>2");
+        assert_eq!(ln, Some(10));
+        let mut x = v.iter();
+        assert_eq!(
+            x.next(),
+            Some(&Token::Literal(Literal::Integer("1".to_string())))
+        );
+        assert_eq!(x.next(), Some(&Token::Operator(Operator::GreaterEqual)));
+        assert_eq!(
+            x.next(),
+            Some(&Token::Literal(Literal::Integer("2".to_string())))
+        );
+        assert_eq!(x.next(), None);
     }
 
     #[test]

@@ -18,6 +18,20 @@ pub enum Val {
 }
 
 impl Val {
+    pub fn unimplemented(_lhs: Val, _rhs: Val) -> Result<Val> {
+        Err(error!(InternalError; "OP NOT IMPLEMENTED; PANIC"))
+    }
+
+    pub fn neg(val: Val) -> Result<Val> {
+        use Val::*;
+        match val {
+            Integer(l) => Ok(Integer(-l)),
+            Single(l) => Ok(Single(-l)),
+            Double(l) => Ok(Double(-l)),
+            String(_) | Char(_) | Return(_) => Err(error!(TypeMismatch)),
+        }
+    }
+
     pub fn multiply(lhs: Val, rhs: Val) -> Result<Val> {
         use Val::*;
         loop {
@@ -170,16 +184,6 @@ impl Val {
             };
         }
         Err(error!(TypeMismatch))
-    }
-
-    pub fn neg(val: Val) -> Result<Val> {
-        use Val::*;
-        match val {
-            Integer(l) => Ok(Integer(-l)),
-            Single(l) => Ok(Single(-l)),
-            Double(l) => Ok(Double(-l)),
-            String(_) | Char(_) | Return(_) => Err(error!(TypeMismatch)),
-        }
     }
 }
 

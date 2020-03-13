@@ -133,7 +133,7 @@ impl Runtime {
                 .indirect_errors
                 .iter()
                 .chain(self.direct_errors.iter().chain(self.errors.iter()));
-            let mut columns: Vec<Column> = iter
+            let columns: Vec<Column> = iter
                 .filter_map(|e| {
                     if e.line_number() == *line_number {
                         Some(e.column())
@@ -142,15 +142,6 @@ impl Runtime {
                     }
                 })
                 .collect();
-            match line_number {
-                Some(num) => {
-                    let offset = num.to_string().len() + 1;
-                    for column in &mut columns {
-                        *column = (column.start + offset)..(column.end + offset);
-                    }
-                }
-                None => {}
-            };
             return Some((line.to_string(), columns));
         }
         None
@@ -243,6 +234,19 @@ impl Runtime {
                 Op::Push(var_name) => {
                     self.stack.push(self.vars.fetch(var_name))?;
                 }
+                Op::If(_) => return Err(error!(InternalError; "'IF' NOT YET IMPLEMENTED; PANIC")),
+                Op::Jump(addr) => {
+                    self.pc = *addr;
+                    if has_indirect_errors && self.pc < self.entry_address {
+                        self.state = Status::Stopped;
+                        return Ok(Event::Errors(Arc::clone(&self.indirect_errors)));
+                    }
+                }
+                Op::Return => {
+                    return Err(error!(InternalError; "'RETURN' NOT YET IMPLEMENTED; PANIC"))
+                }
+
+                Op::List => return self.r#list(),
                 Op::Run => {
                     if has_indirect_errors {
                         self.state = Status::Stopped;
@@ -252,29 +256,33 @@ impl Runtime {
                     self.vars.clear();
                     self.pc = 0;
                 }
-                Op::Jump(addr) => {
-                    self.pc = *addr;
-                    if has_indirect_errors && self.pc < self.entry_address {
-                        self.state = Status::Stopped;
-                        return Ok(Event::Errors(Arc::clone(&self.indirect_errors)));
-                    }
-                }
                 Op::End => {
                     self.pc -= 1;
                     self.state = Status::Stopped;
                     return Ok(Event::Stopped);
                 }
+                Op::Print => self.r#print()?,
+
+                Op::Neg => self.r#negation()?,
+                Op::Exp => self.pop_2_op(&Val::unimplemented)?,
                 Op::Mul => self.pop_2_op(&Val::multiply)?,
                 Op::Div => self.pop_2_op(&Val::divide)?,
+                Op::DivInt => self.pop_2_op(&Val::unimplemented)?,
+                Op::Mod => self.pop_2_op(&Val::unimplemented)?,
                 Op::Add => self.pop_2_op(&Val::add)?,
                 Op::Sub => self.pop_2_op(&Val::subtract)?,
-                Op::Neg => self.r#neg()?,
-                Op::List => return self.r#list(),
-                Op::Print => self.r#print()?,
-                Op::If(_) => return Err(error!(InternalError; "'IF' NOT YET IMPLEMENTED; PANIC")),
-                Op::Return => {
-                    return Err(error!(InternalError; "'RETURN' NOT YET IMPLEMENTED; PANIC"))
-                }
+                Op::Eq => self.pop_2_op(&Val::unimplemented)?,
+                Op::NotEq => self.pop_2_op(&Val::unimplemented)?,
+                Op::Lt => self.pop_2_op(&Val::unimplemented)?,
+                Op::LtEq => self.pop_2_op(&Val::unimplemented)?,
+                Op::Gt => self.pop_2_op(&Val::unimplemented)?,
+                Op::GtEq => self.pop_2_op(&Val::unimplemented)?,
+                Op::Not => self.pop_2_op(&Val::unimplemented)?,
+                Op::And => self.pop_2_op(&Val::unimplemented)?,
+                Op::Or => self.pop_2_op(&Val::unimplemented)?,
+                Op::Xor => self.pop_2_op(&Val::unimplemented)?,
+                Op::Imp => self.pop_2_op(&Val::unimplemented)?,
+                Op::Eqv => self.pop_2_op(&Val::unimplemented)?,
             }
         }
         Ok(Event::Running)
@@ -286,7 +294,7 @@ impl Runtime {
         Ok(())
     }
 
-    fn r#neg(&mut self) -> Result<()> {
+    fn r#negation(&mut self) -> Result<()> {
         let val = self.stack.pop()?;
         self.stack.push(Val::neg(val)?)?;
         Ok(())

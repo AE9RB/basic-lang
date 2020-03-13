@@ -75,7 +75,13 @@ impl Error {
     }
 
     pub fn column(&self) -> Column {
-        self.column.clone()
+        match self.line_number {
+            Some(num) => {
+                let offset = num.to_string().len() + 1;
+                (self.column.start + offset)..(self.column.end + offset)
+            }
+            None => self.column.clone(),
+        }
     }
 
     pub fn in_column(&self, column: &Column) -> Error {
@@ -87,7 +93,7 @@ impl Error {
             message: self.message,
         }
     }
-
+    //10 PRINT A<=7
     pub fn message(&self, message: &'static str) -> Error {
         debug_assert_eq!(self.message.len(), 0);
         Error {
@@ -176,7 +182,7 @@ impl std::fmt::Display for Error {
             if suffix.is_empty() {
                 suffix.push(' ');
             }
-            suffix.push_str(&format!(":{}", self.column.start + 1));
+            suffix.push_str(&format!(":{}", self.column().start + 1));
         }
         if !suffix.is_empty() {
             suffix.insert_str(0, " IN");

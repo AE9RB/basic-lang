@@ -19,11 +19,26 @@ pub enum Expression {
     Char(Column, char),
     Var(Column, Ident),
     Function(Column, Ident, Vec<Expression>),
+    Negation(Column, Box<Expression>),
+    Exponentiation(Column, Box<Expression>, Box<Expression>),
     Multiply(Column, Box<Expression>, Box<Expression>),
     Divide(Column, Box<Expression>, Box<Expression>),
+    DivideInt(Column, Box<Expression>, Box<Expression>),
+    Modulus(Column, Box<Expression>, Box<Expression>),
     Add(Column, Box<Expression>, Box<Expression>),
     Subtract(Column, Box<Expression>, Box<Expression>),
-    Negation(Column, Box<Expression>),
+    Equal(Column, Box<Expression>, Box<Expression>),
+    NotEqual(Column, Box<Expression>, Box<Expression>),
+    Less(Column, Box<Expression>, Box<Expression>),
+    LessEqual(Column, Box<Expression>, Box<Expression>),
+    Greater(Column, Box<Expression>, Box<Expression>),
+    GreaterEqual(Column, Box<Expression>, Box<Expression>),
+    Not(Column, Box<Expression>, Box<Expression>),
+    And(Column, Box<Expression>, Box<Expression>),
+    Or(Column, Box<Expression>, Box<Expression>),
+    Xor(Column, Box<Expression>, Box<Expression>),
+    Imp(Column, Box<Expression>, Box<Expression>),
+    Eqv(Column, Box<Expression>, Box<Expression>),
 }
 
 pub trait Visitor {
@@ -83,10 +98,25 @@ impl AcceptVisitor for Expression {
                 }
             }
             Negation(_, expr) => expr.accept(visitor),
-            Add(_, expr1, expr2)
-            | Subtract(_, expr1, expr2)
+            Exponentiation(_, expr1, expr2)
             | Multiply(_, expr1, expr2)
-            | Divide(_, expr1, expr2) => {
+            | Divide(_, expr1, expr2)
+            | DivideInt(_, expr1, expr2)
+            | Modulus(_, expr1, expr2)
+            | Add(_, expr1, expr2)
+            | Subtract(_, expr1, expr2)
+            | Equal(_, expr1, expr2)
+            | NotEqual(_, expr1, expr2)
+            | Less(_, expr1, expr2)
+            | LessEqual(_, expr1, expr2)
+            | Greater(_, expr1, expr2)
+            | GreaterEqual(_, expr1, expr2)
+            | Not(_, expr1, expr2)
+            | And(_, expr1, expr2)
+            | Or(_, expr1, expr2)
+            | Xor(_, expr1, expr2)
+            | Imp(_, expr1, expr2)
+            | Eqv(_, expr1, expr2) => {
                 expr1.accept(visitor);
                 expr2.accept(visitor);
             }
