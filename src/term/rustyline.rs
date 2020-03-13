@@ -20,7 +20,6 @@ pub fn main() {
 fn main_loop(interrupted: Arc<AtomicBool>) {
     let mut editor = Editor::<()>::new();
     let mut runtime = Runtime::new();
-    let mut print_ready = true;
 
     loop {
         if interrupted.load(Ordering::SeqCst) {
@@ -28,17 +27,10 @@ fn main_loop(interrupted: Arc<AtomicBool>) {
             interrupted.store(false, Ordering::SeqCst);
         };
         match runtime.execute(5000) {
-            Event::PrintLn(s) => {
-                println!("{}",s);
-            }
             Event::Stopped => {
-                if print_ready {
-                    print_ready = false;
-                    println!("READY.");
-                }
                 match editor.readline("") {
                     Ok(input) => {
-                        runtime.enter(&input)
+                        runtime.enter(&input);
                     }
                     Err(ReadlineError::Interrupted) => {
                         //print!("^C");
@@ -53,10 +45,15 @@ fn main_loop(interrupted: Arc<AtomicBool>) {
                 }
             }
             Event::Errors(errors) => {
-                for error in errors {
+                for error in errors.iter() {
                     println!("?{}", error);
                 }
-                print_ready = true;
+            }
+            Event::PrintLn(s) => {
+                println!("{}",s);
+            }
+            Event::List((s, _columns)) => {
+                println!("{}", s);
             }
             Event::Running => {}
         }
