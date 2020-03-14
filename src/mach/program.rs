@@ -45,11 +45,12 @@ impl Program {
         self.ops.push(op)
     }
 
-    pub fn push_jump_to_line_number(
-        &mut self,
-        col: &Column,
-        line_number: LineNumber,
-    ) -> Result<(), Error> {
+    pub fn push_for(&mut self, col: &Column, ident: String) -> Result<(), Error> {
+        self.link.begin_for_loop(self.ops.len(), col, ident)?;
+        self.ops.push(Op::For(0))
+    }
+
+    pub fn push_goto(&mut self, col: &Column, line_number: LineNumber) -> Result<(), Error> {
         let sym = self.link.symbol_for_line_number(line_number)?;
         self.link.link_addr_to_symbol(self.ops.len(), col, sym);
         self.ops.push(Op::Jump(0))

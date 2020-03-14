@@ -12,6 +12,7 @@ pub struct Link {
     current_symbol: Symbol,
     symbols: BTreeMap<Symbol, Address>,
     unlinked: HashMap<Address, (Column, Symbol)>,
+    loops: Vec<(String, Symbol, Symbol)>,
 }
 
 impl Link {
@@ -22,6 +23,11 @@ impl Link {
         self.current_symbol = 0;
         self.symbols.clear();
         self.unlinked.clear();
+    }
+
+    fn next_symbol(&mut self) -> Symbol {
+        self.current_symbol -= 1;
+        self.current_symbol
     }
 
     pub fn insert(&mut self, sym: Symbol, addr: Address) {
@@ -46,6 +52,15 @@ impl Link {
             }
         }
         None
+    }
+
+    pub fn begin_for_loop(&mut self, addr: Address, col: &Column, ident: String) -> Result<()> {
+        let loop_start = self.next_symbol();
+        let loop_end = self.next_symbol();
+        self.loops.push((ident, loop_start, loop_end));
+        self.insert(loop_start, addr);
+        self.link_addr_to_symbol(addr, col, loop_end);
+        Ok(())
     }
 
     pub fn link(&mut self, ops: &mut Stack<Op>) -> Vec<Error> {

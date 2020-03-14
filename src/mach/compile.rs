@@ -134,6 +134,7 @@ impl Compiler {
     fn statement(&mut self, statement: &ast::Statement, prog: &mut Program) -> Result<Column> {
         use ast::Statement;
         match statement {
+            Statement::For(col, ..) => self.r#for(prog, col),
             Statement::Goto(col, ..) => self.r#goto(prog, col),
             Statement::Let(col, ..) => self.r#let(prog, col),
             Statement::List(col, ..) => self.r#list(prog, col),
@@ -152,9 +153,25 @@ impl Compiler {
         Err(error!(UndefinedLine, ..&sub_col; "INVALID LINE NUMBER"))
     }
 
+    fn r#for(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
+        let (step_col, mut step_ops) = self.expr.pop()?;
+        let (_to_col, mut to_ops) = self.expr.pop()?;
+        let (_from_col, mut from_ops) = self.expr.pop()?;
+        let ident = self.ident.pop()?;
+        prog.append(&mut step_ops)?;
+        prog.append(&mut to_ops)?;
+        prog.append(&mut from_ops)?;
+        prog.push(Op::Pop(ident.clone()))?;
+        prog.push(Op::Literal(Val::String(ident.clone())))?;
+        prog.push(Op::Literal(Val::Integer(0)))?;
+        let full_col = col.start..step_col.end;
+        prog.push_for(&full_col, ident)?;
+        Ok(full_col)
+    }
+
     fn r#goto(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
         let (sub_col, line_number) = self.expr_pop_line_number()?;
-        prog.push_jump_to_line_number(&sub_col, line_number)?;
+        prog.push_goto(&sub_col, line_number)?;
         Ok(col.start..sub_col.end)
     }
 

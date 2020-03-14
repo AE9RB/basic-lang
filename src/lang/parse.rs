@@ -198,6 +198,15 @@ impl<'a> Parser<'a> {
         Ok((from, to))
     }
 
+    fn maybe(&mut self, token: Token) -> bool {
+        if let Some(t) = self.next() {
+            if *t == token {
+                return true;
+            }
+        }
+        false
+    }
+
     fn expect(&mut self, token: Token) -> Result<()> {
         if let Some(t) = self.next() {
             if *t == token {
@@ -208,6 +217,7 @@ impl<'a> Parser<'a> {
             match token {
                 Token::Unknown(_) | Token::Whitespace(_) => {"PANIC"}
                 Token::Literal(_) => {"EXPECTED LITERAL"}
+                Token::Word(Word::To) => {"EXPECTED TO"}
                 Token::Word(_) => {"EXPECTED STATEMENT WORD"}
                 Token::Operator(Operator::Equal) => {"EXPECTED EQUALS SIGN"}
                 Token::Operator(_) => {"EXPECTED OPERATOR"}
@@ -371,22 +381,37 @@ impl Statement {
                 parse.next();
                 use Word::*;
                 match word {
+                    For => return Self::r#for(parse),
                     Goto1 | Goto2 => return Self::r#goto(parse),
                     Let => return Self::r#let(parse),
                     List => return Self::r#list(parse),
                     Print1 | Print2 => return Self::r#print(parse),
                     Run => return Self::r#run(parse),
-                    End | For | Gosub1 | Gosub2 => {
+                    End | Gosub1 | Gosub2 => {
                         return Err(
                             error!(InternalError, ..&parse.col; "STATEMENT NOT YET PARSING; PANIC"),
                         );
                     }
-                    Rem1 | Rem2 | To => {}
+                    Rem1 | Rem2 | Step | To => {}
                 }
             }
             _ => {}
         }
         Err(error!(SyntaxError, ..&parse.col; "EXPECTED STATEMENT"))
+    }
+
+    fn r#for(parse: &mut Parser) -> Result<Statement> {
+        let column = parse.col.clone();
+        let ident = parse.expect_ident()?;
+        parse.expect(Token::Operator(Operator::Equal))?;
+        let expr_from = parse.expect_expression()?;
+        parse.expect(Token::Word(Word::To))?;
+        let expr_to = parse.expect_expression()?;
+        let mut expr_step = Expression::Integer(parse.col.end..parse.col.end, 1);
+        if parse.maybe(Token::Word(Word::Step)) {
+            expr_step = parse.expect_expression()?
+        }
+        Ok(Statement::For(column, ident, expr_from, expr_to, expr_step))
     }
 
     fn r#goto(parse: &mut Parser) -> Result<Statement> {

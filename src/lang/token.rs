@@ -126,6 +126,7 @@ pub enum Word {
     Print2,
     Rem1,
     Rem2,
+    Step,
     Run,
     To,
 }
@@ -147,6 +148,7 @@ impl std::fmt::Display for Word {
             Rem1 => write!(f, "REM"),
             Rem2 => write!(f, "'"),
             Run => write!(f, "RUN"),
+            Step => write!(f, "STEP"),
             To => write!(f, "TO"),
         }
     }

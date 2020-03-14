@@ -20,6 +20,8 @@ pub enum Op {
     Pop(String),
 
     // *** Branch control
+    /// Jumps to Address if the for-loop on the stack is finished.
+    For(Address),
     /// Pop stack and branch to Address if not zero.
     If(Address),
     /// Unconditional branch to Address.
@@ -71,6 +73,7 @@ impl std::fmt::Display for Op {
             Literal(v) => write!(f, "{}", format!("{:?}", v).to_ascii_uppercase()),
             Push(s) => write!(f, "PUSH({})", s),
             Pop(s) => write!(f, "POP({})", s),
+            For(a) => write!(f, "FOR({})", a),
             If(a) => write!(f, "IF({})", a),
             Jump(a) => write!(f, "JUMP({})", a),
             Return => write!(f, "RETURN"),
