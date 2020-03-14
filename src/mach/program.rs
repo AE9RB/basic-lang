@@ -15,8 +15,8 @@ pub struct Program {
     pub link: Link,
 }
 
-impl Program {
-    pub fn new() -> Program {
+impl Default for Program {
+    fn default() -> Self {
         Program {
             ops: Stack::new("PROGRAM TOO LARGE"),
             errors: Arc::new(vec![]),
@@ -25,6 +25,12 @@ impl Program {
             line_number: None,
             link: Link::new(),
         }
+    }
+}
+
+impl Program {
+    pub fn new() -> Program {
+        Program::default()
     }
 
     pub fn error(&mut self, error: Error) {
@@ -39,10 +45,10 @@ impl Program {
         self.ops.push(op)
     }
 
-    pub fn push_jump_to_line(
+    pub fn push_jump_to_line_number(
         &mut self,
         col: &Column,
-        line_number: &LineNumber,
+        line_number: LineNumber,
     ) -> Result<(), Error> {
         let sym = self.link.symbol_for_line_number(line_number)?;
         self.link.link_addr_to_symbol(self.ops.len(), col, sym);

@@ -47,8 +47,8 @@ enum Status {
     Interrupt,
 }
 
-impl Runtime {
-    pub fn new() -> Runtime {
+impl Default for Runtime {
+    fn default() -> Self {
         Runtime {
             source: BTreeMap::new(),
             dirty: false,
@@ -62,6 +62,12 @@ impl Runtime {
             vars: Var::new(),
             state: Status::Intro,
         }
+    }
+}
+
+impl Runtime {
+    pub fn new() -> Runtime {
+        Runtime::default()
     }
 
     /// Enters a line of BASIC.
@@ -218,6 +224,7 @@ impl Runtime {
         }
     }
 
+    #[allow(clippy::cognitive_complexity)]
     fn execute_loop(&mut self, iterations: usize) -> Result<Event> {
         let has_indirect_errors = !self.indirect_errors.is_empty();
         for _ in 0..iterations {
@@ -228,12 +235,8 @@ impl Runtime {
             self.pc += 1;
             match op {
                 Op::Literal(val) => self.stack.push(val.clone())?,
-                Op::Pop(var_name) => {
-                    self.vars.store(var_name, self.stack.pop()?)?;
-                }
-                Op::Push(var_name) => {
-                    self.stack.push(self.vars.fetch(var_name))?;
-                }
+                Op::Pop(var_name) => self.vars.store(var_name, self.stack.pop()?)?,
+                Op::Push(var_name) => self.stack.push(self.vars.fetch(var_name))?,
                 Op::If(_) => return Err(error!(InternalError; "'IF' NOT YET IMPLEMENTED; PANIC")),
                 Op::Jump(addr) => {
                     self.pc = *addr;
@@ -245,8 +248,6 @@ impl Runtime {
                 Op::Return => {
                     return Err(error!(InternalError; "'RETURN' NOT YET IMPLEMENTED; PANIC"))
                 }
-
-                Op::List => return self.r#list(),
                 Op::Run => {
                     if has_indirect_errors {
                         self.state = Status::Stopped;
@@ -256,11 +257,9 @@ impl Runtime {
                     self.vars.clear();
                     self.pc = 0;
                 }
-                Op::End => {
-                    self.pc -= 1;
-                    self.state = Status::Stopped;
-                    return Ok(Event::Stopped);
-                }
+
+                Op::List => return self.r#list(),
+                Op::End => return self.r#end(),
                 Op::Print => self.r#print()?,
 
                 Op::Neg => self.r#negation()?,
@@ -269,7 +268,7 @@ impl Runtime {
                 Op::Div => self.pop_2_op(&Val::divide)?,
                 Op::DivInt => self.pop_2_op(&Val::unimplemented)?,
                 Op::Mod => self.pop_2_op(&Val::unimplemented)?,
-                Op::Add => self.pop_2_op(&Val::add)?,
+                Op::Add => self.pop_2_op(&Val::sum)?,
                 Op::Sub => self.pop_2_op(&Val::subtract)?,
                 Op::Eq => self.pop_2_op(&Val::unimplemented)?,
                 Op::NotEq => self.pop_2_op(&Val::unimplemented)?,
@@ -309,6 +308,12 @@ impl Runtime {
         }
         self.state = Status::Listing(from..to);
         Ok(Event::Running)
+    }
+
+    fn r#end(&mut self) -> Result<Event> {
+        self.pc -= 1;
+        self.state = Status::Stopped;
+        Ok(Event::Stopped)
     }
 
     fn r#print(&mut self) -> Result<()> {

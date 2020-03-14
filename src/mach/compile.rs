@@ -154,7 +154,7 @@ impl Compiler {
 
     fn r#goto(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
         let (sub_col, line_number) = self.expr_pop_line_number()?;
-        prog.push_jump_to_line(&sub_col, &line_number)?;
+        prog.push_jump_to_line_number(&sub_col, line_number)?;
         Ok(col.start..sub_col.end)
     }
 

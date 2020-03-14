@@ -8,16 +8,14 @@ type Result<T> = std::result::Result<T, Error>;
 
 /// ## Variable memory
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Var {
     vars: HashMap<String, Val>,
 }
 
 impl Var {
     pub fn new() -> Var {
-        Var {
-            vars: HashMap::new(),
-        }
+        Var::default()
     }
 
     pub fn clear(&mut self) {

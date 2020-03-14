@@ -3,6 +3,8 @@
 //! The BASIC programming language as it was in 1978.
 //!
 
+#![warn(clippy::all)]
+
 #[path = "doc/introduction.rs"]
 #[allow(non_snake_case)]
 pub mod _Introduction;

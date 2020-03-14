@@ -7,7 +7,7 @@ type Result<T> = std::result::Result<T, Error>;
 
 /// ## Variable memory
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Link {
     current_symbol: Symbol,
     symbols: BTreeMap<Symbol, Address>,
@@ -16,11 +16,7 @@ pub struct Link {
 
 impl Link {
     pub fn new() -> Link {
-        Link {
-            current_symbol: 0,
-            symbols: BTreeMap::new(),
-            unlinked: HashMap::new(),
-        }
+        Link::default()
     }
     pub fn clear(&mut self) {
         self.current_symbol = 0;
@@ -32,9 +28,9 @@ impl Link {
         self.symbols.insert(sym, addr);
     }
 
-    pub fn symbol_for_line_number(&mut self, line_number: &LineNumber) -> Result<Symbol> {
+    pub fn symbol_for_line_number(&mut self, line_number: LineNumber) -> Result<Symbol> {
         match line_number {
-            Some(number) => Ok(*number as Symbol),
+            Some(number) => Ok(number as Symbol),
             None => Err(error!(InternalError; "NO SYMBOL FOR LINE NUMBER")),
         }
     }
