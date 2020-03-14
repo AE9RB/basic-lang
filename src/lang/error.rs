@@ -100,7 +100,7 @@ impl Error {
             code: self.code,
             line_number: self.line_number,
             column: self.column.clone(),
-            message: message,
+            message,
         }
     }
 }

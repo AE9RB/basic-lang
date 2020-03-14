@@ -14,7 +14,7 @@ pub struct Stack<T> {
 impl<T> Stack<T> {
     pub fn new(overflow_message: &'static str) -> Stack<T> {
         Stack {
-            overflow_message: overflow_message,
+            overflow_message,
             vec: vec![],
         }
     }
@@ -27,9 +27,6 @@ impl<T> Stack<T> {
     }
     fn underflow_error(&self) -> Error {
         error!(InternalError; "UNDERFLOW")
-    }
-    pub fn vec(&self) -> &Vec<T> {
-        &self.vec
     }
     pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
         self.vec.get_mut(index)
@@ -46,6 +43,15 @@ impl<T> Stack<T> {
     }
     pub fn len(&self) -> usize {
         self.vec.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.vec.is_empty()
+    }
+    pub fn last(&self) -> Option<&T> {
+        self.vec.last()
+    }
+    pub fn get(&self, idx: usize) -> Option<&T> {
+        self.vec.get(idx)
     }
     pub fn append(&mut self, other: &mut Stack<T>) -> Result<()> {
         self.vec.append(&mut other.vec);

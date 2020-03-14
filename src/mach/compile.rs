@@ -154,10 +154,8 @@ impl Compiler {
 
     fn r#goto(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
         let (sub_col, line_number) = self.expr_pop_line_number()?;
-        let sym = prog.symbol_for_line_number(line_number)?;
-        prog.link_next_op_to(&sub_col, sym);
-        prog.push(Op::Jump(0))?;
-        return Ok(col.start..sub_col.end);
+        prog.push_jump_to_line(&sub_col, &line_number)?;
+        Ok(col.start..sub_col.end)
     }
 
     fn r#let(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {

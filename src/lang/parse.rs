@@ -256,20 +256,15 @@ impl Expression {
                 _ => return Err(error!(SyntaxError, ..&parse.col; "EXPECTED EXPRESSION")),
             };
             let mut rhs;
-            loop {
-                match parse.peek() {
-                    Some(Token::Operator(op)) => {
-                        let op_prec = Expression::binary_op_prec(op);
-                        if op_prec < precedence {
-                            break;
-                        }
-                        parse.next();
-                        let column = parse.col.clone();
-                        rhs = descend(parse, op_prec)?;
-                        lhs = Expression::for_binary_op(column, op, lhs, rhs)?;
-                    }
-                    _ => break,
+            while let Some(Token::Operator(op)) = parse.peek() {
+                let op_prec = Expression::binary_op_prec(op);
+                if op_prec < precedence {
+                    break;
                 }
+                parse.next();
+                let column = parse.col.clone();
+                rhs = descend(parse, op_prec)?;
+                lhs = Expression::for_binary_op(column, op, lhs, rhs)?;
             }
             Ok(lhs)
         };
@@ -350,7 +345,7 @@ impl Expression {
             };
             match s.parse() {
                 Ok(num) => Ok(num),
-                Err(_) => return Err(error!(TypeMismatch, ..&col)),
+                Err(_) => Err(error!(TypeMismatch, ..&col)),
             }
         }
         match lit {
@@ -518,10 +513,10 @@ mod tests {
             Expression::Function(
                 2..5,
                 Ident::Plain("COS".to_string()),
-                vec![Expression::Single(6..10, 3.14)],
+                vec![Expression::Single(6..10, 3.11)],
             ),
         );
-        assert_eq!(parse_str("A=cos(3.14)"), Some(answer));
+        assert_eq!(parse_str("A=cos(3.11)"), Some(answer));
     }
 
     #[test]
@@ -540,14 +535,14 @@ mod tests {
                         Box::new(Expression::Function(
                             12..15,
                             Ident::Plain("COS".to_string()),
-                            vec![Expression::Single(16..20, 3.14)],
+                            vec![Expression::Single(16..20, 3.11)],
                         )),
                     )),
                     Box::new(Expression::Integer(23..24, 4)),
                 )),
             ),
         );
-        assert_eq!(parse_str("let A=(2-(3+cos(3.14))*4)"), Some(answer));
+        assert_eq!(parse_str("let A=(2-(3+cos(3.11))*4)"), Some(answer));
     }
 
     #[test]

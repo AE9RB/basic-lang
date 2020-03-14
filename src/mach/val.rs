@@ -22,7 +22,7 @@ impl Val {
         Err(error!(InternalError; "OP NOT IMPLEMENTED; PANIC"))
     }
 
-    pub fn neg(val: Val) -> Result<Val> {
+    pub fn negate(val: Val) -> Result<Val> {
         use Val::*;
         match val {
             Integer(l) => Ok(Integer(-l)),

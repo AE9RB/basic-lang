@@ -17,7 +17,7 @@ pub fn lex(s: &str) -> (LineNumber, Vec<Token>) {
 fn collapse_lt_gt_equal(tokens: &mut Vec<Token>) {
     let mut locs: Vec<(usize, Token)> = vec![];
     let mut tokens_iter = tokens.windows(2).enumerate();
-    while let Some((index,tt)) = tokens_iter.next() {
+    while let Some((index, tt)) = tokens_iter.next() {
         if tt[0] == Token::Operator(Operator::Equal) {
             if tt[1] == Token::Operator(Operator::Greater) {
                 locs.push((index, Token::Operator(Operator::EqualGreater)));
@@ -38,13 +38,11 @@ fn collapse_lt_gt_equal(tokens: &mut Vec<Token>) {
                 tokens_iter.next();
             }
         }
-        if tt[0] == Token::Operator(Operator::Less) {
-            if tt[1] == Token::Operator(Operator::Greater) {
-                locs.push((index, Token::Operator(Operator::NotEqual)));
-                tokens_iter.next();
-            }
+        if tt[0] == Token::Operator(Operator::Less) && tt[1] == Token::Operator(Operator::Greater) {
+            locs.push((index, Token::Operator(Operator::NotEqual)));
+            tokens_iter.next();
         }
-    };
+    }
     while let Some((index, token)) = locs.pop() {
         tokens.splice(index..index + 2, Some(token));
     }
@@ -180,11 +178,11 @@ impl<'a> Iterator for Lexer<'a> {
         if *pk == '"' {
             return self.string();
         }
-        let r = self.minutia();
-        if r == Some(Token::Word(Word::Rem2)) {
+        let minutia = self.minutia();
+        if minutia == Some(Token::Word(Word::Rem2)) {
             self.remark = true;
         }
-        return r;
+        minutia
     }
 }
 
@@ -193,7 +191,7 @@ impl<'a> Lexer<'a> {
         let mut take = s.len();
         if s.ends_with("\r\n") {
             take -= 2
-        } else if s.ends_with("\n") {
+        } else if s.ends_with('\n') {
             take -= 1
         }
         Lexer {
@@ -280,12 +278,10 @@ impl<'a> Lexer<'a> {
         if digits > 7 {
             return Some(Token::Literal(Literal::Double(s)));
         }
-        if !exp && !decimal {
-            if let Ok(_) = s.parse::<i16>() {
-                return Some(Token::Literal(Literal::Integer(s)));
-            }
+        if !exp && !decimal && s.parse::<i16>().is_ok() {
+            return Some(Token::Literal(Literal::Integer(s)));
         }
-        return Some(Token::Literal(Literal::Single(s)));
+        Some(Token::Literal(Literal::Single(s)))
     }
 
     fn string(&mut self) -> Option<Token> {
@@ -345,7 +341,7 @@ impl<'a> Lexer<'a> {
             }
             break;
         }
-        return Some(Token::Ident(Ident::Plain(s)));
+        Some(Token::Ident(Ident::Plain(s)))
     }
 
     fn minutia(&mut self) -> Option<Token> {
@@ -371,7 +367,7 @@ impl<'a> Lexer<'a> {
                 break;
             }
         }
-        return Some(Token::Unknown(s));
+        Some(Token::Unknown(s))
     }
 }
 

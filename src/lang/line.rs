@@ -11,7 +11,7 @@ impl Line {
         let (line_number, tokens) = lex(s);
         Line {
             number: line_number,
-            tokens: tokens,
+            tokens,
         }
     }
 

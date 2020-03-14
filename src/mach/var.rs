@@ -28,13 +28,13 @@ impl Var {
         match self.vars.get(var_name) {
             Some(val) => val.clone(),
             None => {
-                if var_name.ends_with("$") {
+                if var_name.ends_with('$') {
                     Val::String("".to_string())
-                } else if var_name.ends_with("!") {
+                } else if var_name.ends_with('!') {
                     Val::Single(0.0)
-                } else if var_name.ends_with("#") {
+                } else if var_name.ends_with('#') {
                     Val::Double(0.0)
-                } else if var_name.ends_with("%") {
+                } else if var_name.ends_with('%') {
                     Val::Integer(0)
                 } else {
                     Val::Single(0.0)
@@ -75,7 +75,8 @@ impl Var {
                 if s.chars().count() > 255 {
                     return Err(error!(OutOfStringSpace; "MAXIMUM STRING LENGTH IS 255"));
                 }
-                Ok(self.insert_val(var_name, value))
+                self.insert_val(var_name, value);
+                Ok(())
             }
             _ => Err(error!(TypeMismatch)),
         }
@@ -83,22 +84,25 @@ impl Var {
 
     fn insert_integer(&mut self, var_name: &str, value: Val) -> Result<()> {
         match value {
-            Val::Integer(_) => Ok(self.insert_val(var_name, value)),
-            _ => Ok(self.insert_val(var_name, Val::Integer(i16::try_from(value)?))),
+            Val::Integer(_) => self.insert_val(var_name, value),
+            _ => self.insert_val(var_name, Val::Integer(i16::try_from(value)?)),
         }
+        Ok(())
     }
 
     fn insert_single(&mut self, var_name: &str, value: Val) -> Result<()> {
         match value {
-            Val::Single(_) => Ok(self.insert_val(var_name, value)),
-            _ => Ok(self.insert_val(var_name, Val::Single(f32::try_from(value)?))),
+            Val::Single(_) => self.insert_val(var_name, value),
+            _ => self.insert_val(var_name, Val::Single(f32::try_from(value)?)),
         }
+        Ok(())
     }
 
     fn insert_double(&mut self, var_name: &str, value: Val) -> Result<()> {
         match value {
-            Val::Double(_) => Ok(self.insert_val(var_name, value)),
-            _ => Ok(self.insert_val(var_name, Val::Double(f64::try_from(value)?))),
+            Val::Double(_) => self.insert_val(var_name, value),
+            _ => self.insert_val(var_name, Val::Double(f64::try_from(value)?)),
         }
+        Ok(())
     }
 }

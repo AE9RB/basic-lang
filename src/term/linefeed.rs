@@ -92,7 +92,7 @@ impl<'a, Term: Terminal> Completer<Term> for LineCompleter {
     }
 }
 
-fn list(ins: &str, columns: &Vec<std::ops::Range<usize>>) -> String {
+fn list(ins: &str, columns: &[std::ops::Range<usize>]) -> String {
     let mut under_on = false;
     let mut out = String::new();
     let style = Style::new().underline();
@@ -105,10 +105,8 @@ fn list(ins: &str, columns: &Vec<std::ops::Range<usize>>) -> String {
             if !do_under {
                 out.push_str(&suffix);
             }
-        } else {
-            if do_under {
-                out.push_str(&prefix);
-            }
+        } else if do_under {
+            out.push_str(&prefix);
         }
         under_on = do_under;
         out.push(char);

@@ -84,7 +84,7 @@ impl Runtime {
             self.direct_errors = direct_errors;
             self.errors = Arc::new(vec![]);
             if self.direct_errors.is_empty() {
-                if s.trim().len() == 0 {
+                if s.trim().is_empty() {
                     self.entry_address = 0;
                     false
                 } else {
@@ -121,7 +121,7 @@ impl Runtime {
     fn list_line(&self, range: &mut Range<LineNumber>) -> Option<(String, Vec<Range<usize>>)> {
         let mut source_range = self.source.range(range.start..=range.end);
         if let Some((line_number, line)) = source_range.next() {
-            if line_number < &range.end {
+            if *line_number < range.end {
                 if let Some(num) = line_number {
                     range.start = Some(num + 1);
                 }
@@ -221,7 +221,7 @@ impl Runtime {
     fn execute_loop(&mut self, iterations: usize) -> Result<Event> {
         let has_indirect_errors = !self.indirect_errors.is_empty();
         for _ in 0..iterations {
-            let op = match self.program.ops().get(self.pc) {
+            let op = match self.program.get(self.pc) {
                 Some(v) => v,
                 None => return Err(error!(InternalError; "INVALID PC ADDRESS")),
             };
@@ -296,7 +296,7 @@ impl Runtime {
 
     fn r#negation(&mut self) -> Result<()> {
         let val = self.stack.pop()?;
-        self.stack.push(Val::neg(val)?)?;
+        self.stack.push(Val::negate(val)?)?;
         Ok(())
     }
 
@@ -319,7 +319,7 @@ impl Runtime {
                 }
                 Ok(())
             }
-            _ => return Err(error!(InternalError; "EXPECTED VECTOR ON STACK")),
+            _ => Err(error!(InternalError; "EXPECTED VECTOR ON STACK")),
         }
     }
 }

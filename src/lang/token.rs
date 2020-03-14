@@ -10,8 +10,8 @@ use std::collections::HashMap;
 thread_local!(
     static STRING_TO_TOKEN: HashMap<std::string::String, Token> = Token::field_less()
         .drain(..)
-        .chain(Word::field_less().drain(..).map(|x| Token::Word(x)))
-        .chain(Operator::field_less().drain(..).map(|x| Token::Operator(x)))
+        .chain(Word::field_less().drain(..).map(Token::Word))
+        .chain(Operator::field_less().drain(..).map(Token::Operator))
         .map(|d| (d.to_string(), d))
         .collect();
 );
