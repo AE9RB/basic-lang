@@ -49,8 +49,8 @@ fn main_loop(interrupted: Arc<AtomicBool>) {
                     println!("{}", error);
                 }
             }
-            Event::PrintLn(s) => {
-                println!("{}",s);
+            Event::Print(s) => {
+                print!("{}",s);
             }
             Event::List((s, _columns)) => {
                 println!("{}", s);

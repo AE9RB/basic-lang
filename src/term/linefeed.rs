@@ -50,8 +50,8 @@ fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
                 }
             }
             Event::Running => {}
-            Event::PrintLn(s) => {
-                interface.write_fmt(format_args!("{}\n", s))?;
+            Event::Print(s) => {
+                interface.write_fmt(format_args!("{}", s))?;
             }
             Event::List((s, columns)) => {
                 interface.write_fmt(format_args!("{}\n", list(&s, &columns)))?;

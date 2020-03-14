@@ -21,7 +21,6 @@ pub struct Runtime {
     entry_address: Address,
     indirect_errors: Arc<Vec<Error>>,
     direct_errors: Arc<Vec<Error>>,
-    errors: Arc<Vec<Error>>,
     stack: Stack<Val>,
     vars: Var,
     state: Status,
@@ -31,7 +30,7 @@ pub struct Runtime {
 
 pub enum Event {
     Errors(Arc<Vec<Error>>),
-    PrintLn(String),
+    Print(String),
     List((String, Vec<Range<usize>>)),
     Stopped,
     Running,
@@ -43,7 +42,6 @@ enum Status {
     Stopped,
     Listing(Range<LineNumber>),
     Running,
-    DirectErrors,
     Interrupt,
 }
 
@@ -57,7 +55,6 @@ impl Default for Runtime {
             entry_address: 1,
             indirect_errors: Arc::new(vec![]),
             direct_errors: Arc::new(vec![]),
-            errors: Arc::new(vec![]),
             stack: Stack::new("STACK OVERFLOW"),
             vars: Var::new(),
             state: Status::Intro,
@@ -74,6 +71,9 @@ impl Runtime {
     /// Returns true if it was a non-blank direct line.
     /// Return value is useful for command history.
     pub fn enter(&mut self, s: &str) -> bool {
+        if s.trim().is_empty() {
+            return false;
+        }
         let line = Line::new(s);
         if line.is_direct() {
             if self.dirty {
@@ -88,19 +88,8 @@ impl Runtime {
             self.entry_address = pc;
             self.indirect_errors = indirect_errors;
             self.direct_errors = direct_errors;
-            self.errors = Arc::new(vec![]);
-            if self.direct_errors.is_empty() {
-                if s.trim().is_empty() {
-                    self.entry_address = 0;
-                    false
-                } else {
-                    self.state = Status::Running;
-                    true
-                }
-            } else {
-                self.state = Status::DirectErrors;
-                true
-            }
+            self.state = Status::Running;
+            true
         } else {
             if line.is_empty() {
                 self.dirty = self.source.remove(&line.number()).is_some();
@@ -135,11 +124,9 @@ impl Runtime {
                 range.start = Some(0);
                 range.end = Some(0);
             }
-            let iter = self
+            let columns: Vec<Column> = self
                 .indirect_errors
                 .iter()
-                .chain(self.direct_errors.iter().chain(self.errors.iter()));
-            let columns: Vec<Column> = iter
                 .filter_map(|e| {
                     if e.line_number() == *line_number {
                         Some(e.column())
@@ -171,18 +158,17 @@ impl Runtime {
                 }
                 #[cfg(debug_assertions)]
                 s.push_str("+debug");
-                return Event::PrintLn(s);
+                s.push('\n');
+                return Event::Print(s);
             }
             Status::Stopped => {
                 if self.entry_address != 0 {
                     self.entry_address = 0;
-                    return Event::PrintLn(READY.to_string());
+                    let mut s = READY.to_string();
+                    s.push('\n');
+                    return Event::Print(s);
                 }
                 return Event::Stopped;
-            }
-            Status::DirectErrors => {
-                self.state = Status::Stopped;
-                return Event::Errors(Arc::clone(&self.direct_errors));
             }
             Status::Interrupt => {
                 self.state = Status::Stopped;
@@ -198,7 +184,12 @@ impl Runtime {
                     self.state = Status::Running;
                 }
             }
-            Status::Running => {}
+            Status::Running => {
+                if !self.direct_errors.is_empty() {
+                    self.state = Status::Stopped;
+                    return Event::Errors(Arc::clone(&self.direct_errors));
+                }
+            }
         }
         debug_assert_eq!(self.state, Status::Running);
         match self.execute_loop(iterations) {
@@ -207,7 +198,9 @@ impl Runtime {
                     match event {
                         Event::Stopped => {
                             self.entry_address = 0;
-                            Event::PrintLn(READY.to_string())
+                            let mut s = READY.to_string();
+                            s.push('\n');
+                            Event::Print(s)
                         }
                         _ => event,
                     }
@@ -218,8 +211,7 @@ impl Runtime {
             Err(error) => {
                 self.state = Status::Stopped;
                 let line_number = self.program.line_number_for(prev_pc(self.pc));
-                Arc::make_mut(&mut self.errors).push(error.in_line_number(line_number));
-                Event::Errors(Arc::clone(&self.errors))
+                Event::Errors(Arc::new(vec![error.in_line_number(line_number)]))
             }
         }
     }
@@ -260,7 +252,7 @@ impl Runtime {
 
                 Op::List => return self.r#list(),
                 Op::End => return self.r#end(),
-                Op::Print => self.r#print()?,
+                Op::Print => return self.r#print(),
 
                 Op::Neg => self.r#negation()?,
                 Op::Exp => self.pop_2_op(&Val::unimplemented)?,
@@ -316,13 +308,14 @@ impl Runtime {
         Ok(Event::Stopped)
     }
 
-    fn r#print(&mut self) -> Result<()> {
+    fn r#print(&mut self) -> Result<Event> {
         match self.stack.pop()? {
             Val::Integer(len) => {
+                let mut s = String::new();
                 for item in self.stack.pop_n(len as usize)? {
-                    print!("{}", item);
+                    s.push_str(&format!("{}", item));
                 }
-                Ok(())
+                Ok(Event::Print(s))
             }
             _ => Err(error!(InternalError; "EXPECTED VECTOR ON STACK")),
         }

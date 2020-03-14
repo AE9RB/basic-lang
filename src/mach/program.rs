@@ -12,7 +12,7 @@ pub struct Program {
     indirect_errors: Arc<Vec<Error>>,
     direct_address: Address,
     line_number: LineNumber,
-    pub link: Link,
+    link: Link,
 }
 
 impl Default for Program {
