@@ -1,5 +1,4 @@
 extern crate macros;
-pub use super::ident::Ident;
 use super::{Error, LineNumber, MaxValue};
 use crate::error;
 use macros::EnumFieldLess;
@@ -122,6 +121,7 @@ pub enum Word {
     Goto2,
     Let,
     List,
+    Next,
     Print1,
     Print2,
     Rem1,
@@ -143,6 +143,7 @@ impl std::fmt::Display for Word {
             Goto2 => write!(f, "GO TO"),
             Let => write!(f, "LET"),
             List => write!(f, "LIST"),
+            Next => write!(f, "NEXT"),
             Print1 => write!(f, "PRINT"),
             Print2 => write!(f, "?"),
             Rem1 => write!(f, "REM"),
@@ -215,6 +216,28 @@ impl std::fmt::Display for Operator {
             Xor => write!(f, "XOR"),
             Imp => write!(f, "IMP"),
             Eqv => write!(f, "EQV"),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Hash, Clone)]
+pub enum Ident {
+    Plain(String),
+    String(String),
+    Single(String),
+    Double(String),
+    Integer(String),
+}
+
+impl std::fmt::Display for Ident {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use Ident::*;
+        match self {
+            Plain(s) => write!(f, "{}", s),
+            String(s) => write!(f, "{}", s),
+            Single(s) => write!(f, "{}", s),
+            Double(s) => write!(f, "{}", s),
+            Integer(s) => write!(f, "{}", s),
         }
     }
 }

@@ -40,11 +40,11 @@ impl<'a> ast::Visitor for Visitor<'a> {
     fn visit_ident(&mut self, ident: &ast::Ident) {
         use ast::Ident;
         let ident = match ident {
-            Ident::Plain(s)
-            | Ident::String(s)
-            | Ident::Single(s)
-            | Ident::Double(s)
-            | Ident::Integer(s) => s.clone(),
+            Ident::Plain(col, s)
+            | Ident::String(col, s)
+            | Ident::Single(col, s)
+            | Ident::Double(col, s)
+            | Ident::Integer(col, s) => (col.clone(), s.clone()),
         };
         if let Some(error) = self.comp.ident.push(ident).err() {
             self.prog.error(error)
@@ -64,7 +64,7 @@ impl<'a> ast::Visitor for Visitor<'a> {
 }
 
 struct Compiler {
-    ident: Stack<String>,
+    ident: Stack<(Column, String)>,
     expr: Stack<(Column, Stack<Op>)>,
 }
 
@@ -97,7 +97,7 @@ impl Compiler {
             Expression::String(col, val) => op(prog, col, Op::Literal(Val::String(val.clone()))),
             Expression::Char(col, val) => op(prog, col, Op::Literal(Val::Char(*val))),
             Expression::Var(col, _) => {
-                let ident = self.ident.pop()?;
+                let (_, ident) = self.ident.pop()?;
                 op(prog, col, Op::Push(ident))
             }
             Expression::Function(col, ..) => {
@@ -138,6 +138,7 @@ impl Compiler {
             Statement::Goto(col, ..) => self.r#goto(prog, col),
             Statement::Let(col, ..) => self.r#let(prog, col),
             Statement::List(col, ..) => self.r#list(prog, col),
+            Statement::Next(col, ..) => self.r#next(prog, col),
             Statement::Print(col, ..) => self.r#print(prog, col),
             Statement::Run(col) => self.r#run(prog, col),
         }
@@ -157,7 +158,7 @@ impl Compiler {
         let (step_col, mut step_ops) = self.expr.pop()?;
         let (_to_col, mut to_ops) = self.expr.pop()?;
         let (_from_col, mut from_ops) = self.expr.pop()?;
-        let ident = self.ident.pop()?;
+        let (_ident_col, ident) = self.ident.pop()?;
         prog.append(&mut step_ops)?;
         prog.append(&mut to_ops)?;
         prog.append(&mut from_ops)?;
@@ -178,7 +179,7 @@ impl Compiler {
     fn r#let(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
         let (sub_col, mut ops) = self.expr.pop()?;
         prog.append(&mut ops)?;
-        let ident = self.ident.pop()?;
+        let (_col, ident) = self.ident.pop()?;
         prog.push(Op::Pop(ident))?;
         Ok(col.start..sub_col.end)
     }
@@ -190,6 +191,15 @@ impl Compiler {
         prog.push(Op::Literal(Val::try_from(ln_to)?))?;
         prog.push(Op::List)?;
         Ok(col.start..col_to.end)
+    }
+
+    fn r#next(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
+        // let len = self.ident.len();
+        // let mut idents = self.ident.pop_n(len)?;
+        // let mut col = col.clone();
+        // for (col, s) in self.ident.drain(..) {
+        // }
+        Ok(0..0)
     }
 
     fn r#print(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {

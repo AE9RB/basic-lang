@@ -227,7 +227,7 @@ impl Runtime {
             self.pc += 1;
             match op {
                 Op::For(addr) => {
-                    panic!(addr);
+                    panic!("{}", &addr);
                 }
                 Op::Literal(val) => self.stack.push(val.clone())?,
                 Op::Pop(var_name) => self.vars.store(var_name, self.stack.pop()?)?,

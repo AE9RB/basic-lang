@@ -1,14 +1,23 @@
-pub use super::ident::Ident;
 use super::Column;
 
 #[derive(Debug, PartialEq)]
 pub enum Statement {
-    For(Column, (Column, Ident), Expression, Expression, Expression),
+    For(Column, Ident, Expression, Expression, Expression),
     Goto(Column, Expression),
-    Let(Column, (Column, Ident), Expression),
+    Let(Column, Ident, Expression),
     List(Column, Expression, Expression),
+    Next(Column, Vec<Ident>),
     Print(Column, Vec<Expression>),
     Run(Column),
+}
+
+#[derive(Debug, PartialEq, Hash, Clone)]
+pub enum Ident {
+    Plain(Column, String),
+    String(Column, String),
+    Single(Column, String),
+    Double(Column, String),
+    Integer(Column, String),
 }
 
 #[derive(Debug, PartialEq)]
@@ -62,7 +71,7 @@ impl AcceptVisitor for Statement {
     fn accept<V: Visitor>(&self, visitor: &mut V) {
         use Statement::*;
         match self {
-            For(_, (_, ident), expr1, expr2, expr3) => {
+            For(_, ident, expr1, expr2, expr3) => {
                 ident.accept(visitor);
                 expr1.accept(visitor);
                 expr2.accept(visitor);
@@ -71,7 +80,7 @@ impl AcceptVisitor for Statement {
             Goto(_, expr) => {
                 expr.accept(visitor);
             }
-            Let(_, (_, ident), expr) => {
+            Let(_, ident, expr) => {
                 ident.accept(visitor);
                 expr.accept(visitor);
             }
@@ -83,6 +92,11 @@ impl AcceptVisitor for Statement {
             List(_, expr1, expr2) => {
                 expr1.accept(visitor);
                 expr2.accept(visitor);
+            }
+            Next(_, vec_ident) => {
+                for var in vec_ident {
+                    var.accept(visitor);
+                }
             }
             Run(_) => {}
         }
