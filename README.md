@@ -2,6 +2,8 @@
 
 The BASIC programming language as it was on 8-bit CPUs.
 
+[![asciicast](https://asciinema.org/a/1iKC7OZXMyAVUF2Sqw404wTtn.svg)](https://asciinema.org/a/1iKC7OZXMyAVUF2Sqw404wTtn?speed=2&autoplay=true)
+
 ```
 64K BASIC
 READY.
