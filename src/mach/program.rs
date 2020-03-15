@@ -19,8 +19,8 @@ impl Default for Program {
     fn default() -> Self {
         Program {
             ops: Stack::new("PROGRAM TOO LARGE"),
-            errors: Arc::new(vec![]),
-            indirect_errors: Arc::new(vec![]),
+            errors: Arc::default(),
+            indirect_errors: Arc::default(),
             direct_address: 0,
             line_number: None,
             link: Link::new(),
@@ -72,8 +72,8 @@ impl Program {
 
     pub fn clear(&mut self) {
         self.ops.clear();
-        self.errors = Arc::new(vec![]);
-        self.indirect_errors = Arc::new(vec![]);
+        self.errors = Arc::default();
+        self.indirect_errors = Arc::default();
         self.direct_address = 0;
         self.line_number = None;
         self.link.clear();

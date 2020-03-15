@@ -50,13 +50,3 @@ impl<'a> IntoIterator for &'a Line {
         Some(self).into_iter()
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_foo() {
-        let _ = Line::new("100 fancy");
-    }
-}

@@ -241,16 +241,3 @@ impl std::fmt::Display for Ident {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_from_string() {
-        let t = Token::from_string("REM");
-        assert_eq!(t, Some(Token::Word(Word::Rem1)));
-        let t = Token::from_string("PICKLES");
-        assert_eq!(t, None);
-    }
-}

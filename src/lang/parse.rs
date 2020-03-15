@@ -3,7 +3,7 @@ use super::{ast::*, Column, Error, LineNumber, MaxValue};
 use crate::error;
 
 #[cfg(test)]
-#[path = "test/parse_test.rs"]
+#[path = "tests/parse_test.rs"]
 mod parse_test;
 
 type Result<T> = std::result::Result<T, Error>;
