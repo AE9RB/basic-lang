@@ -67,7 +67,7 @@ impl Program {
     }
 
     pub fn line_number_for(&self, op_addr: Address) -> LineNumber {
-        self.link.line_number_for(op_addr, self.direct_address)
+        self.link.line_number_for(op_addr)
     }
 
     pub fn clear(&mut self) {
@@ -135,13 +135,14 @@ impl Program {
                 }
             }
         };
-        let mut link_errors = self.link.link(&mut self.ops, self.direct_address);
+        let mut link_errors = self.link.link(&mut self.ops);
         if self.errors.is_empty() {
             Arc::make_mut(&mut self.errors).append(&mut link_errors);
         }
         if self.direct_address == 0 {
             self.indirect_errors = std::mem::take(&mut self.errors);
             self.direct_address = self.ops.len();
+            self.link.set_start_of_direct(self.ops.len());
         }
         (
             self.direct_address,

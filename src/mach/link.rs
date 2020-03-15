@@ -1,6 +1,6 @@
 use super::{Address, Op, Stack, Symbol};
 use crate::error;
-use crate::lang::{Column, Error, LineNumber};
+use crate::lang::{Column, Error, LineNumber, MaxValue};
 use std::collections::{BTreeMap, HashMap};
 
 type Result<T> = std::result::Result<T, Error>;
@@ -45,17 +45,6 @@ impl Link {
         self.unlinked.insert(addr, (col, symbol));
     }
 
-    pub fn line_number_for(&self, op_addr: Address, indirect_len: Address) -> LineNumber {
-        if indirect_len == 0 || op_addr < indirect_len {
-            for (line_number, symbol_addr) in self.symbols.range(0..).rev() {
-                if op_addr >= *symbol_addr {
-                    return Some(*line_number as u16);
-                }
-            }
-        }
-        None
-    }
-
     pub fn begin_for_loop(&mut self, addr: Address, col: Column, var_name: String) -> Result<()> {
         let loop_start = self.next_symbol();
         let loop_end = self.next_symbol();
@@ -77,14 +66,27 @@ impl Link {
         Err(error!(NextWithoutFor, ..&col))
     }
 
-    pub fn link(&mut self, ops: &mut Stack<Op>, indirect_len: Address) -> Vec<Error> {
+    pub fn set_start_of_direct(&mut self, op_addr: Address) {
+        self.insert(LineNumber::max_value() as isize + 1 as Symbol, op_addr);
+    }
+
+    pub fn line_number_for(&self, op_addr: Address) -> LineNumber {
+        for (line_number, symbol_addr) in self.symbols.range(0..).rev() {
+            if op_addr >= *symbol_addr && *line_number <= LineNumber::max_value() as isize {
+                return Some(*line_number as u16);
+            }
+        }
+        None
+    }
+
+    pub fn link(&mut self, ops: &mut Stack<Op>) -> Vec<Error> {
         let mut errors: Vec<Error> = vec![];
         for (col, _, loop_start, _) in std::mem::take(&mut self.loops) {
             let line_number = match self.symbols.get(&loop_start) {
                 None => None,
                 Some(addr) => {
                     self.unlinked.remove(addr);
-                    self.line_number_for(*addr, indirect_len)
+                    self.line_number_for(*addr)
                 }
             };
             errors.push(error!(ForWithoutNext, line_number, ..&col));
@@ -93,11 +95,7 @@ impl Link {
             match self.symbols.get(&symbol) {
                 None => {
                     if symbol >= 0 {
-                        let error = error!(
-                            UndefinedLine,
-                            self.line_number_for(op_addr, indirect_len),
-                            ..&col
-                        );
+                        let error = error!(UndefinedLine, self.line_number_for(op_addr), ..&col);
                         errors.push(error);
                         continue;
                     }
@@ -116,7 +114,7 @@ impl Link {
                     }
                 }
             }
-            let line_number = self.line_number_for(op_addr, indirect_len);
+            let line_number = self.line_number_for(op_addr);
             errors.push(error!(InternalError, line_number, ..&col; "LINK FAILURE"));
         }
         self.symbols = self.symbols.split_off(&0);
