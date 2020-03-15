@@ -72,8 +72,12 @@ impl Link {
 
     pub fn line_number_for(&self, op_addr: Address) -> LineNumber {
         for (line_number, symbol_addr) in self.symbols.range(0..).rev() {
-            if op_addr >= *symbol_addr && *line_number <= LineNumber::max_value() as isize {
-                return Some(*line_number as u16);
+            if op_addr >= *symbol_addr {
+                if *line_number <= LineNumber::max_value() as isize {
+                    return Some(*line_number as u16);
+                } else {
+                    return None;
+                }
             }
         }
         None
