@@ -4,18 +4,6 @@ The BASIC programming language as it was on 8-bit CPUs.
 
 [![asciicast](https://asciinema.org/a/1iKC7OZXMyAVUF2Sqw404wTtn.svg)](https://asciinema.org/a/1iKC7OZXMyAVUF2Sqw404wTtn?speed=2&autoplay=true)
 
-```
-64K BASIC
-READY.
-10 FOR I=1 TO 2
-20 PRINT "Hello World"
-30 NEXT I
-RUN
-Hello World
-Hello World
-READY.
-```
-
 Future versions of BASIC used more structure and less
 lines numbers and GOTOs. This project is a historical
 preservation of BASIC just before then. A time when most
