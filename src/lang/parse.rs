@@ -468,7 +468,6 @@ impl Statement {
                 break;
             }
         }
-        dbg!(&idents);
         Ok(Statement::Next(column, idents))
     }
 

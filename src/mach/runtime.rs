@@ -209,6 +209,7 @@ impl Runtime {
                 }
             }
             Err(error) => {
+                //TODO test for stack overflow
                 self.state = Status::Stopped;
                 let line_number = self.program.line_number_for(prev_pc(self.pc));
                 Event::Errors(Arc::new(vec![error.in_line_number(line_number)]))
@@ -226,12 +227,13 @@ impl Runtime {
             };
             self.pc += 1;
             match op {
-                Op::For(addr) => {
-                    panic!("{}", &addr);
-                }
                 Op::Literal(val) => self.stack.push(val.clone())?,
                 Op::Pop(var_name) => self.vars.store(var_name, self.stack.pop()?)?,
                 Op::Push(var_name) => self.stack.push(self.vars.fetch(var_name))?,
+                Op::For(addr) => {
+                    let addr = *addr;
+                    self.r#for(addr)?;
+                }
                 Op::If(_) => return Err(error!(InternalError; "'IF' NOT YET IMPLEMENTED; PANIC")),
                 Op::Jump(addr) => {
                     self.pc = *addr;
@@ -286,6 +288,41 @@ impl Runtime {
         let (lhs, rhs) = self.stack.pop_2()?;
         self.stack.push(func(lhs, rhs)?)?;
         Ok(())
+    }
+
+    fn r#for(&mut self, addr: Address) -> Result<()> {
+        let mut first_iter = false;
+        let mut var_val = self.stack.pop()?;
+        if var_val == Val::Integer(0) {
+            var_val = self.stack.pop()?;
+            first_iter = true;
+        }
+        let to_val = self.stack.pop()?;
+        let step_val = self.stack.pop()?;
+        if let Val::String(var_name) = var_val {
+            let mut current = self.vars.fetch(&var_name);
+            if !first_iter {
+                current = Val::sum(current, step_val.clone())?;
+                self.vars.store(&var_name, current.clone())?;
+            }
+            if let Ok(step) = f64::try_from(step_val.clone()) {
+                let done = Val::Integer(-1)
+                    == if step < 0.0 {
+                        Val::less(current, to_val.clone())?
+                    } else {
+                        Val::less(to_val.clone(), current)?
+                    };
+                if done {
+                    self.pc = addr;
+                } else {
+                    self.stack.push(step_val)?;
+                    self.stack.push(to_val)?;
+                    self.stack.push(Val::String(var_name))?;
+                }
+                return Ok(());
+            }
+        }
+        Err(error!(InternalError; "CORRUPT FOR LOOP STACK FRAME"))
     }
 
     fn r#negation(&mut self) -> Result<()> {

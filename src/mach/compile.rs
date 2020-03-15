@@ -158,22 +158,22 @@ impl Compiler {
         let (step_col, mut step_ops) = self.expr.pop()?;
         let (_to_col, mut to_ops) = self.expr.pop()?;
         let (_from_col, mut from_ops) = self.expr.pop()?;
-        let (_ident_col, ident) = self.ident.pop()?;
+        let (_ident_col, var_name) = self.ident.pop()?;
         prog.append(&mut step_ops)?;
         prog.append(&mut to_ops)?;
         prog.append(&mut from_ops)?;
-        prog.push(Op::Pop(ident.clone()))?;
-        prog.push(Op::Literal(Val::String(ident.clone())))?;
+        prog.push(Op::Pop(var_name.clone()))?;
+        prog.push(Op::Literal(Val::String(var_name.clone())))?;
         prog.push(Op::Literal(Val::Integer(0)))?;
-        let full_col = col.start..step_col.end;
-        prog.push_for(&full_col, ident)?;
-        Ok(full_col)
+        prog.push_for(col.start..step_col.end, var_name)?;
+        Ok(col.start..step_col.end)
     }
 
     fn r#goto(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
         let (sub_col, line_number) = self.expr_pop_line_number()?;
-        prog.push_goto(&sub_col, line_number)?;
-        Ok(col.start..sub_col.end)
+        let full_col = col.start..sub_col.end;
+        prog.push_goto(sub_col, line_number)?;
+        Ok(full_col)
     }
 
     fn r#let(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
@@ -194,12 +194,16 @@ impl Compiler {
     }
 
     fn r#next(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
-        // let len = self.ident.len();
-        // let mut idents = self.ident.pop_n(len)?;
-        // let mut col = col.clone();
-        // for (col, s) in self.ident.drain(..) {
-        // }
-        Ok(0..0)
+        let mut full_col = col.clone();
+        if self.ident.is_empty() {
+            prog.push_next(col.clone(), "".to_string())?;
+        } else {
+            for (col, var_name) in self.ident.drain(..) {
+                full_col.end = col.end;
+                prog.push_next(col, var_name)?;
+            }
+        }
+        Ok(full_col)
     }
 
     fn r#print(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {

@@ -45,14 +45,19 @@ impl Program {
         self.ops.push(op)
     }
 
-    pub fn push_for(&mut self, col: &Column, ident: String) -> Result<(), Error> {
+    pub fn push_for(&mut self, col: Column, ident: String) -> Result<(), Error> {
         self.link.begin_for_loop(self.ops.len(), col, ident)?;
         self.ops.push(Op::For(0))
     }
 
-    pub fn push_goto(&mut self, col: &Column, line_number: LineNumber) -> Result<(), Error> {
+    pub fn push_next(&mut self, col: Column, ident: String) -> Result<(), Error> {
+        self.link.next_for_loop(self.ops.len(), col, ident)?;
+        self.ops.push(Op::Jump(0))
+    }
+
+    pub fn push_goto(&mut self, col: Column, line_number: LineNumber) -> Result<(), Error> {
         let sym = self.link.symbol_for_line_number(line_number)?;
-        self.link.link_addr_to_symbol(self.ops.len(), col, sym);
+        self.link.link_addr_to_symbol(self.ops.len(), col, sym); // to_line_number
         self.ops.push(Op::Jump(0))
     }
 
@@ -61,11 +66,7 @@ impl Program {
     }
 
     pub fn line_number_for(&self, op_addr: Address) -> LineNumber {
-        if self.direct_address == 0 || op_addr < self.direct_address {
-            self.link.line_number_for(op_addr)
-        } else {
-            None
-        }
+        self.link.line_number_for(op_addr, self.direct_address)
     }
 
     pub fn clear(&mut self) {
@@ -133,7 +134,10 @@ impl Program {
                 }
             }
         };
-        Arc::make_mut(&mut self.errors).append(&mut self.link.link(&mut self.ops));
+        let mut link_errors = self.link.link(&mut self.ops, self.direct_address);
+        if self.errors.is_empty() {
+            Arc::make_mut(&mut self.errors).append(&mut link_errors);
+        }
         if self.direct_address == 0 {
             self.indirect_errors = std::mem::take(&mut self.errors);
             self.direct_address = self.ops.len();

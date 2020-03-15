@@ -7,7 +7,7 @@ type Result<T> = std::result::Result<T, Error>;
 
 /// ## Runtime values for stack and variables
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Val {
     String(String),
     Single(f32),
@@ -164,6 +164,86 @@ impl Val {
                 _ => Err(error!(TypeMismatch)),
             },
             String(_) | Char(_) | Return(_) => Err(error!(TypeMismatch)),
+        }
+    }
+
+    pub fn less(lhs: Val, rhs: Val) -> Result<Val> {
+        use Val::*;
+        match lhs {
+            Integer(l) => match rhs {
+                Integer(r) => {
+                    if l < r {
+                        Ok(Integer(-1))
+                    } else {
+                        Ok(Integer(0))
+                    }
+                }
+                Single(r) => {
+                    if (l as f32) < r {
+                        Ok(Integer(-1))
+                    } else {
+                        Ok(Integer(0))
+                    }
+                }
+                Double(r) => {
+                    if (l as f64) < r {
+                        Ok(Integer(-1))
+                    } else {
+                        Ok(Integer(0))
+                    }
+                }
+                _ => Err(error!(TypeMismatch)),
+            },
+            Single(l) => match rhs {
+                Integer(r) => {
+                    if l < r as f32 {
+                        Ok(Integer(-1))
+                    } else {
+                        Ok(Integer(0))
+                    }
+                }
+                Single(r) => {
+                    if l < r {
+                        Ok(Integer(-1))
+                    } else {
+                        Ok(Integer(0))
+                    }
+                }
+                Double(r) => {
+                    if (l as f64) < r {
+                        Ok(Integer(-1))
+                    } else {
+                        Ok(Integer(0))
+                    }
+                }
+                _ => Err(error!(TypeMismatch)),
+            },
+            Double(l) => match rhs {
+                Integer(r) => {
+                    if l < r as f64 {
+                        Ok(Integer(-1))
+                    } else {
+                        Ok(Integer(0))
+                    }
+                }
+                Single(r) => {
+                    if l < r as f64 {
+                        Ok(Integer(-1))
+                    } else {
+                        Ok(Integer(0))
+                    }
+                }
+                Double(r) => {
+                    if l < r {
+                        Ok(Integer(-1))
+                    } else {
+                        Ok(Integer(0))
+                    }
+                }
+                _ => Err(error!(TypeMismatch)),
+            },
+            Char(_) | String(_) => Err(error!(InternalError; "string compare not imp")),
+            Return(_) => Err(error!(TypeMismatch)),
         }
     }
 }

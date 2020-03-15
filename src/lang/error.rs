@@ -107,6 +107,7 @@ impl Error {
 
 pub enum ErrorCode {
     Break = 0,
+    NextWithoutFor = 1,
     SyntaxError = 2,
     Overflow = 6,
     OutOfMemory = 7,
@@ -114,6 +115,7 @@ pub enum ErrorCode {
     DivisionByZero = 11,
     TypeMismatch = 13,
     OutOfStringSpace = 14,
+    ForWithoutNext = 26,
     InternalError = 51,
 }
 
