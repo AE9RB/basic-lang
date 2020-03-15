@@ -1,4 +1,4 @@
-use super::{compile::compile, Address, Link, Op, Stack, Symbol};
+use super::{compile::compile, Address, Link, Op, Stack, Symbol, Val};
 use crate::error;
 use crate::lang::{Column, Error, Line, LineNumber};
 use std::sync::Arc;
@@ -51,6 +51,7 @@ impl Program {
     }
 
     pub fn push_next(&mut self, col: Column, ident: String) -> Result<(), Error> {
+        self.ops.push(Op::Literal(Val::String(ident.clone())))?;
         self.link.next_for_loop(self.ops.len(), col, ident)?;
         self.ops.push(Op::Jump(0))
     }

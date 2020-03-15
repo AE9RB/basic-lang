@@ -209,7 +209,7 @@ impl Runtime {
                 }
             }
             Err(error) => {
-                //TODO test for stack overflow
+                self.stack.clear();
                 self.state = Status::Stopped;
                 let line_number = self.program.line_number_for(prev_pc(self.pc));
                 Event::Errors(Arc::new(vec![error.in_line_number(line_number)]))
@@ -269,9 +269,9 @@ impl Runtime {
                 Op::Sub => self.pop_2_op(&Val::subtract)?,
                 Op::Eq => self.pop_2_op(&Val::unimplemented)?,
                 Op::NotEq => self.pop_2_op(&Val::unimplemented)?,
-                Op::Lt => self.pop_2_op(&Val::unimplemented)?,
+                Op::Lt => self.pop_2_op(&Val::less)?,
                 Op::LtEq => self.pop_2_op(&Val::unimplemented)?,
-                Op::Gt => self.pop_2_op(&Val::unimplemented)?,
+                Op::Gt => self.pop_2_op(&Val::greater)?,
                 Op::GtEq => self.pop_2_op(&Val::unimplemented)?,
                 Op::Not => self.pop_2_op(&Val::unimplemented)?,
                 Op::And => self.pop_2_op(&Val::unimplemented)?,
@@ -291,38 +291,47 @@ impl Runtime {
     }
 
     fn r#for(&mut self, addr: Address) -> Result<()> {
-        let mut first_iter = false;
-        let mut var_val = self.stack.pop()?;
-        if var_val == Val::Integer(0) {
-            var_val = self.stack.pop()?;
-            first_iter = true;
-        }
-        let to_val = self.stack.pop()?;
-        let step_val = self.stack.pop()?;
-        if let Val::String(var_name) = var_val {
-            let mut current = self.vars.fetch(&var_name);
-            if !first_iter {
-                current = Val::sum(current, step_val.clone())?;
-                self.vars.store(&var_name, current.clone())?;
+        loop {
+            if self.stack.len() < 4 {
+                break;
             }
-            if let Ok(step) = f64::try_from(step_val.clone()) {
-                let done = Val::Integer(-1)
-                    == if step < 0.0 {
-                        Val::less(current, to_val.clone())?
-                    } else {
-                        Val::less(to_val.clone(), current)?
-                    };
-                if done {
-                    self.pc = addr;
-                } else {
-                    self.stack.push(step_val)?;
-                    self.stack.push(to_val)?;
-                    self.stack.push(Val::String(var_name))?;
+            let (first_iter, next_name) = match self.stack.pop()? {
+                Val::String(s) => (false, s),
+                _ => (true, "".to_string()),
+            };
+            let var_name_val = self.stack.pop()?;
+            let to_val = self.stack.pop()?;
+            let step_val = self.stack.pop()?;
+            if let Val::String(var_name) = var_name_val {
+                if !next_name.is_empty() && var_name != next_name {
+                    self.stack.push(Val::String(next_name))?;
+                    continue;
                 }
-                return Ok(());
+                let mut current = self.vars.fetch(&var_name);
+                if !first_iter {
+                    current = Val::sum(current, step_val.clone())?;
+                    self.vars.store(&var_name, current.clone())?;
+                }
+                if let Ok(step) = f64::try_from(step_val.clone()) {
+                    let done = Val::Integer(-1)
+                        == if step < 0.0 {
+                            Val::less(current, to_val.clone())?
+                        } else {
+                            Val::less(to_val.clone(), current)?
+                        };
+                    if done {
+                        self.pc = addr;
+                    } else {
+                        self.stack.push(step_val)?;
+                        self.stack.push(to_val)?;
+                        self.stack.push(Val::String(var_name))?;
+                    }
+                    return Ok(());
+                }
             }
+            break;
         }
-        Err(error!(InternalError; "CORRUPT FOR LOOP STACK FRAME"))
+        Err(error!(NextWithoutFor; "MISSING STACK FRAME"))
     }
 
     fn r#negation(&mut self) -> Result<()> {

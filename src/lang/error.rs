@@ -93,7 +93,7 @@ impl Error {
             message: self.message,
         }
     }
-    //10 PRINT A<=7
+
     pub fn message(&self, message: &'static str) -> Error {
         debug_assert_eq!(self.message.len(), 0);
         Error {

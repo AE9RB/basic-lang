@@ -167,6 +167,10 @@ impl Val {
         }
     }
 
+    pub fn greater(lhs: Val, rhs: Val) -> Result<Val> {
+        Val::less(rhs, lhs)
+    }
+
     pub fn less(lhs: Val, rhs: Val) -> Result<Val> {
         use Val::*;
         match lhs {
