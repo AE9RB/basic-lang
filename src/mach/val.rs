@@ -257,9 +257,27 @@ impl std::fmt::Display for Val {
         use Val::*;
         match self {
             String(s) => write!(f, "{}", s),
-            Integer(n) => write!(f, "{}", n),
-            Single(n) => write!(f, "{}", n),
-            Double(n) => write!(f, "{}", n),
+            Integer(n) => {
+                if *n < 0 {
+                    write!(f, "{} ", n)
+                } else {
+                    write!(f, " {} ", n)
+                }
+            }
+            Single(n) => {
+                if *n < 0.0 {
+                    write!(f, "{} ", n)
+                } else {
+                    write!(f, " {} ", n)
+                }
+            }
+            Double(n) => {
+                if *n < 0.0 {
+                    write!(f, "{} ", n)
+                } else {
+                    write!(f, " {} ", n)
+                }
+            }
             Char(c) => write!(f, "{}", c),
             Return(..) => {
                 debug_assert!(false);

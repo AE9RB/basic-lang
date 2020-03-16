@@ -24,6 +24,7 @@ pub struct Runtime {
     stack: Stack<Val>,
     vars: Var,
     state: Status,
+    print_col: usize,
 }
 
 /// ## Events for the user interface
@@ -58,6 +59,7 @@ impl Default for Runtime {
             stack: Stack::new("STACK OVERFLOW"),
             vars: Var::new(),
             state: Status::Intro,
+            print_col: 0,
         }
     }
 }
@@ -140,6 +142,21 @@ impl Runtime {
         None
     }
 
+    fn ready(&mut self) -> Option<Event> {
+        if self.entry_address != 0 {
+            self.entry_address = 0;
+            let mut s = String::new();
+            if self.print_col > 0 {
+                s.push('\n');
+                self.print_col = 0;
+            }
+            s.push_str(READY);
+            s.push('\n');
+            return Some(Event::Print(s));
+        };
+        None
+    }
+
     pub fn execute(&mut self, iterations: usize) -> Event {
         fn prev_pc(pc: Address) -> Address {
             if pc > 0 {
@@ -161,15 +178,10 @@ impl Runtime {
                 s.push('\n');
                 return Event::Print(s);
             }
-            Status::Stopped => {
-                if self.entry_address != 0 {
-                    self.entry_address = 0;
-                    let mut s = READY.to_string();
-                    s.push('\n');
-                    return Event::Print(s);
-                }
-                return Event::Stopped;
-            }
+            Status::Stopped => match self.ready() {
+                Some(e) => return e,
+                None => return Event::Stopped,
+            },
             Status::Interrupt => {
                 self.state = Status::Stopped;
                 let line_number = self.program.line_number_for(prev_pc(self.pc));
@@ -196,12 +208,10 @@ impl Runtime {
             Ok(event) => {
                 if self.state == Status::Stopped {
                     match event {
-                        Event::Stopped => {
-                            self.entry_address = 0;
-                            let mut s = READY.to_string();
-                            s.push('\n');
-                            Event::Print(s)
-                        }
+                        Event::Stopped => match self.ready() {
+                            Some(e) => e,
+                            None => event,
+                        },
                         _ => event,
                     }
                 } else {
@@ -210,6 +220,7 @@ impl Runtime {
             }
             Err(error) => {
                 self.stack.clear();
+                self.print_col = 0;
                 self.state = Status::Stopped;
                 let line_number = self.program.line_number_for(prev_pc(self.pc));
                 Event::Errors(Arc::new(vec![error.in_line_number(line_number)]))
@@ -362,7 +373,28 @@ impl Runtime {
             Val::Integer(len) => {
                 let mut s = String::new();
                 for item in self.stack.pop_n(len as usize)? {
-                    s.push_str(&format!("{}", item));
+                    match item {
+                        Val::Char('\n') => {
+                            s.push('\n');
+                            self.print_col = 0;
+                        }
+                        Val::Char('\t') => {
+                            let len = 14 - (self.print_col % 14);
+                            s.push_str(&" ".repeat(len));
+                            self.print_col += len;
+                        }
+                        _ => {
+                            let val_str = format!("{}", item);
+                            self.print_col += val_str.chars().count();
+                            for ch in val_str.chars() {
+                                s.push(ch);
+                                match ch {
+                                    '\n' => self.print_col = 0,
+                                    _ => self.print_col += 1,
+                                }
+                            }
+                        }
+                    }
                 }
                 Ok(Event::Print(s))
             }
