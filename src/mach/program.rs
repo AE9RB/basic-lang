@@ -58,7 +58,16 @@ impl Program {
 
     pub fn push_goto(&mut self, col: Column, line_number: LineNumber) -> Result<(), Error> {
         let sym = self.link.symbol_for_line_number(line_number)?;
-        self.link.link_addr_to_symbol(self.ops.len(), col, sym); // to_line_number
+        self.link.link_addr_to_symbol(self.ops.len(), col, sym);
+        self.ops.push(Op::Jump(0))
+    }
+
+    pub fn push_run(&mut self, col: Column, line_number: LineNumber) -> Result<(), Error> {
+        self.ops.push(Op::Clear)?;
+        if line_number.is_some() {
+            let sym = self.link.symbol_for_line_number(line_number)?;
+            self.link.link_addr_to_symbol(self.ops.len(), col, sym);
+        }
         self.ops.push(Op::Jump(0))
     }
 

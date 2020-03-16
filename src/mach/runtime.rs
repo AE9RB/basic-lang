@@ -256,16 +256,10 @@ impl Runtime {
                 Op::Return => {
                     return Err(error!(InternalError; "'RETURN' NOT YET IMPLEMENTED; PANIC"))
                 }
-                Op::Run => {
-                    if has_indirect_errors {
-                        self.state = Status::Stopped;
-                        return Ok(Event::Errors(Arc::clone(&self.indirect_errors)));
-                    }
+                Op::Clear => {
                     self.stack.clear();
                     self.vars.clear();
-                    self.pc = 0;
                 }
-
                 Op::List => return self.r#list(),
                 Op::End => return self.r#end(),
                 Op::Print => return self.r#print(),

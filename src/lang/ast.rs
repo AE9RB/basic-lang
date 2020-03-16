@@ -2,13 +2,15 @@ use super::Column;
 
 #[derive(Debug, PartialEq)]
 pub enum Statement {
+    Clear(Column),
+    End(Column),
     For(Column, Ident, Expression, Expression, Expression),
     Goto(Column, Expression),
     Let(Column, Ident, Expression),
     List(Column, Expression, Expression),
     Next(Column, Vec<Ident>),
     Print(Column, Vec<Expression>),
-    Run(Column),
+    Run(Column, Expression),
 }
 
 #[derive(Debug, PartialEq, Hash, Clone)]
@@ -71,6 +73,7 @@ impl AcceptVisitor for Statement {
     fn accept<V: Visitor>(&self, visitor: &mut V) {
         use Statement::*;
         match self {
+            Clear(_) | End(_) => {}
             For(_, ident, expr1, expr2, expr3) => {
                 ident.accept(visitor);
                 expr1.accept(visitor);
@@ -98,7 +101,9 @@ impl AcceptVisitor for Statement {
                     var.accept(visitor);
                 }
             }
-            Run(_) => {}
+            Run(_, expr) => {
+                expr.accept(visitor);
+            }
         }
         visitor.visit_statement(self)
     }

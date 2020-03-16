@@ -398,6 +398,8 @@ impl Statement {
                 parse.next();
                 use Word::*;
                 match word {
+                    Clear => return Self::r#clear(parse),
+                    End => return Self::r#end(parse),
                     For => return Self::r#for(parse),
                     Goto1 | Goto2 => return Self::r#goto(parse),
                     Let => return Self::r#let(parse),
@@ -405,7 +407,7 @@ impl Statement {
                     Next => return Self::r#next(parse),
                     Print1 | Print2 => return Self::r#print(parse),
                     Run => return Self::r#run(parse),
-                    End | Gosub1 | Gosub2 => {
+                    Gosub1 | Gosub2 => {
                         return Err(
                             error!(InternalError, ..&parse.col; "STATEMENT NOT YET PARSING; PANIC"),
                         );
@@ -416,6 +418,14 @@ impl Statement {
             _ => {}
         }
         Err(error!(SyntaxError, ..&parse.col; "EXPECTED STATEMENT"))
+    }
+
+    fn r#clear(parse: &mut Parser) -> Result<Statement> {
+        Ok(Statement::Clear(parse.col.clone()))
+    }
+
+    fn r#end(parse: &mut Parser) -> Result<Statement> {
+        Ok(Statement::End(parse.col.clone()))
     }
 
     fn r#for(parse: &mut Parser) -> Result<Statement> {
@@ -479,6 +489,17 @@ impl Statement {
     }
 
     fn r#run(parse: &mut Parser) -> Result<Statement> {
-        Ok(Statement::Run(parse.col.clone()))
+        let column = parse.col.clone();
+        match parse.maybe_line_number()? {
+            Some(num) => Ok(Statement::Run(
+                column,
+                Expression::Single(parse.col.clone(), num as f32),
+            )),
+            None => {
+                let empty = parse.col.clone();
+                let empty = empty.start..empty.start;
+                Ok(Statement::Run(column, Expression::Single(empty, -1.0)))
+            }
+        }
     }
 }

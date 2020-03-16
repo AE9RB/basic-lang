@@ -113,6 +113,7 @@ impl std::fmt::Display for Literal {
 
 #[derive(Debug, PartialEq, Clone, EnumFieldLess)]
 pub enum Word {
+    Clear,
     End,
     For,
     Gosub1,
@@ -135,6 +136,7 @@ impl std::fmt::Display for Word {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         use Word::*;
         match self {
+            Clear => write!(f, "CLEAR"),
             End => write!(f, "END"),
             For => write!(f, "FOR"),
             Gosub1 => write!(f, "GOSUB"),

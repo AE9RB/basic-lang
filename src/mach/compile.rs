@@ -134,13 +134,15 @@ impl Compiler {
     fn statement(&mut self, statement: &ast::Statement, prog: &mut Program) -> Result<Column> {
         use ast::Statement;
         match statement {
+            Statement::Clear(col, ..) => self.r#clear(prog, col),
+            Statement::End(col, ..) => self.r#end(prog, col),
             Statement::For(col, ..) => self.r#for(prog, col),
             Statement::Goto(col, ..) => self.r#goto(prog, col),
             Statement::Let(col, ..) => self.r#let(prog, col),
             Statement::List(col, ..) => self.r#list(prog, col),
             Statement::Next(col, ..) => self.r#next(prog, col),
             Statement::Print(col, ..) => self.r#print(prog, col),
-            Statement::Run(col) => self.r#run(prog, col),
+            Statement::Run(col, ..) => self.r#run(prog, col),
         }
     }
 
@@ -152,6 +154,16 @@ impl Compiler {
             }
         }
         Err(error!(UndefinedLine, ..&sub_col; "INVALID LINE NUMBER"))
+    }
+
+    fn r#clear(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
+        prog.push(Op::Clear)?;
+        Ok(col.clone())
+    }
+
+    fn r#end(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
+        prog.push(Op::End)?;
+        Ok(col.clone())
     }
 
     fn r#for(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
@@ -223,7 +235,17 @@ impl Compiler {
     }
 
     fn r#run(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
-        prog.push(Op::Run)?;
-        Ok(col.clone())
+        let mut line_number: LineNumber = None;
+        let (sub_col, mut ops) = self.expr.pop()?;
+        if ops.len() == 1 {
+            if let Op::Literal(val) = ops.pop()? {
+                if let Ok(ln) = LineNumber::try_from(val) {
+                    line_number = ln;
+                }
+            }
+        }
+        let full_col = col.start..sub_col.end;
+        prog.push_run(sub_col, line_number)?;
+        Ok(full_col)
     }
 }
