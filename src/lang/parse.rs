@@ -421,7 +421,14 @@ impl Statement {
     }
 
     fn r#clear(parse: &mut Parser) -> Result<Statement> {
-        Ok(Statement::Clear(parse.col.clone()))
+        let result = Ok(Statement::Clear(parse.col.clone()));
+        while match parse.peek() {
+            None | Some(Token::Colon) => false,
+            _ => true,
+        } {
+            parse.next();
+        }
+        result
     }
 
     fn r#end(parse: &mut Parser) -> Result<Statement> {

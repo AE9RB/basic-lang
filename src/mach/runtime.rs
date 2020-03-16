@@ -379,7 +379,6 @@ impl Runtime {
                         }
                         _ => {
                             let val_str = format!("{}", item);
-                            self.print_col += val_str.chars().count();
                             for ch in val_str.chars() {
                                 s.push(ch);
                                 match ch {

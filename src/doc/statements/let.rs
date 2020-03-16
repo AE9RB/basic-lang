@@ -2,7 +2,7 @@
 # `[LET] <variable>=<expression>`
 
 ## Purpose
-Assign a value to the variable.
+Assign the result of expression to variable.
 
 ## Remarks
 The word `LET` is optional.

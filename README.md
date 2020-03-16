@@ -14,3 +14,16 @@ The first computer book to sell one million copies was a
 collection of BASIC Computer Games. It was followed up with
 More BASIC Computer Games. You can run all those and more
 with this dialect of BASIC.
+
+## Installation
+
+There are many missing many statements and functions but everything that is currently implemented should be fully working with good error messages and no panics. Until I release binaries, you'll need Rust
+to install. Use:
+```
+$ cargo install basic-lang
+```
+To uninstall:
+```
+$ cargo uninstall basic-lang
+```
+Or `cargo build` from the latest source, of course.
