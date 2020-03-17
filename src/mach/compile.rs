@@ -135,6 +135,7 @@ impl Compiler {
         use ast::Statement;
         match statement {
             Statement::Clear(col, ..) => self.r#clear(prog, col),
+            Statement::Cont(col, ..) => self.r#cont(prog, col),
             Statement::End(col, ..) => self.r#end(prog, col),
             Statement::For(col, ..) => self.r#for(prog, col),
             Statement::Goto(col, ..) => self.r#goto(prog, col),
@@ -144,6 +145,7 @@ impl Compiler {
             Statement::Next(col, ..) => self.r#next(prog, col),
             Statement::Print(col, ..) => self.r#print(prog, col),
             Statement::Run(col, ..) => self.r#run(prog, col),
+            Statement::Stop(col, ..) => self.r#stop(prog, col),
         }
     }
 
@@ -159,6 +161,11 @@ impl Compiler {
 
     fn r#clear(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
         prog.push(Op::Clear)?;
+        Ok(col.clone())
+    }
+
+    fn r#cont(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
+        prog.push(Op::Cont)?;
         Ok(col.clone())
     }
 
@@ -265,5 +272,10 @@ impl Compiler {
         let full_col = col.start..sub_col.end;
         prog.push_run(sub_col, line_number)?;
         Ok(full_col)
+    }
+
+    fn r#stop(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
+        prog.push(Op::Stop)?;
+        Ok(col.clone())
     }
 }

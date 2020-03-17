@@ -3,6 +3,7 @@ use super::Column;
 #[derive(Debug, PartialEq)]
 pub enum Statement {
     Clear(Column),
+    Cont(Column),
     End(Column),
     For(Column, Ident, Expression, Expression, Expression),
     Goto(Column, Expression),
@@ -12,6 +13,7 @@ pub enum Statement {
     Next(Column, Vec<Ident>),
     Print(Column, Vec<Expression>),
     Run(Column, Expression),
+    Stop(Column),
 }
 
 #[derive(Debug, PartialEq, Hash, Clone)]
@@ -74,7 +76,7 @@ impl AcceptVisitor for Statement {
     fn accept<V: Visitor>(&self, visitor: &mut V) {
         use Statement::*;
         match self {
-            Clear(_) | End(_) => {}
+            Clear(_) | Cont(_) | End(_) | Stop(_) => {}
             For(_, ident, expr1, expr2, expr3) => {
                 ident.accept(visitor);
                 expr1.accept(visitor);

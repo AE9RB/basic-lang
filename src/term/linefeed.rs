@@ -5,7 +5,7 @@ use crate::mach::{Event, Runtime};
 use ansi_term::Style;
 use linefeed::complete::{Completer, Completion};
 use linefeed::terminal::Terminal;
-use linefeed::{Interface, Prompter, ReadResult};
+use linefeed::{Interface, Prompter, ReadResult, Signal};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -24,7 +24,8 @@ pub fn main() {
 fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
     let command = Interface::new("BASIC")?;
     let input = Interface::new("INPUT")?;
-    let mut runtime = Arc::new(Runtime::new());
+    input.set_report_signal(Signal::Interrupt, true);
+    let mut runtime = Arc::new(Runtime::default());
 
     loop {
         if interrupted.load(Ordering::SeqCst) {
@@ -48,12 +49,15 @@ fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
                 input.set_prompt(&prompt)?;
                 match input.read_line()? {
                     ReadResult::Input(string) => {
-                        Arc::get_mut(&mut runtime).unwrap().respond(string);
+                        if Arc::get_mut(&mut runtime).unwrap().enter(&string) {
+                            input.add_history_unique(string);
+                        }
                     }
-                    ReadResult::Signal(_) | ReadResult::Eof => {
-                        //TODO decide what to do here
-                        break;
+                    ReadResult::Signal(Signal::Interrupt) => {
+                        input.set_buffer("")?;
+                        Arc::get_mut(&mut runtime).unwrap().interrupt();
                     }
+                    ReadResult::Signal(_) | ReadResult::Eof => break,
                 };
             }
             Event::Errors(errors) => {

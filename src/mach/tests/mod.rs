@@ -9,8 +9,10 @@ fn run(runtime: &mut Runtime) -> String {
 
 fn run_cycles(runtime: &mut Runtime, cycles: usize) -> String {
     let mut s = String::new();
+    let mut prev_running = false;
     loop {
-        match runtime.execute(cycles) {
+        let event = runtime.execute(cycles);
+        match &event {
             Event::Stopped => {
                 break;
             }
@@ -20,8 +22,10 @@ fn run_cycles(runtime: &mut Runtime, cycles: usize) -> String {
                 }
             }
             Event::Running => {
-                s.push_str(&format!("\n{} Execution cycles exceeded.\n", cycles));
-                break;
+                if prev_running {
+                    s.push_str(&format!("\n{} Execution cycles exceeded.\n", cycles));
+                    break;
+                }
             }
             Event::Print(ps) => {
                 s.push_str(&ps);
@@ -33,6 +37,10 @@ fn run_cycles(runtime: &mut Runtime, cycles: usize) -> String {
             Event::List((ls, _columns)) => {
                 s.push_str(&format!("{}\n", ls));
             }
+        }
+        match event {
+            Event::Running => prev_running = true,
+            _ => prev_running = false,
         }
     }
     s.trim_end_matches("READY.\n").to_string()

@@ -416,6 +416,7 @@ impl Statement {
                 use Word::*;
                 match word {
                     Clear => return Self::r#clear(parse),
+                    Cont => return Self::r#cont(parse),
                     End => return Self::r#end(parse),
                     For => return Self::r#for(parse),
                     Goto1 | Goto2 => return Self::r#goto(parse),
@@ -425,6 +426,7 @@ impl Statement {
                     Next => return Self::r#next(parse),
                     Print1 | Print2 => return Self::r#print(parse),
                     Run => return Self::r#run(parse),
+                    Stop => return Self::r#stop(parse),
                     Gosub1 | Gosub2 => {
                         return Err(
                             error!(InternalError, ..&parse.col; "STATEMENT NOT YET PARSING; PANIC"),
@@ -447,6 +449,10 @@ impl Statement {
             parse.next();
         }
         result
+    }
+
+    fn r#cont(parse: &mut Parser) -> Result<Statement> {
+        Ok(Statement::Cont(parse.col.clone()))
     }
 
     fn r#end(parse: &mut Parser) -> Result<Statement> {
@@ -545,5 +551,9 @@ impl Statement {
                 Ok(Statement::Run(column, Expression::Single(empty, -1.0)))
             }
         }
+    }
+
+    fn r#stop(parse: &mut Parser) -> Result<Statement> {
+        Ok(Statement::Stop(parse.col.clone()))
     }
 }

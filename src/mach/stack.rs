@@ -18,8 +18,11 @@ impl<T> Stack<T> {
             vec: vec![],
         }
     }
+    fn max_len(&self) -> usize {
+        u16::max_value() as usize
+    }
     fn overflow_check(&self) -> Result<()> {
-        if self.vec.len() > u16::max_value() as usize {
+        if self.vec.len() > self.max_len() {
             Err(error!(OutOfMemory; self.overflow_message))
         } else {
             Ok(())
@@ -46,6 +49,9 @@ impl<T> Stack<T> {
     }
     pub fn is_empty(&self) -> bool {
         self.vec.is_empty()
+    }
+    pub fn is_full(&self) -> bool {
+        self.vec.len() > self.max_len() - 32
     }
     pub fn last(&self) -> Option<&T> {
         self.vec.last()

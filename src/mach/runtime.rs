@@ -9,11 +9,11 @@ use std::sync::Arc;
 type Result<T> = std::result::Result<T, Error>;
 
 const INTRO: &str = "64K BASIC";
-const READY: &str = "READY.";
 
 /// ## Virtual machine
 
 pub struct Runtime {
+    prompt: String,
     source: BTreeMap<LineNumber, Line>,
     dirty: bool,
     program: Program,
@@ -24,6 +24,8 @@ pub struct Runtime {
     stack: Stack<Val>,
     vars: Var,
     state: State,
+    cont: State,
+    cont_pc: Address,
     print_col: usize,
 }
 
@@ -38,11 +40,12 @@ pub enum Event {
     Stopped,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 enum State {
     Intro,
     Stopped,
     Listing(Range<LineNumber>),
+    Error(Error),
     Running,
     Input,
     Interrupt,
@@ -51,6 +54,7 @@ enum State {
 impl Default for Runtime {
     fn default() -> Self {
         Runtime {
+            prompt: "READY.".to_owned(),
             source: BTreeMap::new(),
             dirty: false,
             program: Program::new(),
@@ -61,56 +65,81 @@ impl Default for Runtime {
             stack: Stack::new("STACK OVERFLOW"),
             vars: Var::new(),
             state: State::Intro,
+            cont: State::Stopped,
+            cont_pc: 0,
             print_col: 0,
         }
     }
 }
 
 impl Runtime {
-    pub fn new() -> Runtime {
-        Runtime::default()
+    pub fn new(prompt: &str) -> Runtime {
+        let mut rt = Runtime::default();
+        rt.prompt = prompt.to_owned();
+        rt
     }
 
-    /// Enters a line of BASIC.
-    /// Returns true if it was a non-blank direct line.
-    /// Return value is useful for command history.
-    pub fn enter(&mut self, s: &str) -> bool {
-        if s.trim().is_empty() {
-            return false;
+    /// Enters a line of BASIC or INPUT.
+    /// Returns true if good candidate for history.
+    pub fn enter(&mut self, string: &str) -> bool {
+        if let State::Input = self.state {
+            self.enter_input(string);
+            self.print_col = 0;
+            return true;
         }
-        let line = Line::new(s);
+        let line = Line::new(string);
         if line.is_direct() {
-            if self.dirty {
-                self.program.clear();
-                self.program
-                    .compile(self.source.iter().map(|(_, line)| line));
-                self.dirty = false;
-            }
-            self.program.compile(&line);
-            let (pc, indirect_errors, direct_errors) = self.program.link();
-            self.pc = pc;
-            self.entry_address = pc;
-            self.indirect_errors = indirect_errors;
-            self.direct_errors = direct_errors;
-            self.state = State::Running;
-            true
-        } else {
             if line.is_empty() {
-                self.dirty = self.source.remove(&line.number()).is_some();
+                false
             } else {
-                self.source.insert(line.number(), line);
-                self.dirty = true;
+                self.enter_direct(line);
+                true
             }
+        } else {
+            self.enter_indirect(line);
             false
         }
     }
 
-    pub fn interrupt(&mut self) {
-        self.state = State::Interrupt;
+    fn enter_direct(&mut self, line: Line) {
+        if self.dirty {
+            self.program.clear();
+            self.program
+                .compile(self.source.iter().map(|(_, line)| line));
+            self.dirty = false;
+        }
+        self.program.compile(&line);
+        let (pc, indirect_errors, direct_errors) = self.program.link();
+        self.pc = pc;
+        self.entry_address = pc;
+        self.indirect_errors = indirect_errors;
+        self.direct_errors = direct_errors;
+        self.state = State::Running;
     }
 
-    pub fn respond(&mut self, string: String) {
+    fn enter_indirect(&mut self, line: Line) {
+        self.cont = State::Stopped;
+        self.stack.clear();
+        if line.is_empty() {
+            self.dirty = self.source.remove(&line.number()).is_some();
+        } else {
+            self.source.insert(line.number(), line);
+            self.dirty = true;
+        }
+    }
+
+    fn enter_input(&mut self, string: &str) {
         dbg!(&string, &self.stack);
+    }
+
+    pub fn interrupt(&mut self) {
+        self.cont = State::Interrupt;
+        std::mem::swap(&mut self.state, &mut self.cont);
+        self.cont_pc = self.pc;
+        if self.pc >= self.entry_address {
+            self.cont = State::Stopped;
+            self.stack.clear();
+        }
     }
 
     pub fn line(&self, num: usize) -> Option<(String, Vec<Range<usize>>)> {
@@ -148,7 +177,7 @@ impl Runtime {
         None
     }
 
-    fn ready(&mut self) -> Option<Event> {
+    fn ready_prompt(&mut self) -> Option<Event> {
         if self.entry_address != 0 {
             self.entry_address = 0;
             let mut s = String::new();
@@ -156,7 +185,7 @@ impl Runtime {
                 s.push('\n');
                 self.print_col = 0;
             }
-            s.push_str(READY);
+            s.push_str(&self.prompt);
             s.push('\n');
             return Some(Event::Print(s));
         };
@@ -184,13 +213,12 @@ impl Runtime {
                 s.push('\n');
                 return Event::Print(s);
             }
-            State::Stopped => match self.ready() {
+            State::Stopped => match self.ready_prompt() {
                 Some(e) => return e,
                 None => return Event::Stopped,
             },
             State::Interrupt => {
-                self.state = State::Stopped;
-                return Event::Errors(Arc::new(vec![error!(Break, line_number(&self))]));
+                self.state = State::Error(error!(Break, line_number(&self)));
             }
             State::Listing(range) => {
                 let mut range = range.clone();
@@ -202,14 +230,13 @@ impl Runtime {
                 }
             }
             State::Input => {
-                if let Ok(Val::String(prompt)) = self.stack.pop() {
-                    self.stack.push(Val::String(prompt.clone())).ok();
-                    return Event::Input(prompt);
+                if let Some(Val::String(prompt)) = self.stack.last() {
+                    self.print_col += prompt.chars().count();
+                    return Event::Input(prompt.clone());
                 }
-                self.state = State::Stopped;
-                return Event::Errors(Arc::new(vec![
+                self.state = State::Error(
                     error!(InternalError, line_number(&self); "NO INPUT PROMPT ON STACK"),
-                ]));
+                );
             }
             State::Running => {
                 if !self.direct_errors.is_empty() {
@@ -217,13 +244,29 @@ impl Runtime {
                     return Event::Errors(Arc::clone(&self.direct_errors));
                 }
             }
+            State::Error(_) => {}
         }
-        debug_assert_eq!(self.state, State::Running);
+        if let State::Error(_) = self.state {
+            if self.print_col > 0 {
+                self.print_col = 0;
+                return Event::Print('\n'.to_string());
+            }
+            let mut state = State::Stopped;
+            std::mem::swap(&mut self.state, &mut state);
+            if let State::Error(e) = state {
+                return Event::Errors(Arc::new(vec![e]));
+            }
+        }
+        debug_assert!(if let State::Running = self.state {
+            true
+        } else {
+            false
+        });
         match self.execute_loop(iterations) {
             Ok(event) => {
-                if self.state == State::Stopped {
+                if let State::Stopped = self.state {
                     match event {
-                        Event::Stopped => match self.ready() {
+                        Event::Stopped => match self.ready_prompt() {
                             Some(e) => e,
                             None => event,
                         },
@@ -234,10 +277,14 @@ impl Runtime {
                 }
             }
             Err(error) => {
-                self.stack.clear();
-                self.print_col = 0;
-                self.state = State::Stopped;
-                Event::Errors(Arc::new(vec![error.in_line_number(line_number(&self))]))
+                self.cont = State::Error(error.in_line_number(line_number(&self)));
+                std::mem::swap(&mut self.cont, &mut self.state);
+                self.cont_pc = self.pc;
+                if self.pc >= self.entry_address || self.stack.is_full() {
+                    self.stack.clear();
+                    self.cont = State::Stopped;
+                }
+                Event::Running
             }
         }
     }
@@ -274,11 +321,30 @@ impl Runtime {
                     self.stack.clear();
                     self.vars.clear();
                 }
+                Op::Cont => {
+                    if let State::Stopped = self.cont {
+                        return Err(error!(CantContinue));
+                    }
+                    if let State::Running = self.state {
+                        self.state = State::Stopped;
+                        std::mem::swap(&mut self.cont, &mut self.state);
+                        self.pc = self.cont_pc;
+                    } else {
+                        return Err(error!(CantContinue));
+                    }
+                    if let State::Running = self.state {
+                    } else {
+                        return Ok(Event::Running);
+                    }
+                }
                 Op::Input => return self.r#input(),
                 Op::List => return self.r#list(),
                 Op::End => return self.r#end(),
                 Op::Print => return self.r#print(),
-
+                Op::Stop => {
+                    self.r#end()?;
+                    return Err(error!(Break));
+                }
                 Op::Neg => self.r#negation()?,
                 Op::Exp => self.pop_2_op(&Val::unimplemented)?,
                 Op::Mul => self.pop_2_op(&Val::multiply)?,
@@ -367,6 +433,7 @@ impl Runtime {
             let prompt = s.clone();
             self.stack.push(Val::String(s))?;
             self.state = State::Input;
+            self.print_col += prompt.chars().count();
             return Ok(Event::Input(prompt));
         }
         Err(error!(InternalError))
@@ -384,8 +451,13 @@ impl Runtime {
     }
 
     fn r#end(&mut self) -> Result<Event> {
-        self.pc -= 1;
-        self.state = State::Stopped;
+        self.cont = State::Stopped;
+        std::mem::swap(&mut self.cont, &mut self.state);
+        self.cont_pc = self.pc;
+        if self.pc >= self.entry_address {
+            self.cont = State::Stopped;
+            self.stack.clear();
+        }
         Ok(Event::Stopped)
     }
 
