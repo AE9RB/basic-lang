@@ -32,8 +32,9 @@ pub enum Op {
 
     // *** Statements
     Clear,
-    List,
     End,
+    Input,
+    List,
     Print,
 
     // *** Expression operations
@@ -78,8 +79,9 @@ impl std::fmt::Display for Op {
             Jump(a) => write!(f, "JUMP({})", a),
             Return => write!(f, "RETURN"),
             Clear => write!(f, "CLEAR"),
-            List => write!(f, "LIST"),
             End => write!(f, "END"),
+            Input => write!(f, "INPUT"),
+            List => write!(f, "LIST"),
             Print => write!(f, "PRINT"),
             Neg => write!(f, "NEG"),
             Exp => write!(f, "EXP"),

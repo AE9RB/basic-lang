@@ -138,6 +138,7 @@ impl Compiler {
             Statement::End(col, ..) => self.r#end(prog, col),
             Statement::For(col, ..) => self.r#for(prog, col),
             Statement::Goto(col, ..) => self.r#goto(prog, col),
+            Statement::Input(col, ..) => self.r#input(prog, col),
             Statement::Let(col, ..) => self.r#let(prog, col),
             Statement::List(col, ..) => self.r#list(prog, col),
             Statement::Next(col, ..) => self.r#next(prog, col),
@@ -185,6 +186,23 @@ impl Compiler {
         let (sub_col, line_number) = self.expr_pop_line_number()?;
         let full_col = col.start..sub_col.end;
         prog.push_goto(sub_col, line_number)?;
+        Ok(full_col)
+    }
+
+    fn r#input(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
+        let mut full_col = col.clone();
+        let len = self.ident.len();
+        for (col, var_name) in self.ident.drain(..) {
+            full_col.end = col.end;
+            prog.push(Op::Literal(Val::String(var_name)))?;
+        }
+        match i16::try_from(len) {
+            Ok(len) => prog.push(Op::Literal(Val::Integer(len)))?,
+            Err(_) => return Err(error!(Overflow, ..&col; "TOO MANY VARIABLES")),
+        };
+        let (_prompt_col, mut prompt) = self.expr.pop()?;
+        prog.append(&mut prompt)?;
+        prog.push(Op::Input)?;
         Ok(full_col)
     }
 

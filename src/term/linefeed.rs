@@ -22,7 +22,8 @@ pub fn main() {
 }
 
 fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
-    let interface = Interface::new("BASIC")?;
+    let command = Interface::new("BASIC")?;
+    let input = Interface::new("INPUT")?;
     let mut runtime = Arc::new(Runtime::new());
 
     loop {
@@ -32,29 +33,41 @@ fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
         };
         match Arc::get_mut(&mut runtime).unwrap().execute(5000) {
             Event::Stopped => {
-                let saved_completer = interface.completer();
-                interface.set_completer(Arc::new(LineCompleter::new(Arc::clone(&runtime))));
-                let input = match interface.read_line()? {
-                    ReadResult::Input(input) => input,
+                let saved_completer = command.completer();
+                command.set_completer(Arc::new(LineCompleter::new(Arc::clone(&runtime))));
+                let string = match command.read_line()? {
+                    ReadResult::Input(string) => string,
                     ReadResult::Signal(_) | ReadResult::Eof => break,
                 };
-                interface.set_completer(saved_completer);
-                if Arc::get_mut(&mut runtime).unwrap().enter(&input) {
-                    interface.add_history_unique(input);
+                command.set_completer(saved_completer);
+                if Arc::get_mut(&mut runtime).unwrap().enter(&string) {
+                    command.add_history_unique(string);
                 }
+            }
+            Event::Input(prompt) => {
+                input.set_prompt(&prompt)?;
+                match input.read_line()? {
+                    ReadResult::Input(string) => {
+                        Arc::get_mut(&mut runtime).unwrap().respond(string);
+                    }
+                    ReadResult::Signal(_) | ReadResult::Eof => {
+                        //TODO decide what to do here
+                        break;
+                    }
+                };
             }
             Event::Errors(errors) => {
                 for error in errors.iter() {
                     let error = format!("{}", error);
-                    interface.write_fmt(format_args!("{}\n", Style::new().bold().paint(error)))?;
+                    command.write_fmt(format_args!("{}\n", Style::new().bold().paint(error)))?;
                 }
             }
             Event::Running => {}
             Event::Print(s) => {
-                interface.write_fmt(format_args!("{}", s))?;
+                command.write_fmt(format_args!("{}", s))?;
             }
             Event::List((s, columns)) => {
-                interface.write_fmt(format_args!("{}\n", list(&s, &columns)))?;
+                command.write_fmt(format_args!("{}\n", list(&s, &columns)))?;
             }
         }
     }

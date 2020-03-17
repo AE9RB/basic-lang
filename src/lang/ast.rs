@@ -6,6 +6,7 @@ pub enum Statement {
     End(Column),
     For(Column, Ident, Expression, Expression, Expression),
     Goto(Column, Expression),
+    Input(Column, Expression, Vec<Ident>),
     Let(Column, Ident, Expression),
     List(Column, Expression, Expression),
     Next(Column, Vec<Ident>),
@@ -95,6 +96,12 @@ impl AcceptVisitor for Statement {
             List(_, expr1, expr2) => {
                 expr1.accept(visitor);
                 expr2.accept(visitor);
+            }
+            Input(_, expr, vec_ident) => {
+                expr.accept(visitor);
+                for var in vec_ident {
+                    var.accept(visitor);
+                }
             }
             Next(_, vec_ident) => {
                 for var in vec_ident {

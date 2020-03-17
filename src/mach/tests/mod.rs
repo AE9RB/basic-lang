@@ -26,6 +26,10 @@ fn run_cycles(runtime: &mut Runtime, cycles: usize) -> String {
             Event::Print(ps) => {
                 s.push_str(&ps);
             }
+            Event::Input(ps) => {
+                s.push_str(&ps);
+                break;
+            }
             Event::List((ls, _columns)) => {
                 s.push_str(&format!("{}\n", ls));
             }

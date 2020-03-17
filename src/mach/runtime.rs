@@ -23,7 +23,7 @@ pub struct Runtime {
     direct_errors: Arc<Vec<Error>>,
     stack: Stack<Val>,
     vars: Var,
-    state: Status,
+    state: State,
     print_col: usize,
 }
 
@@ -31,18 +31,20 @@ pub struct Runtime {
 
 pub enum Event {
     Errors(Arc<Vec<Error>>),
+    Input(String),
     Print(String),
     List((String, Vec<Range<usize>>)),
-    Stopped,
     Running,
+    Stopped,
 }
 
 #[derive(Debug, PartialEq)]
-enum Status {
+enum State {
     Intro,
     Stopped,
     Listing(Range<LineNumber>),
     Running,
+    Input,
     Interrupt,
 }
 
@@ -58,7 +60,7 @@ impl Default for Runtime {
             direct_errors: Arc::new(vec![]),
             stack: Stack::new("STACK OVERFLOW"),
             vars: Var::new(),
-            state: Status::Intro,
+            state: State::Intro,
             print_col: 0,
         }
     }
@@ -90,7 +92,7 @@ impl Runtime {
             self.entry_address = pc;
             self.indirect_errors = indirect_errors;
             self.direct_errors = direct_errors;
-            self.state = Status::Running;
+            self.state = State::Running;
             true
         } else {
             if line.is_empty() {
@@ -104,7 +106,11 @@ impl Runtime {
     }
 
     pub fn interrupt(&mut self) {
-        self.state = Status::Interrupt;
+        self.state = State::Interrupt;
+    }
+
+    pub fn respond(&mut self, string: String) {
+        dbg!(&string, &self.stack);
     }
 
     pub fn line(&self, num: usize) -> Option<(String, Vec<Range<usize>>)> {
@@ -158,16 +164,16 @@ impl Runtime {
     }
 
     pub fn execute(&mut self, iterations: usize) -> Event {
-        fn prev_pc(pc: Address) -> Address {
+        fn line_number(this: &Runtime) -> LineNumber {
+            let mut pc = this.pc;
             if pc > 0 {
-                pc - 1
-            } else {
-                pc
+                pc -= 1
             }
+            this.program.line_number_for(pc)
         }
         match &self.state {
-            Status::Intro => {
-                self.state = Status::Stopped;
+            State::Intro => {
+                self.state = State::Stopped;
                 let mut s = INTRO.to_string();
                 if let Some(version) = option_env!("CARGO_PKG_VERSION") {
                     s.push(' ');
@@ -178,35 +184,44 @@ impl Runtime {
                 s.push('\n');
                 return Event::Print(s);
             }
-            Status::Stopped => match self.ready() {
+            State::Stopped => match self.ready() {
                 Some(e) => return e,
                 None => return Event::Stopped,
             },
-            Status::Interrupt => {
-                self.state = Status::Stopped;
-                let line_number = self.program.line_number_for(prev_pc(self.pc));
-                return Event::Errors(Arc::new(vec![error!(Break, line_number)]));
+            State::Interrupt => {
+                self.state = State::Stopped;
+                return Event::Errors(Arc::new(vec![error!(Break, line_number(&self))]));
             }
-            Status::Listing(range) => {
+            State::Listing(range) => {
                 let mut range = range.clone();
                 if let Some((string, columns)) = self.list_line(&mut range) {
-                    self.state = Status::Listing(range);
+                    self.state = State::Listing(range);
                     return Event::List((string, columns));
                 } else {
-                    self.state = Status::Running;
+                    self.state = State::Running;
                 }
             }
-            Status::Running => {
+            State::Input => {
+                if let Ok(Val::String(prompt)) = self.stack.pop() {
+                    self.stack.push(Val::String(prompt.clone())).ok();
+                    return Event::Input(prompt);
+                }
+                self.state = State::Stopped;
+                return Event::Errors(Arc::new(vec![
+                    error!(InternalError, line_number(&self); "NO INPUT PROMPT ON STACK"),
+                ]));
+            }
+            State::Running => {
                 if !self.direct_errors.is_empty() {
-                    self.state = Status::Stopped;
+                    self.state = State::Stopped;
                     return Event::Errors(Arc::clone(&self.direct_errors));
                 }
             }
         }
-        debug_assert_eq!(self.state, Status::Running);
+        debug_assert_eq!(self.state, State::Running);
         match self.execute_loop(iterations) {
             Ok(event) => {
-                if self.state == Status::Stopped {
+                if self.state == State::Stopped {
                     match event {
                         Event::Stopped => match self.ready() {
                             Some(e) => e,
@@ -221,9 +236,8 @@ impl Runtime {
             Err(error) => {
                 self.stack.clear();
                 self.print_col = 0;
-                self.state = Status::Stopped;
-                let line_number = self.program.line_number_for(prev_pc(self.pc));
-                Event::Errors(Arc::new(vec![error.in_line_number(line_number)]))
+                self.state = State::Stopped;
+                Event::Errors(Arc::new(vec![error.in_line_number(line_number(&self))]))
             }
         }
     }
@@ -249,7 +263,7 @@ impl Runtime {
                 Op::Jump(addr) => {
                     self.pc = *addr;
                     if has_indirect_errors && self.pc < self.entry_address {
-                        self.state = Status::Stopped;
+                        self.state = State::Stopped;
                         return Ok(Event::Errors(Arc::clone(&self.indirect_errors)));
                     }
                 }
@@ -260,6 +274,7 @@ impl Runtime {
                     self.stack.clear();
                     self.vars.clear();
                 }
+                Op::Input => return self.r#input(),
                 Op::List => return self.r#list(),
                 Op::End => return self.r#end(),
                 Op::Print => return self.r#print(),
@@ -345,6 +360,18 @@ impl Runtime {
         Ok(())
     }
 
+    fn r#input(&mut self) -> Result<Event> {
+        if let Val::String(mut s) = self.stack.pop()? {
+            s.push('?');
+            s.push(' ');
+            let prompt = s.clone();
+            self.stack.push(Val::String(s))?;
+            self.state = State::Input;
+            return Ok(Event::Input(prompt));
+        }
+        Err(error!(InternalError))
+    }
+
     fn r#list(&mut self) -> Result<Event> {
         let (from, to) = self.stack.pop_2()?;
         let from = LineNumber::try_from(from)?;
@@ -352,13 +379,13 @@ impl Runtime {
         if to < from {
             return Err(error!(UndefinedLine; "INVALID RANGE"));
         }
-        self.state = Status::Listing(from..to);
+        self.state = State::Listing(from..to);
         Ok(Event::Running)
     }
 
     fn r#end(&mut self) -> Result<Event> {
         self.pc -= 1;
-        self.state = Status::Stopped;
+        self.state = State::Stopped;
         Ok(Event::Stopped)
     }
 

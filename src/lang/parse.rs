@@ -156,6 +156,23 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn expect_ident_list(&mut self) -> Result<Vec<Ident>> {
+        let mut idents: Vec<Ident> = vec![];
+        loop {
+            match self.peek() {
+                None | Some(Token::Colon) => break,
+                _ => {
+                    let ident = self.expect_ident()?;
+                    idents.push(ident);
+                }
+            };
+            if !self.maybe(Token::Comma) {
+                break;
+            }
+        }
+        Ok(idents)
+    }
+
     fn maybe_line_number(&mut self) -> Result<LineNumber> {
         if let Some(str) = match self.peek() {
             Some(Token::Literal(Literal::Integer(s))) => Some(s),
@@ -402,6 +419,7 @@ impl Statement {
                     End => return Self::r#end(parse),
                     For => return Self::r#for(parse),
                     Goto1 | Goto2 => return Self::r#goto(parse),
+                    Input => return Self::r#input(parse),
                     Let => return Self::r#let(parse),
                     List => return Self::r#list(parse),
                     Next => return Self::r#next(parse),
@@ -456,6 +474,37 @@ impl Statement {
         ))
     }
 
+    fn r#input(parse: &mut Parser) -> Result<Statement> {
+        let column = parse.col.clone();
+        let mut prompt_col = column.end..column.end;
+        let prompt = match parse.peek() {
+            Some(Token::Literal(Literal::String(s))) => {
+                parse.next();
+                prompt_col = parse.col.clone();
+                match parse.peek() {
+                    None | Some(Token::Colon) => {}
+                    Some(Token::Comma) => {
+                        parse.next();
+                    }
+                    _ => {
+                        return Err(error!(SyntaxError, ..&column; "UNEXPECTED TOKEN"));
+                    }
+                }
+                s.clone()
+            }
+            _ => String::new(),
+        };
+        let idents = parse.expect_ident_list()?;
+        if idents.is_empty() {
+            return Err(error!(SyntaxError, ..&column; "MISSING VARIABLE LIST"));
+        }
+        Ok(Statement::Input(
+            column,
+            Expression::String(prompt_col, prompt),
+            idents,
+        ))
+    }
+
     fn r#let(parse: &mut Parser) -> Result<Statement> {
         let column = parse.col.clone();
         let ident = parse.expect_ident()?;
@@ -472,19 +521,7 @@ impl Statement {
 
     fn r#next(parse: &mut Parser) -> Result<Statement> {
         let column = parse.col.clone();
-        let mut idents: Vec<Ident> = vec![];
-        loop {
-            match parse.peek() {
-                None | Some(Token::Colon) => break,
-                _ => {
-                    let ident = parse.expect_ident()?;
-                    idents.push(ident);
-                }
-            };
-            if !parse.maybe(Token::Comma) {
-                break;
-            }
-        }
+        let idents = parse.expect_ident_list()?;
         Ok(Statement::Next(column, idents))
     }
 
