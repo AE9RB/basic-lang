@@ -19,12 +19,12 @@ ctrlc = "3"
 linefeed = "0.6"
 
 [lib]
-name = "macros"
-proc-macro = true
-doc = false
-test = false
+name = "basic"
+doc = true
+test = true
 
 [[bin]]
 name = "basic"
 path = "src/main.rs"
-doc = true
+doc = false
+test = false

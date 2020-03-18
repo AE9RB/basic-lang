@@ -25,6 +25,3 @@ pub use runtime::Runtime;
 pub use stack::Stack;
 pub use val::Val;
 pub use var::Var;
-
-#[cfg(test)]
-mod tests;

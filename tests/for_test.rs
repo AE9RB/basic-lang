@@ -1,4 +1,6 @@
-use super::*;
+mod common;
+use basic::mach::Runtime;
+use common::*;
 
 #[test]
 fn test_breaking_out_of_loop_with_goto() {

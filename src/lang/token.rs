@@ -1,21 +1,8 @@
-extern crate macros;
 use super::{Error, LineNumber, MaxValue};
 use crate::error;
-use macros::EnumFieldLess;
 use std::convert::TryFrom;
 
-use std::collections::HashMap;
-
-thread_local!(
-    static STRING_TO_TOKEN: HashMap<std::string::String, Token> = Token::field_less()
-        .drain(..)
-        .chain(Word::field_less().drain(..).map(Token::Word))
-        .chain(Operator::field_less().drain(..).map(Token::Operator))
-        .map(|d| (d.to_string(), d))
-        .collect();
-);
-
-#[derive(Debug, PartialEq, EnumFieldLess, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Unknown(String),
     Whitespace(usize),
@@ -32,11 +19,60 @@ pub enum Token {
 
 impl Token {
     pub fn from_string(s: &str) -> Option<Token> {
-        STRING_TO_TOKEN.with(|stt| match stt.get(s) {
-            Some(t) => Some(t.clone()),
-            None => None,
-        })
+        match s {
+            "(" => Some(Token::LParen),
+            ")" => Some(Token::RParen),
+            "," => Some(Token::Comma),
+            ":" => Some(Token::Colon),
+            ";" => Some(Token::Semicolon),
+
+            "CLEAR" => Some(Token::Word(Word::Clear)),
+            "CONT" => Some(Token::Word(Word::Cont)),
+            "END" => Some(Token::Word(Word::End)),
+            "FOR" => Some(Token::Word(Word::For)),
+            "GOSUB" => Some(Token::Word(Word::Gosub1)),
+            "GO SUB" => Some(Token::Word(Word::Gosub2)),
+            "GOTO" => Some(Token::Word(Word::Goto1)),
+            "GO TO" => Some(Token::Word(Word::Goto2)),
+            "INPUT" => Some(Token::Word(Word::Input)),
+            "LET" => Some(Token::Word(Word::Let)),
+            "LIST" => Some(Token::Word(Word::List)),
+            "NEXT" => Some(Token::Word(Word::Next)),
+            "PRINT" => Some(Token::Word(Word::Print1)),
+            "?" => Some(Token::Word(Word::Print2)),
+            "REM" => Some(Token::Word(Word::Rem1)),
+            "'" => Some(Token::Word(Word::Rem2)),
+            "RUN" => Some(Token::Word(Word::Run)),
+            "STEP" => Some(Token::Word(Word::Step)),
+            "STOP" => Some(Token::Word(Word::Stop)),
+            "TO" => Some(Token::Word(Word::To)),
+
+            "^" => Some(Token::Operator(Operator::Caret)),
+            "*" => Some(Token::Operator(Operator::Multiply)),
+            "/" => Some(Token::Operator(Operator::Divide)),
+            "\\" => Some(Token::Operator(Operator::DivideInt)),
+            "MOD" => Some(Token::Operator(Operator::Modulus)),
+            "+" => Some(Token::Operator(Operator::Plus)),
+            "-" => Some(Token::Operator(Operator::Minus)),
+            "=" => Some(Token::Operator(Operator::Equal)),
+            "<>" => Some(Token::Operator(Operator::NotEqual)),
+            "<" => Some(Token::Operator(Operator::Less)),
+            "<=" => Some(Token::Operator(Operator::LessEqual)),
+            "=<" => Some(Token::Operator(Operator::EqualLess)),
+            ">" => Some(Token::Operator(Operator::Greater)),
+            ">=" => Some(Token::Operator(Operator::GreaterEqual)),
+            "=>" => Some(Token::Operator(Operator::EqualGreater)),
+            "NOT" => Some(Token::Operator(Operator::Not)),
+            "AND" => Some(Token::Operator(Operator::And)),
+            "OR" => Some(Token::Operator(Operator::Or)),
+            "XOR" => Some(Token::Operator(Operator::Xor)),
+            "IMP" => Some(Token::Operator(Operator::Imp)),
+            "EQV" => Some(Token::Operator(Operator::Eqv)),
+
+            _ => None,
+        }
     }
+
     pub fn is_word(&self) -> bool {
         match self {
             Token::Word(_) => true,
@@ -111,7 +147,7 @@ impl std::fmt::Display for Literal {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, EnumFieldLess)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Word {
     Clear,
     Cont,
@@ -163,7 +199,7 @@ impl std::fmt::Display for Word {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, EnumFieldLess)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Operator {
     Caret,
     Multiply,

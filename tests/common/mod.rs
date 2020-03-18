@@ -1,13 +1,10 @@
-use crate::mach::{Event, Runtime};
+use basic::mach::{Event, Runtime};
 
-mod expr_test;
-mod for_test;
-
-fn run(runtime: &mut Runtime) -> String {
+pub fn run(runtime: &mut Runtime) -> String {
     run_cycles(runtime, 5000)
 }
 
-fn run_cycles(runtime: &mut Runtime, cycles: usize) -> String {
+pub fn run_cycles(runtime: &mut Runtime, cycles: usize) -> String {
     let mut s = String::new();
     let mut prev_running = false;
     loop {

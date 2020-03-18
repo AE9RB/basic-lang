@@ -130,8 +130,7 @@ impl Runtime {
     }
 
     fn enter_input(&mut self, string: &str) {
-        let mut vals = self.parse_input(string);
-        match self.apply_input(string, &mut vals) {
+        match self.apply_input(string) {
             Ok(_) => self.state = State::Running,
             Err(_) => {
                 if let State::Input(true) = self.state {
@@ -143,34 +142,14 @@ impl Runtime {
         };
     }
 
-    fn apply_input(&mut self, string: &str, vals: &mut Vec<(&str, Val)>) -> Result<()> {
+    fn apply_input(&mut self, string: &str) -> Result<()> {
         let prompt = self.stack.pop()?;
         if let Val::Integer(len) = self.stack.pop()? {
+            let mut vals = self.parse_input(string);
             if vals.len() != len as usize {
                 self.stack.push(Val::Integer(len))?;
                 self.stack.push(prompt)?;
                 return Err(error!(SyntaxError));
-            }
-            if len == 1 {
-                let string = string.trim();
-                if let Val::String(name_str) = self.stack.pop()? {
-                    if string.is_empty() {
-                        self.vars.remove(&name_str);
-                        return Ok(());
-                    }
-                    if self.vars.store(&name_str, Val::from(string)).is_ok() {
-                        return Ok(());
-                    }
-                    if name_str.ends_with('$') {
-                        self.vars
-                            .store(&name_str, Val::String(string.to_string()))?;
-                        return Ok(());
-                    }
-                    self.stack.push(Val::String(name_str))?;
-                    self.stack.push(Val::Integer(1))?;
-                    self.stack.push(prompt)?;
-                    return Err(error!(SyntaxError));
-                }
             }
             let var_names = self.stack.pop_n(len as usize)?;
             let mut old_vals: Vec<Val> = vec![];
@@ -185,7 +164,7 @@ impl Runtime {
                     if self.vars.store(name_str, val).is_ok() {
                         continue;
                     }
-                    if name_str.ends_with('$') {
+                    if Var::is_string(&name_str) {
                         self.vars.store(&name_str, Val::String(s.to_string()))?;
                         continue;
                     }
