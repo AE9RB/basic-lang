@@ -22,6 +22,10 @@ impl Var {
         self.vars.clear()
     }
 
+    pub fn remove(&mut self, var_name: &str) -> Option<Val> {
+        self.vars.remove(var_name)
+    }
+
     pub fn fetch(&self, var_name: &str) -> Val {
         match self.vars.get(var_name) {
             Some(val) => val.clone(),

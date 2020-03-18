@@ -46,9 +46,9 @@ enum State {
     Stopped,
     Listing(Range<LineNumber>),
     RuntimeError(Error),
-    //InputError(Error),
     Running,
     Input(bool),
+    InputRedo(bool),
     Interrupt,
 }
 
@@ -130,19 +130,104 @@ impl Runtime {
     }
 
     fn enter_input(&mut self, string: &str) {
-        match self.parse_input(string) {
-            Ok(_) => {}
-            Err(e) => unimplemented!("{:?}", e),
-        }
+        let mut vals = self.parse_input(string);
+        match self.apply_input(string, &mut vals) {
+            Ok(_) => self.state = State::Running,
+            Err(_) => {
+                if let State::Input(true) = self.state {
+                    self.state = State::InputRedo(true);
+                } else {
+                    self.state = State::InputRedo(false);
+                }
+            }
+        };
     }
 
-    fn parse_input(&mut self, string: &str) -> Result<()> {
-        // let prompt = self.stack.pop()?;
-        // if let Val::Integer(len) = self.stack.pop()? {
-        //     let var_names = self.stack.pop_n(len as usize)?;
-        // }
-        dbg!(&string, &self.stack);
+    fn apply_input(&mut self, string: &str, vals: &mut Vec<(&str, Val)>) -> Result<()> {
+        let prompt = self.stack.pop()?;
+        if let Val::Integer(len) = self.stack.pop()? {
+            if vals.len() != len as usize {
+                self.stack.push(Val::Integer(len))?;
+                self.stack.push(prompt)?;
+                return Err(error!(SyntaxError));
+            }
+            if len == 1 {
+                let string = string.trim();
+                if let Val::String(name_str) = self.stack.pop()? {
+                    if string.is_empty() {
+                        self.vars.remove(&name_str);
+                        return Ok(());
+                    }
+                    if self.vars.store(&name_str, Val::from(string)).is_ok() {
+                        return Ok(());
+                    }
+                    if name_str.ends_with('$') {
+                        self.vars
+                            .store(&name_str, Val::String(string.to_string()))?;
+                        return Ok(());
+                    }
+                    self.stack.push(Val::String(name_str))?;
+                    self.stack.push(Val::Integer(1))?;
+                    self.stack.push(prompt)?;
+                    return Err(error!(SyntaxError));
+                }
+            }
+            let var_names = self.stack.pop_n(len as usize)?;
+            let mut old_vals: Vec<Val> = vec![];
+            let mut redo = false;
+            for (name, (s, val)) in var_names.iter().zip(vals.drain(..)) {
+                if let Val::String(name_str) = name {
+                    old_vals.push(self.vars.fetch(name_str));
+                    if s.is_empty() {
+                        self.vars.remove(&name_str);
+                        continue;
+                    }
+                    if self.vars.store(name_str, val).is_ok() {
+                        continue;
+                    }
+                    if name_str.ends_with('$') {
+                        self.vars.store(&name_str, Val::String(s.to_string()))?;
+                        continue;
+                    }
+                }
+                redo = true;
+                break;
+            }
+            if redo {
+                for (name, val) in var_names.iter().zip(old_vals.drain(..)) {
+                    if let Val::String(name_str) = name {
+                        self.vars.store(name_str, val).ok();
+                    }
+                }
+                for val in var_names {
+                    self.stack.push(val)?;
+                }
+                self.stack.push(Val::Integer(len))?;
+                self.stack.push(prompt)?;
+                return Err(error!(SyntaxError));
+            }
+        }
         Ok(())
+    }
+
+    fn parse_input<'a>(&mut self, string: &'a str) -> Vec<(&'a str, Val)> {
+        let mut v: Vec<(&str, Val)> = vec![];
+        let mut start: usize = 0;
+        let mut in_quote = false;
+        for (i, ch) in string.char_indices() {
+            match ch {
+                '"' => {
+                    in_quote = !in_quote;
+                }
+                ',' if !in_quote => {
+                    v.push((&string[start..i].trim(), Val::from(&string[start..i])));
+                    start = i + 1;
+                }
+                _ => {}
+            }
+        }
+        v.push((&string[start..].trim(), Val::from(&string[start..])));
+        v
     }
 
     pub fn interrupt(&mut self) {
@@ -250,6 +335,10 @@ impl Runtime {
                 self.state = State::RuntimeError(
                     error!(InternalError, line_number(&self); "NO INPUT PROMPT ON STACK"),
                 );
+            }
+            State::InputRedo(caps) => {
+                self.state = State::Input(*caps);
+                return Event::Errors(Arc::new(vec![error!(RedoFromStart)]));
             }
             State::Running => {
                 if !self.direct_errors.is_empty() {
@@ -441,7 +530,6 @@ impl Runtime {
 
     fn r#input(&mut self) -> Result<Event> {
         if let Val::Integer(i) = self.stack.pop()? {
-            dbg!(i);
             let caps = i != 0;
             if let Val::String(mut s) = self.stack.pop()? {
                 s.push('?');

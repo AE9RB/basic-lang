@@ -386,3 +386,21 @@ impl TryFrom<Val> for f64 {
         }
     }
 }
+
+impl From<&str> for Val {
+    fn from(string: &str) -> Self {
+        let string = string.trim();
+        let mut s = String::from(string).replace("D", "E").replace("d", "e");
+        match s.chars().last() {
+            Some('!') | Some('#') | Some('%') => {
+                s.pop();
+            }
+            _ => {}
+        };
+        if let Ok(num) = s.parse::<f64>() {
+            Val::Double(num)
+        } else {
+            Val::String(string.trim_matches('"').to_string())
+        }
+    }
+}

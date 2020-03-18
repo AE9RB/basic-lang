@@ -18,6 +18,10 @@ pub mod FOR;
 #[allow(non_snake_case)]
 pub mod GOTO;
 
+#[path = "statements/input.rs"]
+#[allow(non_snake_case)]
+pub mod INPUT;
+
 #[path = "statements/let.rs"]
 #[allow(non_snake_case)]
 pub mod LET;

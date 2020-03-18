@@ -116,6 +116,7 @@ pub enum ErrorCode {
     TypeMismatch = 13,
     OutOfStringSpace = 14,
     CantContinue = 17,
+    RedoFromStart = 21,
     ForWithoutNext = 26,
     InternalError = 51,
 }
@@ -150,6 +151,7 @@ impl std::fmt::Display for Error {
             18 => "UNDEFINED USER FUNCTION",
             19 => "NO RESUME",
             20 => "RESUME WITHOUT ERROR",
+            21 => "REDO FROM START",
             22 => "MISSING OPERAND",
             23 => "LINE BUFFER OVERFLOW",
             26 => "FOR WITHOUT NEXT",

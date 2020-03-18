@@ -495,7 +495,7 @@ impl Statement {
                 prompt_col = parse.col.clone();
                 match parse.peek() {
                     None | Some(Token::Colon) => {}
-                    Some(Token::Comma) => {
+                    Some(Token::Semicolon) => {
                         parse.next();
                     }
                     _ => {
