@@ -1,5 +1,9 @@
 use super::*;
 
+#[cfg(test)]
+#[path = "tests/line_test.rs"]
+mod lex_test;
+
 #[derive(Debug)]
 pub struct Line {
     number: LineNumber,
@@ -8,7 +12,13 @@ pub struct Line {
 
 impl Line {
     pub fn new(s: &str) -> Line {
-        let (line_number, tokens) = lex(s);
+        let mut take = s.len();
+        if s.ends_with("\r\n") {
+            take -= 2
+        } else if s.ends_with('\n') {
+            take -= 1
+        }
+        let (line_number, tokens) = lex(&s[0..take]);
         Line {
             number: line_number,
             tokens,

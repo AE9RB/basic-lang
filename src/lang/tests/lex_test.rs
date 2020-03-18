@@ -101,7 +101,7 @@ fn test_annotated_numbers() {
 
 #[test]
 fn test_remark1() {
-    let (ln, v) = lex("100 REM  A fortunate comment \n");
+    let (ln, v) = lex("100 REM  A fortunate comment");
     assert_eq!(ln, Some(100));
     let mut x = v.iter();
     assert_eq!(x.next(), Some(&Token::Word(Word::Rem1)));
@@ -114,7 +114,7 @@ fn test_remark1() {
 
 #[test]
 fn test_remark2() {
-    let (ln, v) = lex("100  'The comment  \r\n");
+    let (ln, v) = lex("100  'The comment  ");
     assert_eq!(ln, Some(100));
     let mut x = v.iter();
     assert_eq!(x.next(), Some(&Token::Whitespace(1)));

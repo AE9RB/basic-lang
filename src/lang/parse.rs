@@ -9,22 +9,22 @@ mod parse_test;
 type Result<T> = std::result::Result<T, Error>;
 
 pub fn parse(line_number: LineNumber, tokens: &[Token]) -> Result<Vec<Statement>> {
-    match Parser::parse(tokens) {
+    match BasicParser::parse(tokens) {
         Err(e) => Err(e.in_line_number(line_number)),
         Ok(r) => Ok(r),
     }
 }
 
-struct Parser<'a> {
+struct BasicParser<'a> {
     token_stream: std::slice::Iter<'a, Token>,
     peeked: Option<&'a Token>,
     rem2: bool,
     col: Column,
 }
 
-impl<'a> Parser<'a> {
+impl<'a> BasicParser<'a> {
     fn parse(tokens: &'a [Token]) -> Result<Vec<Statement>> {
-        let mut parse = Parser {
+        let mut parse = BasicParser {
             token_stream: tokens.iter(),
             peeked: None,
             rem2: false,
@@ -261,8 +261,8 @@ impl<'a> Parser<'a> {
 }
 
 impl Expression {
-    fn expect(parse: &mut Parser) -> Result<Expression> {
-        fn descend(parse: &mut Parser, precedence: usize) -> Result<Expression> {
+    fn expect(parse: &mut BasicParser) -> Result<Expression> {
+        fn descend(parse: &mut BasicParser, precedence: usize) -> Result<Expression> {
             let mut lhs = match parse.next() {
                 Some(Token::LParen) => {
                     let expr = descend(parse, 0)?;
@@ -408,7 +408,7 @@ impl Expression {
 }
 
 impl Statement {
-    fn expect(parse: &mut Parser) -> Result<Statement> {
+    fn expect(parse: &mut BasicParser) -> Result<Statement> {
         match parse.peek() {
             Some(Token::Ident(_)) => return Self::r#let(parse),
             Some(Token::Word(word)) => {
@@ -440,7 +440,7 @@ impl Statement {
         Err(error!(SyntaxError, ..&parse.col; "EXPECTED STATEMENT"))
     }
 
-    fn r#clear(parse: &mut Parser) -> Result<Statement> {
+    fn r#clear(parse: &mut BasicParser) -> Result<Statement> {
         let result = Ok(Statement::Clear(parse.col.clone()));
         while match parse.peek() {
             None | Some(Token::Colon) => false,
@@ -451,15 +451,15 @@ impl Statement {
         result
     }
 
-    fn r#cont(parse: &mut Parser) -> Result<Statement> {
+    fn r#cont(parse: &mut BasicParser) -> Result<Statement> {
         Ok(Statement::Cont(parse.col.clone()))
     }
 
-    fn r#end(parse: &mut Parser) -> Result<Statement> {
+    fn r#end(parse: &mut BasicParser) -> Result<Statement> {
         Ok(Statement::End(parse.col.clone()))
     }
 
-    fn r#for(parse: &mut Parser) -> Result<Statement> {
+    fn r#for(parse: &mut BasicParser) -> Result<Statement> {
         let column = parse.col.clone();
         let ident = parse.expect_ident()?;
         parse.expect(Token::Operator(Operator::Equal))?;
@@ -473,14 +473,14 @@ impl Statement {
         Ok(Statement::For(column, ident, expr_from, expr_to, expr_step))
     }
 
-    fn r#goto(parse: &mut Parser) -> Result<Statement> {
+    fn r#goto(parse: &mut BasicParser) -> Result<Statement> {
         Ok(Statement::Goto(
             parse.col.clone(),
             parse.expect_line_number()?,
         ))
     }
 
-    fn r#input(parse: &mut Parser) -> Result<Statement> {
+    fn r#input(parse: &mut BasicParser) -> Result<Statement> {
         let column = parse.col.clone();
         let mut prompt_col = column.end..column.end;
         let caps = if let Some(Token::Comma) = parse.peek() {
@@ -518,7 +518,7 @@ impl Statement {
         ))
     }
 
-    fn r#let(parse: &mut Parser) -> Result<Statement> {
+    fn r#let(parse: &mut BasicParser) -> Result<Statement> {
         let column = parse.col.clone();
         let ident = parse.expect_ident()?;
         parse.expect(Token::Operator(Operator::Equal))?;
@@ -526,26 +526,26 @@ impl Statement {
         Ok(Statement::Let(column, ident, expr))
     }
 
-    fn r#list(parse: &mut Parser) -> Result<Statement> {
+    fn r#list(parse: &mut BasicParser) -> Result<Statement> {
         let column = parse.col.clone();
         let (from, to) = parse.expect_line_number_range()?;
         Ok(Statement::List(column, from, to))
     }
 
-    fn r#next(parse: &mut Parser) -> Result<Statement> {
+    fn r#next(parse: &mut BasicParser) -> Result<Statement> {
         let column = parse.col.clone();
         let idents = parse.expect_ident_list()?;
         Ok(Statement::Next(column, idents))
     }
 
-    fn r#print(parse: &mut Parser) -> Result<Statement> {
+    fn r#print(parse: &mut BasicParser) -> Result<Statement> {
         Ok(Statement::Print(
             parse.col.clone(),
             parse.expect_print_list()?,
         ))
     }
 
-    fn r#run(parse: &mut Parser) -> Result<Statement> {
+    fn r#run(parse: &mut BasicParser) -> Result<Statement> {
         let column = parse.col.clone();
         match parse.maybe_line_number()? {
             Some(num) => Ok(Statement::Run(
@@ -560,7 +560,7 @@ impl Statement {
         }
     }
 
-    fn r#stop(parse: &mut Parser) -> Result<Statement> {
+    fn r#stop(parse: &mut BasicParser) -> Result<Statement> {
         Ok(Statement::Stop(parse.col.clone()))
     }
 }

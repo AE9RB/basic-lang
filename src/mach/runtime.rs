@@ -45,7 +45,8 @@ enum State {
     Intro,
     Stopped,
     Listing(Range<LineNumber>),
-    Error(Error),
+    RuntimeError(Error),
+    //InputError(Error),
     Running,
     Input(bool),
     Interrupt,
@@ -129,7 +130,19 @@ impl Runtime {
     }
 
     fn enter_input(&mut self, string: &str) {
+        match self.parse_input(string) {
+            Ok(_) => {}
+            Err(e) => unimplemented!("{:?}", e),
+        }
+    }
+
+    fn parse_input(&mut self, string: &str) -> Result<()> {
+        // let prompt = self.stack.pop()?;
+        // if let Val::Integer(len) = self.stack.pop()? {
+        //     let var_names = self.stack.pop_n(len as usize)?;
+        // }
         dbg!(&string, &self.stack);
+        Ok(())
     }
 
     pub fn interrupt(&mut self) {
@@ -218,7 +231,7 @@ impl Runtime {
                 None => return Event::Stopped,
             },
             State::Interrupt => {
-                self.state = State::Error(error!(Break, line_number(&self)));
+                self.state = State::RuntimeError(error!(Break, line_number(&self)));
             }
             State::Listing(range) => {
                 let mut range = range.clone();
@@ -234,7 +247,7 @@ impl Runtime {
                     self.print_col += prompt.chars().count();
                     return Event::Input(prompt.clone(), *caps);
                 }
-                self.state = State::Error(
+                self.state = State::RuntimeError(
                     error!(InternalError, line_number(&self); "NO INPUT PROMPT ON STACK"),
                 );
             }
@@ -244,16 +257,16 @@ impl Runtime {
                     return Event::Errors(Arc::clone(&self.direct_errors));
                 }
             }
-            State::Error(_) => {}
+            State::RuntimeError(_) => {}
         }
-        if let State::Error(_) = self.state {
+        if let State::RuntimeError(_) = self.state {
             if self.print_col > 0 {
                 self.print_col = 0;
                 return Event::Print('\n'.to_string());
             }
             let mut state = State::Stopped;
             std::mem::swap(&mut self.state, &mut state);
-            if let State::Error(e) = state {
+            if let State::RuntimeError(e) = state {
                 return Event::Errors(Arc::new(vec![e]));
             }
         }
@@ -277,7 +290,7 @@ impl Runtime {
                 }
             }
             Err(error) => {
-                self.cont = State::Error(error.in_line_number(line_number(&self)));
+                self.cont = State::RuntimeError(error.in_line_number(line_number(&self)));
                 std::mem::swap(&mut self.cont, &mut self.state);
                 self.cont_pc = self.pc;
                 if self.pc >= self.entry_address || self.stack.is_full() {
