@@ -12,13 +12,7 @@ pub struct Line {
 
 impl Line {
     pub fn new(s: &str) -> Line {
-        let mut take = s.len();
-        if s.ends_with("\r\n") {
-            take -= 2
-        } else if s.ends_with('\n') {
-            take -= 1
-        }
-        let (line_number, tokens) = lex(&s[0..take]);
+        let (line_number, tokens) = lex(&s);
         Line {
             number: line_number,
             tokens,
