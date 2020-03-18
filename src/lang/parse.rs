@@ -483,6 +483,12 @@ impl Statement {
     fn r#input(parse: &mut Parser) -> Result<Statement> {
         let column = parse.col.clone();
         let mut prompt_col = column.end..column.end;
+        let caps = if let Some(Token::Comma) = parse.peek() {
+            parse.next();
+            Expression::Integer(parse.col.clone(), 0)
+        } else {
+            Expression::Integer(parse.col.start..parse.col.start, -1)
+        };
         let prompt = match parse.peek() {
             Some(Token::Literal(Literal::String(s))) => {
                 parse.next();
@@ -506,6 +512,7 @@ impl Statement {
         }
         Ok(Statement::Input(
             column,
+            caps,
             Expression::String(prompt_col, prompt),
             idents,
         ))

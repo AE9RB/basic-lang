@@ -3,9 +3,9 @@ extern crate ctrlc;
 extern crate linefeed;
 use crate::mach::{Event, Runtime};
 use ansi_term::Style;
-use linefeed::complete::{Completer, Completion};
-use linefeed::terminal::Terminal;
-use linefeed::{Interface, Prompter, ReadResult, Signal};
+use linefeed::{
+    Command, Completer, Completion, Function, Interface, Prompter, ReadResult, Signal, Terminal,
+};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -22,10 +22,13 @@ pub fn main() {
 }
 
 fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
-    let command = Interface::new("BASIC")?;
-    let input = Interface::new("INPUT")?;
-    input.set_report_signal(Signal::Interrupt, true);
     let mut runtime = Arc::new(Runtime::default());
+    let command = Interface::new("BASIC")?;
+    let input_full = Interface::new("Input")?;
+    input_full.set_report_signal(Signal::Interrupt, true);
+    let input_caps = Interface::new("INPUT")?;
+    input_caps.set_report_signal(Signal::Interrupt, true);
+    CapsFunction::install(&input_caps);
 
     loop {
         if interrupted.load(Ordering::SeqCst) {
@@ -45,7 +48,8 @@ fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
                     command.add_history_unique(string);
                 }
             }
-            Event::Input(prompt) => {
+            Event::Input(prompt, caps) => {
+                let input = if caps { &input_caps } else { &input_full };
                 input.set_prompt(&prompt)?;
                 match input.read_line()? {
                     ReadResult::Input(string) => {
@@ -76,6 +80,26 @@ fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
         }
     }
     Ok(())
+}
+
+struct CapsFunction;
+
+impl CapsFunction {
+    fn install<T: Terminal>(i: &Interface<T>) {
+        i.define_function("caps-function", Arc::new(CapsFunction));
+        for ch in 97..=122 {
+            i.bind_sequence(
+                char::from(ch).to_string(),
+                Command::from_str("caps-function"),
+            );
+        }
+    }
+}
+
+impl<Term: Terminal> Function<Term> for CapsFunction {
+    fn execute(&self, prompter: &mut Prompter<Term>, count: i32, ch: char) -> std::io::Result<()> {
+        prompter.insert(count as usize, ch.to_ascii_uppercase())
+    }
 }
 
 struct LineCompleter {

@@ -208,7 +208,9 @@ impl Compiler {
             Err(_) => return Err(error!(Overflow, ..&col; "TOO MANY VARIABLES")),
         };
         let (_prompt_col, mut prompt) = self.expr.pop()?;
+        let (_caps_col, mut caps) = self.expr.pop()?;
         prog.append(&mut prompt)?;
+        prog.append(&mut caps)?;
         prog.push(Op::Input)?;
         Ok(full_col)
     }

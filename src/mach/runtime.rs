@@ -33,7 +33,7 @@ pub struct Runtime {
 
 pub enum Event {
     Errors(Arc<Vec<Error>>),
-    Input(String),
+    Input(String, bool),
     Print(String),
     List((String, Vec<Range<usize>>)),
     Running,
@@ -47,7 +47,7 @@ enum State {
     Listing(Range<LineNumber>),
     Error(Error),
     Running,
-    Input,
+    Input(bool),
     Interrupt,
 }
 
@@ -82,7 +82,7 @@ impl Runtime {
     /// Enters a line of BASIC or INPUT.
     /// Returns true if good candidate for history.
     pub fn enter(&mut self, string: &str) -> bool {
-        if let State::Input = self.state {
+        if let State::Input(_) = self.state {
             self.enter_input(string);
             self.print_col = 0;
             return true;
@@ -229,10 +229,10 @@ impl Runtime {
                     self.state = State::Running;
                 }
             }
-            State::Input => {
+            State::Input(caps) => {
                 if let Some(Val::String(prompt)) = self.stack.last() {
                     self.print_col += prompt.chars().count();
-                    return Event::Input(prompt.clone());
+                    return Event::Input(prompt.clone(), *caps);
                 }
                 self.state = State::Error(
                     error!(InternalError, line_number(&self); "NO INPUT PROMPT ON STACK"),
@@ -427,14 +427,18 @@ impl Runtime {
     }
 
     fn r#input(&mut self) -> Result<Event> {
-        if let Val::String(mut s) = self.stack.pop()? {
-            s.push('?');
-            s.push(' ');
-            let prompt = s.clone();
-            self.stack.push(Val::String(s))?;
-            self.state = State::Input;
-            self.print_col += prompt.chars().count();
-            return Ok(Event::Input(prompt));
+        if let Val::Integer(i) = self.stack.pop()? {
+            dbg!(i);
+            let caps = i != 0;
+            if let Val::String(mut s) = self.stack.pop()? {
+                s.push('?');
+                s.push(' ');
+                let prompt = s.clone();
+                self.stack.push(Val::String(s))?;
+                self.state = State::Input(caps);
+                self.print_col += prompt.chars().count();
+                return Ok(Event::Input(prompt, caps));
+            }
         }
         Err(error!(InternalError))
     }
