@@ -9,6 +9,7 @@ use std::sync::Arc;
 type Result<T> = std::result::Result<T, Error>;
 
 const INTRO: &str = "64K BASIC";
+const MAX_LINE_LEN: usize = 1024;
 
 /// ## Virtual machine
 
@@ -88,6 +89,11 @@ impl Runtime {
             self.print_col = 0;
             return true;
         }
+        debug_assert!(matches!(self.state, State::Stopped | State::Intro));
+        if string.len() > MAX_LINE_LEN {
+            self.state = State::RuntimeError(error!(OutOfMemory));
+            return false;
+        }
         let line = Line::new(string);
         if line.is_direct() {
             if line.is_empty() {
@@ -130,16 +136,15 @@ impl Runtime {
     }
 
     fn enter_input(&mut self, string: &str) {
-        match self.apply_input(string) {
-            Ok(_) => self.state = State::Running,
-            Err(_) => {
-                if let State::Input(true) = self.state {
-                    self.state = State::InputRedo(true);
-                } else {
-                    self.state = State::InputRedo(false);
-                }
-            }
-        };
+        if string.len() <= MAX_LINE_LEN && self.apply_input(string).is_ok() {
+            self.state = State::Running;
+            return;
+        }
+        if let State::Input(true) = self.state {
+            self.state = State::InputRedo(true);
+        } else {
+            self.state = State::InputRedo(false);
+        }
     }
 
     fn apply_input(&mut self, string: &str) -> Result<()> {
@@ -338,11 +343,7 @@ impl Runtime {
                 return Event::Errors(Arc::new(vec![e]));
             }
         }
-        debug_assert!(if let State::Running = self.state {
-            true
-        } else {
-            false
-        });
+        debug_assert!(matches!(self.state, State::Running));
         match self.execute_loop(iterations) {
             Ok(event) => {
                 if let State::Stopped = self.state {

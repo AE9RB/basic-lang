@@ -79,7 +79,7 @@ impl Var {
         match &value {
             Val::String(s) => {
                 if s.chars().count() > 255 {
-                    return Err(error!(OutOfStringSpace; "MAXIMUM STRING LENGTH IS 255"));
+                    return Err(error!(StringTooLong; "MAXIMUM STRING LENGTH IS 255"));
                 }
                 self.insert_val(var_name, value);
                 Ok(())

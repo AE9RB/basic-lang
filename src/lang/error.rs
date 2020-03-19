@@ -115,6 +115,7 @@ pub enum ErrorCode {
     DivisionByZero = 11,
     TypeMismatch = 13,
     OutOfStringSpace = 14,
+    StringTooLong = 15,
     CantContinue = 17,
     RedoFromStart = 21,
     ForWithoutNext = 26,
