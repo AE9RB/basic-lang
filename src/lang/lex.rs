@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 
 #[cfg(test)]
 #[path = "tests/lex_test.rs"]
-mod lex_test;
+mod test;
 
 pub fn lex(s: &str) -> (LineNumber, Vec<Token>) {
     BasicLexer::lex(s)
@@ -221,7 +221,7 @@ impl<'a> Iterator for BasicLexer<'a> {
         }
         if is_basic_alphabetic(*pk) {
             let r = self.alphabetic();
-            if r == Some(Token::Word(Word::Rem1)) {
+            if let Some(Token::Word(Word::Rem1)) = r {
                 self.remark = true;
             }
             return r;
@@ -230,7 +230,7 @@ impl<'a> Iterator for BasicLexer<'a> {
             return self.string();
         }
         let minutia = self.minutia();
-        if minutia == Some(Token::Word(Word::Rem2)) {
+        if let Some(Token::Word(Word::Rem2)) = minutia {
             self.remark = true;
         }
         minutia
@@ -259,31 +259,31 @@ impl<'a> BasicLexer<'a> {
         let mut locs: Vec<(usize, Token)> = vec![];
         let mut tokens_iter = tokens.windows(2).enumerate();
         while let Some((index, tt)) = tokens_iter.next() {
-            if tt[0] == Token::Operator(Operator::Equal) {
-                if tt[1] == Token::Operator(Operator::Greater) {
+            if let Token::Operator(Operator::Equal) = tt[0] {
+                if let Token::Operator(Operator::Greater) = tt[1] {
                     locs.push((index, Token::Operator(Operator::EqualGreater)));
                     tokens_iter.next();
                 }
-                if tt[1] == Token::Operator(Operator::Less) {
+                if let Token::Operator(Operator::Less) = tt[1] {
                     locs.push((index, Token::Operator(Operator::EqualLess)));
                     tokens_iter.next();
                 }
             }
-            if tt[1] == Token::Operator(Operator::Equal) {
-                if tt[0] == Token::Operator(Operator::Greater) {
+            if let Token::Operator(Operator::Equal) = tt[1] {
+                if let Token::Operator(Operator::Greater) = tt[0] {
                     locs.push((index, Token::Operator(Operator::GreaterEqual)));
                     tokens_iter.next();
                 }
-                if tt[0] == Token::Operator(Operator::Less) {
+                if let Token::Operator(Operator::Less) = tt[0] {
                     locs.push((index, Token::Operator(Operator::LessEqual)));
                     tokens_iter.next();
                 }
             }
-            if tt[0] == Token::Operator(Operator::Less)
-                && tt[1] == Token::Operator(Operator::Greater)
-            {
-                locs.push((index, Token::Operator(Operator::NotEqual)));
-                tokens_iter.next();
+            if let Token::Operator(Operator::Less) = tt[0] {
+                if let Token::Operator(Operator::Greater) = tt[1] {
+                    locs.push((index, Token::Operator(Operator::NotEqual)));
+                    tokens_iter.next();
+                }
             }
         }
         while let Some((index, token)) = locs.pop() {
@@ -294,13 +294,17 @@ impl<'a> BasicLexer<'a> {
     fn collapse_go(tokens: &mut Vec<Token>) {
         let mut locs: Vec<(usize, Token)> = vec![];
         for (index, ttt) in tokens.windows(3).enumerate() {
-            if ttt[0] == Token::Ident(Ident::Plain("GO".to_string())) {
-                if let Token::Whitespace(_) = ttt[1] {
-                    if ttt[2] == Token::Word(Word::To) {
-                        locs.push((index, Token::Word(Word::Goto2)));
-                    }
-                    if ttt[2] == Token::Ident(Ident::Plain("SUB".to_string())) {
-                        locs.push((index, Token::Word(Word::Gosub2)));
+            if let Token::Ident(Ident::Plain(go)) = &ttt[0] {
+                if go == "GO" {
+                    if let Token::Whitespace(_) = ttt[1] {
+                        if let Token::Word(Word::To) = ttt[2] {
+                            locs.push((index, Token::Word(Word::Goto2)));
+                        }
+                        if let Token::Ident(Ident::Plain(sub)) = &ttt[2] {
+                            if sub == "SUB" {
+                                locs.push((index, Token::Word(Word::Gosub2)));
+                            }
+                        }
                     }
                 }
             }

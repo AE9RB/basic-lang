@@ -2,7 +2,7 @@ use super::{Error, LineNumber, MaxValue};
 use crate::error;
 use std::convert::TryFrom;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq)]
 pub enum Token {
     Unknown(String),
     Whitespace(usize),
@@ -127,7 +127,7 @@ impl TryFrom<&Token> for LineNumber {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq)]
 pub enum Literal {
     Single(String),
     Double(String),
@@ -147,7 +147,7 @@ impl std::fmt::Display for Literal {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq)]
 pub enum Word {
     Clear,
     Cont,
@@ -199,7 +199,7 @@ impl std::fmt::Display for Word {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq)]
 pub enum Operator {
     Caret,
     Multiply,
@@ -264,7 +264,7 @@ impl std::fmt::Display for Operator {
     }
 }
 
-#[derive(Debug, PartialEq, Hash, Clone)]
+#[derive(Debug, PartialEq, Hash)]
 pub enum Ident {
     Plain(String),
     String(String),

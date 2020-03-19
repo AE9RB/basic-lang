@@ -4,7 +4,7 @@ use crate::error;
 
 #[cfg(test)]
 #[path = "tests/parse_test.rs"]
-mod parse_test;
+mod test;
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -210,7 +210,7 @@ impl<'a> BasicParser<'a> {
             let col = self.col.start..self.col.start;
             from = Expression::Single(col, 0.0);
         };
-        if self.peek() == Some(&&Token::Operator(Operator::Minus)) {
+        if let Some(&&Token::Operator(Operator::Minus)) = self.peek() {
             self.next();
             if let Some(ln) = self.maybe_line_number()? {
                 to = Expression::Single(self.col.clone(), ln as f32);

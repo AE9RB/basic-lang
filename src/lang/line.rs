@@ -2,7 +2,7 @@ use super::*;
 
 #[cfg(test)]
 #[path = "tests/line_test.rs"]
-mod lex_test;
+mod test;
 
 #[derive(Debug)]
 pub struct Line {

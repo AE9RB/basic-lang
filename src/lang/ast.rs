@@ -1,6 +1,7 @@
 use super::Column;
 
-#[derive(Debug, PartialEq)]
+#[cfg_attr(test, derive(PartialEq))]
+#[derive(Debug)]
 pub enum Statement {
     Clear(Column),
     Cont(Column),
@@ -16,7 +17,8 @@ pub enum Statement {
     Stop(Column),
 }
 
-#[derive(Debug, PartialEq, Hash, Clone)]
+#[cfg_attr(test, derive(PartialEq))]
+#[derive(Debug)]
 pub enum Ident {
     Plain(Column, String),
     String(Column, String),
@@ -25,7 +27,8 @@ pub enum Ident {
     Integer(Column, String),
 }
 
-#[derive(Debug, PartialEq)]
+#[cfg_attr(test, derive(PartialEq))]
+#[derive(Debug)]
 pub enum Expression {
     Single(Column, f32),
     Double(Column, f64),
