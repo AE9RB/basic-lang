@@ -521,9 +521,18 @@ impl Statement {
     fn r#let(parse: &mut BasicParser) -> Result<Statement> {
         let column = parse.col.clone();
         let ident = parse.expect_ident()?;
+        if matches!(parse.peek(), Some(Token::Operator(Operator::Equal))) {
+            parse.next();
+            let expr = parse.expect_expression()?;
+            return Ok(Statement::Let(column, ident, expr));
+        }
+        if !matches!(parse.peek(), Some(Token::LParen)) {
+            return Err(error!(SyntaxError, ..&column));
+        }
+        let vec_expr = parse.expect_expression_list()?;
         parse.expect(Token::Operator(Operator::Equal))?;
         let expr = parse.expect_expression()?;
-        Ok(Statement::Let(column, ident, expr))
+        Ok(Statement::LetArray(column, ident, vec_expr, expr))
     }
 
     fn r#list(parse: &mut BasicParser) -> Result<Statement> {

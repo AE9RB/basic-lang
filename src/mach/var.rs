@@ -49,6 +49,16 @@ impl Var {
         }
     }
 
+    pub fn store_array(&mut self, var_name: &str, arr: Vec<Val>, value: Val) -> Result<()> {
+        println!("PopArr {} {:?} = {}", var_name, arr, value);
+        Err(error!(InternalError; "store_array unfinished"))
+    }
+
+    pub fn fetch_array(&mut self, var_name: &str, arr: Vec<Val>) -> Result<Val> {
+        println!("PushArr {} {:?}", var_name, &arr);
+        Err(error!(InternalError; "fetch_array unfinished"))
+    }
+
     pub fn store(&mut self, var_name: &str, value: Val) -> Result<()> {
         if self.vars.len() > u16::max_value() as usize {
             return Err(error!(OutOfMemory));

@@ -18,6 +18,8 @@ pub enum Opcode {
     /// Pop stack value to named variable. This is the `LET` statement
     /// and may generate errors.
     Pop(String),
+    PushArr(String),
+    PopArr(String),
 
     // *** Branch control
     /// Jumps to Address if the for-loop on the stack is finished.
@@ -79,6 +81,8 @@ impl std::fmt::Display for Opcode {
             Literal(v) => write!(f, "{}", format!("{:?}", v).to_ascii_uppercase()),
             Push(s) => write!(f, "PUSH({})", s),
             Pop(s) => write!(f, "POP({})", s),
+            PushArr(s) => write!(f, "PUSHARR({})", s),
+            PopArr(s) => write!(f, "POPARR({})", s),
 
             For(a) => write!(f, "FOR({})", a),
             If(a) => write!(f, "IF({})", a),

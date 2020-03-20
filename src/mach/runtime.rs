@@ -22,7 +22,7 @@ pub struct Runtime {
     entry_address: Address,
     indirect_errors: Arc<Vec<Error>>,
     direct_errors: Arc<Vec<Error>>,
-    stack: Stack<Val>,
+    stack: RuntimeStack,
     vars: Var,
     state: State,
     cont: State,
@@ -384,6 +384,16 @@ impl Runtime {
                 Opcode::Literal(val) => self.stack.push(val.clone())?,
                 Opcode::Pop(var_name) => self.vars.store(var_name, self.stack.pop()?)?,
                 Opcode::Push(var_name) => self.stack.push(self.vars.fetch(var_name))?,
+                Opcode::PopArr(var_name) => {
+                    let vec = self.stack.pop_vec()?;
+                    let val = self.stack.pop()?;
+                    self.vars.store_array(var_name, vec, val)?;
+                }
+                Opcode::PushArr(var_name) => {
+                    let vec = self.stack.pop_vec()?;
+                    let val = self.vars.fetch_array(var_name, vec)?;
+                    self.stack.push(val)?;
+                }
                 Opcode::For(addr) => {
                     let addr = *addr;
                     self.r#for(addr)?;
@@ -430,44 +440,32 @@ impl Runtime {
                     return Err(error!(Break));
                 }
 
-                Opcode::Neg => self.pop_1_push(&Operation::negate)?,
-                Opcode::Exp => self.pop_2_push(&Operation::unimplemented)?,
-                Opcode::Mul => self.pop_2_push(&Operation::multiply)?,
-                Opcode::Div => self.pop_2_push(&Operation::divide)?,
-                Opcode::DivInt => self.pop_2_push(&Operation::unimplemented)?,
-                Opcode::Mod => self.pop_2_push(&Operation::unimplemented)?,
-                Opcode::Add => self.pop_2_push(&Operation::sum)?,
-                Opcode::Sub => self.pop_2_push(&Operation::subtract)?,
-                Opcode::Eq => self.pop_2_push(&Operation::unimplemented)?,
-                Opcode::NotEq => self.pop_2_push(&Operation::unimplemented)?,
-                Opcode::Lt => self.pop_2_push(&Operation::less)?,
-                Opcode::LtEq => self.pop_2_push(&Operation::unimplemented)?,
-                Opcode::Gt => self.pop_2_push(&Operation::greater)?,
-                Opcode::GtEq => self.pop_2_push(&Operation::unimplemented)?,
-                Opcode::Not => self.pop_2_push(&Operation::unimplemented)?,
-                Opcode::And => self.pop_2_push(&Operation::unimplemented)?,
-                Opcode::Or => self.pop_2_push(&Operation::unimplemented)?,
-                Opcode::Xor => self.pop_2_push(&Operation::unimplemented)?,
-                Opcode::Imp => self.pop_2_push(&Operation::unimplemented)?,
-                Opcode::Eqv => self.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Neg => self.stack.pop_1_push(&Operation::negate)?,
+                Opcode::Exp => self.stack.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Mul => self.stack.pop_2_push(&Operation::multiply)?,
+                Opcode::Div => self.stack.pop_2_push(&Operation::divide)?,
+                Opcode::DivInt => self.stack.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Mod => self.stack.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Add => self.stack.pop_2_push(&Operation::sum)?,
+                Opcode::Sub => self.stack.pop_2_push(&Operation::subtract)?,
+                Opcode::Eq => self.stack.pop_2_push(&Operation::unimplemented)?,
+                Opcode::NotEq => self.stack.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Lt => self.stack.pop_2_push(&Operation::less)?,
+                Opcode::LtEq => self.stack.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Gt => self.stack.pop_2_push(&Operation::greater)?,
+                Opcode::GtEq => self.stack.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Not => self.stack.pop_2_push(&Operation::unimplemented)?,
+                Opcode::And => self.stack.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Or => self.stack.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Xor => self.stack.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Imp => self.stack.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Eqv => self.stack.pop_2_push(&Operation::unimplemented)?,
 
-                Opcode::Cos => self.pop_1_push(&Function::cos)?,
-                Opcode::Sin => self.pop_1_push(&Function::sin)?,
+                Opcode::Cos => self.stack.pop_1_push(&Function::cos)?,
+                Opcode::Sin => self.stack.pop_1_push(&Function::sin)?,
             }
         }
         Ok(Event::Running)
-    }
-
-    fn pop_1_push<T: Fn(Val) -> Result<Val>>(&mut self, func: &T) -> Result<()> {
-        let val = self.stack.pop()?;
-        self.stack.push(func(val)?)?;
-        Ok(())
-    }
-
-    fn pop_2_push<T: Fn(Val, Val) -> Result<Val>>(&mut self, func: &T) -> Result<()> {
-        let (val1, val2) = self.stack.pop_2()?;
-        self.stack.push(func(val1, val2)?)?;
-        Ok(())
     }
 
     fn r#for(&mut self, addr: Address) -> Result<()> {
@@ -553,35 +551,58 @@ impl Runtime {
     }
 
     fn r#print(&mut self) -> Result<Event> {
-        match self.stack.pop()? {
-            Val::Integer(len) => {
-                let mut s = String::new();
-                for item in self.stack.pop_n(len as usize)? {
-                    match item {
-                        Val::Char('\n') => {
-                            s.push('\n');
-                            self.print_col = 0;
-                        }
-                        Val::Char('\t') => {
-                            let len = 14 - (self.print_col % 14);
-                            s.push_str(&" ".repeat(len));
-                            self.print_col += len;
-                        }
-                        _ => {
-                            let val_str = format!("{}", item);
-                            for ch in val_str.chars() {
-                                s.push(ch);
-                                match ch {
-                                    '\n' => self.print_col = 0,
-                                    _ => self.print_col += 1,
-                                }
-                            }
+        let mut s = String::new();
+        for item in self.stack.pop_vec()? {
+            match item {
+                Val::Char('\n') => {
+                    s.push('\n');
+                    self.print_col = 0;
+                }
+                Val::Char('\t') => {
+                    let len = 14 - (self.print_col % 14);
+                    s.push_str(&" ".repeat(len));
+                    self.print_col += len;
+                }
+                _ => {
+                    let val_str = format!("{}", item);
+                    for ch in val_str.chars() {
+                        s.push(ch);
+                        match ch {
+                            '\n' => self.print_col = 0,
+                            _ => self.print_col += 1,
                         }
                     }
                 }
-                Ok(Event::Print(s))
             }
-            _ => Err(error!(InternalError; "EXPECTED VECTOR ON STACK")),
+        }
+        Ok(Event::Print(s))
+    }
+}
+
+type RuntimeStack = Stack<Val>;
+
+trait RuntimeStackTrait<T> {
+    fn pop_1_push<F: Fn(Val) -> Result<Val>>(&mut self, func: &F) -> Result<()>;
+    fn pop_2_push<F: Fn(Val, Val) -> Result<Val>>(&mut self, func: &F) -> Result<()>;
+    fn pop_vec(&mut self) -> Result<Vec<Val>>;
+}
+
+impl RuntimeStackTrait<Val> for RuntimeStack {
+    fn pop_1_push<F: Fn(Val) -> Result<Val>>(&mut self, func: &F) -> Result<()> {
+        let val = self.pop()?;
+        self.push(func(val)?)?;
+        Ok(())
+    }
+    fn pop_2_push<F: Fn(Val, Val) -> Result<Val>>(&mut self, func: &F) -> Result<()> {
+        let (val1, val2) = self.pop_2()?;
+        self.push(func(val1, val2)?)?;
+        Ok(())
+    }
+    fn pop_vec(&mut self) -> Result<Vec<Val>> {
+        if let Val::Integer(n) = self.pop()? {
+            self.pop_n(n as usize)
+        } else {
+            Err(error!(InternalError; "NO VECTOR ON STACK"))
         }
     }
 }

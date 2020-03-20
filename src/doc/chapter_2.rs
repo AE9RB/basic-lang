@@ -1,5 +1,5 @@
 /*!
-# Commands and Statements
+# Statements
 */
 
 #[path = "statements/clear.rs"]

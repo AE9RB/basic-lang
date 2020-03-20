@@ -111,7 +111,12 @@ impl Compiler {
                 }
                 return Err(error!(SyntaxError, ..&args_col; "WRONG NUMBER OF ARGUMENTS"));
             }
-            Err(error!(InternalError, ..col; "NOT YET COMPILING; PANIC"))
+            if ident.starts_with("FN") {
+                return Err(error!(UndefinedUserFunction, ..col));
+            }
+            prog.push(this.val_int_from_usize(len, &col)?)?;
+            prog.push(Opcode::PushArr(ident))?;
+            Ok(col.start..args_col.end)
         }
         use ast::Expression;
         match expr {
@@ -164,11 +169,19 @@ impl Compiler {
             Statement::Goto(col, ..) => self.r#goto(prog, col),
             Statement::Input(col, ..) => self.r#input(prog, col),
             Statement::Let(col, ..) => self.r#let(prog, col),
+            Statement::LetArray(col, ..) => self.r#let_array(prog, col),
             Statement::List(col, ..) => self.r#list(prog, col),
             Statement::Next(col, ..) => self.r#next(prog, col),
             Statement::Print(col, ..) => self.r#print(prog, col),
             Statement::Run(col, ..) => self.r#run(prog, col),
             Statement::Stop(col, ..) => self.r#stop(prog, col),
+        }
+    }
+
+    fn val_int_from_usize(&self, num: usize, col: &Column) -> Result<Opcode> {
+        match i16::try_from(num) {
+            Ok(len) => Ok(Opcode::Literal(Val::Integer(len))),
+            Err(_) => Err(error!(Overflow, ..col; "TOO MANY ELEMENTS")),
         }
     }
 
@@ -226,10 +239,7 @@ impl Compiler {
             full_col.end = col.end;
             prog.push(Opcode::Literal(Val::String(var_name)))?;
         }
-        match i16::try_from(len) {
-            Ok(len) => prog.push(Opcode::Literal(Val::Integer(len)))?,
-            Err(_) => return Err(error!(Overflow, ..&col; "TOO MANY VARIABLES")),
-        };
+        prog.push(self.val_int_from_usize(len, &col)?)?;
         let (_prompt_col, mut prompt) = self.expr.pop()?;
         let (_caps_col, mut caps) = self.expr.pop()?;
         prog.append(&mut prompt)?;
@@ -244,6 +254,22 @@ impl Compiler {
         let (_col, ident) = self.ident.pop()?;
         prog.push(Opcode::Pop(ident))?;
         Ok(col.start..sub_col.end)
+    }
+
+    fn r#let_array(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
+        let (sub_col, mut expr) = self.expr.pop()?;
+        prog.append(&mut expr)?;
+        let len = self.expr.len();
+        let mut arr_exprs = self.expr.pop_n(len)?;
+        let mut col = col.start..sub_col.end;
+        for (sub_col, mut arr_expr) in arr_exprs.drain(..) {
+            prog.append(&mut arr_expr)?;
+            col.end = sub_col.end;
+        }
+        prog.push(self.val_int_from_usize(len, &col)?)?;
+        let (_col, ident) = self.ident.pop()?;
+        prog.push(Opcode::PopArr(ident))?;
+        Ok(col)
     }
 
     fn r#list(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
@@ -276,10 +302,7 @@ impl Compiler {
             prog.append(&mut expr)?;
             col.end = sub_col.end;
         }
-        match i16::try_from(len) {
-            Ok(len) => prog.push(Opcode::Literal(Val::Integer(len)))?,
-            Err(_) => return Err(error!(Overflow, ..&col; "TOO MANY ELEMENTS")),
-        };
+        prog.push(self.val_int_from_usize(len, &col)?)?;
         prog.push(Opcode::Print)?;
         Ok(col)
     }

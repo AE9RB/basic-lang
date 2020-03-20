@@ -15,6 +15,10 @@ pub mod __Chapter_1;
 #[allow(non_snake_case)]
 pub mod __Chapter_2;
 
+#[path = "doc/chapter_3.rs"]
+#[allow(non_snake_case)]
+pub mod __Chapter_3;
+
 #[path = "doc/appendix_a.rs"]
 #[allow(non_snake_case)]
 pub mod ___Appendix_A;

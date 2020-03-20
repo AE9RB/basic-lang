@@ -10,6 +10,7 @@ pub enum Statement {
     Goto(Column, Expression),
     Input(Column, Expression, Expression, Vec<Ident>),
     Let(Column, Ident, Expression),
+    LetArray(Column, Ident, Vec<Expression>, Expression),
     List(Column, Expression, Expression),
     Next(Column, Vec<Ident>),
     Print(Column, Vec<Expression>),
@@ -91,6 +92,13 @@ impl AcceptVisitor for Statement {
             }
             Let(_, ident, expr) => {
                 ident.accept(visitor);
+                expr.accept(visitor);
+            }
+            LetArray(_, ident, vec_expr, expr) => {
+                ident.accept(visitor);
+                for expr in vec_expr {
+                    expr.accept(visitor);
+                }
                 expr.accept(visitor);
             }
             Print(_, vec_expr) => {

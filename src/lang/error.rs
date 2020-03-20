@@ -117,6 +117,7 @@ pub enum ErrorCode {
     OutOfStringSpace = 14,
     StringTooLong = 15,
     CantContinue = 17,
+    UndefinedUserFunction = 18,
     RedoFromStart = 21,
     ForWithoutNext = 26,
     InternalError = 51,
