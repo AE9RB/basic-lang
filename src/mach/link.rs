@@ -1,4 +1,4 @@
-use super::{Address, Op, Stack, Symbol};
+use super::{Address, Opcode, Stack, Symbol};
 use crate::error;
 use crate::lang::{Column, Error, LineNumber, MaxValue};
 use std::collections::{BTreeMap, HashMap};
@@ -83,7 +83,7 @@ impl Link {
         None
     }
 
-    pub fn link(&mut self, ops: &mut Stack<Op>) -> Vec<Error> {
+    pub fn link(&mut self, ops: &mut Stack<Opcode>) -> Vec<Error> {
         let mut errors: Vec<Error> = vec![];
         for (col, _, loop_start, _) in std::mem::take(&mut self.loops) {
             let line_number = match self.symbols.get(&loop_start) {
@@ -107,9 +107,9 @@ impl Link {
                 Some(dest) => {
                     if let Some(op) = ops.get_mut(op_addr) {
                         if let Some(new_op) = match op {
-                            Op::For(_) => Some(Op::For(*dest)),
-                            Op::If(_) => Some(Op::If(*dest)),
-                            Op::Jump(_) => Some(Op::Jump(*dest)),
+                            Opcode::For(_) => Some(Opcode::For(*dest)),
+                            Opcode::If(_) => Some(Opcode::If(*dest)),
+                            Opcode::Jump(_) => Some(Opcode::Jump(*dest)),
                             _ => None,
                         } {
                             *op = new_op;

@@ -1,4 +1,4 @@
-use super::{Address, Op, Program, Stack, Val, Var};
+use super::{Address, Function, Opcode, Operation, Program, Stack, Val, Var};
 use crate::error;
 use crate::lang::{Column, Error, Line, LineNumber, MaxValue};
 use std::collections::BTreeMap;
@@ -381,29 +381,31 @@ impl Runtime {
             };
             self.pc += 1;
             match op {
-                Op::Literal(val) => self.stack.push(val.clone())?,
-                Op::Pop(var_name) => self.vars.store(var_name, self.stack.pop()?)?,
-                Op::Push(var_name) => self.stack.push(self.vars.fetch(var_name))?,
-                Op::For(addr) => {
+                Opcode::Literal(val) => self.stack.push(val.clone())?,
+                Opcode::Pop(var_name) => self.vars.store(var_name, self.stack.pop()?)?,
+                Opcode::Push(var_name) => self.stack.push(self.vars.fetch(var_name))?,
+                Opcode::For(addr) => {
                     let addr = *addr;
                     self.r#for(addr)?;
                 }
-                Op::If(_) => return Err(error!(InternalError; "'IF' NOT YET IMPLEMENTED; PANIC")),
-                Op::Jump(addr) => {
+                Opcode::If(_) => {
+                    return Err(error!(InternalError; "'IF' NOT YET IMPLEMENTED; PANIC"))
+                }
+                Opcode::Jump(addr) => {
                     self.pc = *addr;
                     if has_indirect_errors && self.pc < self.entry_address {
                         self.state = State::Stopped;
                         return Ok(Event::Errors(Arc::clone(&self.indirect_errors)));
                     }
                 }
-                Op::Return => {
+                Opcode::Return => {
                     return Err(error!(InternalError; "'RETURN' NOT YET IMPLEMENTED; PANIC"))
                 }
-                Op::Clear => {
+                Opcode::Clear => {
                     self.stack.clear();
                     self.vars.clear();
                 }
-                Op::Cont => {
+                Opcode::Cont => {
                     if let State::Stopped = self.cont {
                         return Err(error!(CantContinue));
                     }
@@ -419,42 +421,52 @@ impl Runtime {
                         return Ok(Event::Running);
                     }
                 }
-                Op::Input => return self.r#input(),
-                Op::List => return self.r#list(),
-                Op::End => return self.r#end(),
-                Op::Print => return self.r#print(),
-                Op::Stop => {
+                Opcode::Input => return self.r#input(),
+                Opcode::List => return self.r#list(),
+                Opcode::End => return self.r#end(),
+                Opcode::Print => return self.r#print(),
+                Opcode::Stop => {
                     self.r#end()?;
                     return Err(error!(Break));
                 }
-                Op::Neg => self.r#negation()?,
-                Op::Exp => self.pop_2_op(&Val::unimplemented)?,
-                Op::Mul => self.pop_2_op(&Val::multiply)?,
-                Op::Div => self.pop_2_op(&Val::divide)?,
-                Op::DivInt => self.pop_2_op(&Val::unimplemented)?,
-                Op::Mod => self.pop_2_op(&Val::unimplemented)?,
-                Op::Add => self.pop_2_op(&Val::sum)?,
-                Op::Sub => self.pop_2_op(&Val::subtract)?,
-                Op::Eq => self.pop_2_op(&Val::unimplemented)?,
-                Op::NotEq => self.pop_2_op(&Val::unimplemented)?,
-                Op::Lt => self.pop_2_op(&Val::less)?,
-                Op::LtEq => self.pop_2_op(&Val::unimplemented)?,
-                Op::Gt => self.pop_2_op(&Val::greater)?,
-                Op::GtEq => self.pop_2_op(&Val::unimplemented)?,
-                Op::Not => self.pop_2_op(&Val::unimplemented)?,
-                Op::And => self.pop_2_op(&Val::unimplemented)?,
-                Op::Or => self.pop_2_op(&Val::unimplemented)?,
-                Op::Xor => self.pop_2_op(&Val::unimplemented)?,
-                Op::Imp => self.pop_2_op(&Val::unimplemented)?,
-                Op::Eqv => self.pop_2_op(&Val::unimplemented)?,
+
+                Opcode::Neg => self.pop_1_push(&Operation::negate)?,
+                Opcode::Exp => self.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Mul => self.pop_2_push(&Operation::multiply)?,
+                Opcode::Div => self.pop_2_push(&Operation::divide)?,
+                Opcode::DivInt => self.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Mod => self.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Add => self.pop_2_push(&Operation::sum)?,
+                Opcode::Sub => self.pop_2_push(&Operation::subtract)?,
+                Opcode::Eq => self.pop_2_push(&Operation::unimplemented)?,
+                Opcode::NotEq => self.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Lt => self.pop_2_push(&Operation::less)?,
+                Opcode::LtEq => self.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Gt => self.pop_2_push(&Operation::greater)?,
+                Opcode::GtEq => self.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Not => self.pop_2_push(&Operation::unimplemented)?,
+                Opcode::And => self.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Or => self.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Xor => self.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Imp => self.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Eqv => self.pop_2_push(&Operation::unimplemented)?,
+
+                Opcode::Cos => self.pop_1_push(&Function::cos)?,
+                Opcode::Sin => self.pop_1_push(&Function::sin)?,
             }
         }
         Ok(Event::Running)
     }
 
-    fn pop_2_op<T: Fn(Val, Val) -> Result<Val>>(&mut self, func: &T) -> Result<()> {
-        let (lhs, rhs) = self.stack.pop_2()?;
-        self.stack.push(func(lhs, rhs)?)?;
+    fn pop_1_push<T: Fn(Val) -> Result<Val>>(&mut self, func: &T) -> Result<()> {
+        let val = self.stack.pop()?;
+        self.stack.push(func(val)?)?;
+        Ok(())
+    }
+
+    fn pop_2_push<T: Fn(Val, Val) -> Result<Val>>(&mut self, func: &T) -> Result<()> {
+        let (val1, val2) = self.stack.pop_2()?;
+        self.stack.push(func(val1, val2)?)?;
         Ok(())
     }
 
@@ -477,15 +489,15 @@ impl Runtime {
                 }
                 let mut current = self.vars.fetch(&var_name);
                 if !first_iter {
-                    current = Val::sum(current, step_val.clone())?;
+                    current = Operation::sum(current, step_val.clone())?;
                     self.vars.store(&var_name, current.clone())?;
                 }
                 if let Ok(step) = f64::try_from(step_val.clone()) {
                     let done = Val::Integer(-1)
                         == if step < 0.0 {
-                            Val::less(current, to_val.clone())?
+                            Operation::less(current, to_val.clone())?
                         } else {
-                            Val::less(to_val.clone(), current)?
+                            Operation::less(to_val.clone(), current)?
                         };
                     if done {
                         self.pc = addr;
@@ -500,12 +512,6 @@ impl Runtime {
             break;
         }
         Err(error!(NextWithoutFor; "MISSING STACK FRAME"))
-    }
-
-    fn r#negation(&mut self) -> Result<()> {
-        let val = self.stack.pop()?;
-        self.stack.push(Val::negate(val)?)?;
-        Ok(())
     }
 
     fn r#input(&mut self) -> Result<Event> {

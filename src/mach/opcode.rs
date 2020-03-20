@@ -9,7 +9,7 @@ use super::{Address, Val};
 ///
 /// See <https://en.wikipedia.org/wiki/Reverse_Polish_notation>
 
-pub enum Op {
+pub enum Opcode {
     // *** Stack manipulation
     /// Push literal value on to the stack.
     Literal(Val),
@@ -60,26 +60,31 @@ pub enum Op {
     Xor,
     Imp,
     Eqv,
+
     // *** Built-in functions
+    Cos,
+    Sin,
 }
 
-impl std::fmt::Debug for Op {
+impl std::fmt::Debug for Opcode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.to_string())
     }
 }
 
-impl std::fmt::Display for Op {
+impl std::fmt::Display for Opcode {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        use Op::*;
+        use Opcode::*;
         match self {
             Literal(v) => write!(f, "{}", format!("{:?}", v).to_ascii_uppercase()),
             Push(s) => write!(f, "PUSH({})", s),
             Pop(s) => write!(f, "POP({})", s),
+
             For(a) => write!(f, "FOR({})", a),
             If(a) => write!(f, "IF({})", a),
             Jump(a) => write!(f, "JUMP({})", a),
             Return => write!(f, "RETURN"),
+
             Clear => write!(f, "CLEAR"),
             Cont => write!(f, "CONT"),
             End => write!(f, "END"),
@@ -87,6 +92,7 @@ impl std::fmt::Display for Op {
             List => write!(f, "LIST"),
             Print => write!(f, "PRINT"),
             Stop => write!(f, "STOP"),
+
             Neg => write!(f, "NEG"),
             Exp => write!(f, "EXP"),
             Mul => write!(f, "MUL"),
@@ -107,6 +113,9 @@ impl std::fmt::Display for Op {
             Xor => write!(f, "XOR"),
             Imp => write!(f, "IMP"),
             Eqv => write!(f, "EQV"),
+
+            Cos => write!(f, "COS"),
+            Sin => write!(f, "SIN"),
         }
     }
 }

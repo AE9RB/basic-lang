@@ -1,4 +1,4 @@
-use super::{compile::compile, Address, Link, Op, Stack, Symbol, Val};
+use super::{compile::compile, Address, Link, Opcode, Stack, Symbol, Val};
 use crate::error;
 use crate::lang::{Column, Error, Line, LineNumber};
 use std::sync::Arc;
@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct Program {
-    ops: Stack<Op>,
+    ops: Stack<Opcode>,
     errors: Arc<Vec<Error>>,
     indirect_errors: Arc<Vec<Error>>,
     direct_address: Address,
@@ -37,41 +37,41 @@ impl Program {
         Arc::make_mut(&mut self.errors).push(error.in_line_number(self.line_number));
     }
 
-    pub fn append(&mut self, ops: &mut Stack<Op>) -> Result<(), Error> {
+    pub fn append(&mut self, ops: &mut Stack<Opcode>) -> Result<(), Error> {
         self.ops.append(ops)
     }
 
-    pub fn push(&mut self, op: Op) -> Result<(), Error> {
+    pub fn push(&mut self, op: Opcode) -> Result<(), Error> {
         self.ops.push(op)
     }
 
     pub fn push_for(&mut self, col: Column, ident: String) -> Result<(), Error> {
         self.link.begin_for_loop(self.ops.len(), col, ident)?;
-        self.ops.push(Op::For(0))
+        self.ops.push(Opcode::For(0))
     }
 
     pub fn push_next(&mut self, col: Column, ident: String) -> Result<(), Error> {
-        self.ops.push(Op::Literal(Val::String(ident.clone())))?;
+        self.ops.push(Opcode::Literal(Val::String(ident.clone())))?;
         self.link.next_for_loop(self.ops.len(), col, ident)?;
-        self.ops.push(Op::Jump(0))
+        self.ops.push(Opcode::Jump(0))
     }
 
     pub fn push_goto(&mut self, col: Column, line_number: LineNumber) -> Result<(), Error> {
         let sym = self.link.symbol_for_line_number(line_number)?;
         self.link.link_addr_to_symbol(self.ops.len(), col, sym);
-        self.ops.push(Op::Jump(0))
+        self.ops.push(Opcode::Jump(0))
     }
 
     pub fn push_run(&mut self, col: Column, line_number: LineNumber) -> Result<(), Error> {
-        self.ops.push(Op::Clear)?;
+        self.ops.push(Opcode::Clear)?;
         if line_number.is_some() {
             let sym = self.link.symbol_for_line_number(line_number)?;
             self.link.link_addr_to_symbol(self.ops.len(), col, sym);
         }
-        self.ops.push(Op::Jump(0))
+        self.ops.push(Opcode::Jump(0))
     }
 
-    pub fn get(&self, addr: Address) -> Option<&Op> {
+    pub fn get(&self, addr: Address) -> Option<&Opcode> {
         self.ops.get(addr)
     }
 
@@ -124,7 +124,7 @@ impl Program {
             };
             compile(self, &ast);
             if self.line_number.is_none() {
-                if let Err(e) = self.ops.push(Op::End) {
+                if let Err(e) = self.ops.push(Opcode::End) {
                     Arc::make_mut(&mut self.errors).push(e);
                 }
             }
@@ -137,9 +137,9 @@ impl Program {
 
     pub fn link(&mut self) -> (Address, Arc<Vec<Error>>, Arc<Vec<Error>>) {
         match self.ops.last() {
-            Some(Op::End) => {}
+            Some(Opcode::End) => {}
             _ => {
-                if let Err(error) = self.ops.push(Op::End) {
+                if let Err(error) = self.ops.push(Opcode::End) {
                     Arc::make_mut(&mut self.errors).push(error);
                 }
             }
