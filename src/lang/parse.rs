@@ -52,7 +52,7 @@ impl<'a> BasicParser<'a> {
                     if expect_colon {
                         return Err(error!(SyntaxError, ..&parse.col; "UNEXPECTED TOKEN"));
                     }
-                    statements.push(parse.expect_statement()?);
+                    statements.append(&mut parse.expect_statement()?);
                     expect_colon = true;
                 }
             }
@@ -88,7 +88,7 @@ impl<'a> BasicParser<'a> {
         self.peeked.as_ref()
     }
 
-    fn expect_statement(&mut self) -> Result<Statement> {
+    fn expect_statement(&mut self) -> Result<Vec<Statement>> {
         Statement::expect(self)
     }
 
@@ -158,15 +158,18 @@ impl<'a> BasicParser<'a> {
 
     fn expect_ident_list(&mut self) -> Result<Vec<Ident>> {
         let mut idents: Vec<Ident> = vec![];
+        let mut expecting = false;
         loop {
             match self.peek() {
-                None | Some(Token::Colon) => break,
+                None | Some(Token::Colon) if !expecting => break,
                 _ => {
                     let ident = self.expect_ident()?;
                     idents.push(ident);
                 }
             };
-            if !self.maybe(Token::Comma) {
+            if self.maybe(Token::Comma) {
+                expecting = true;
+            } else {
                 break;
             }
         }
@@ -408,25 +411,25 @@ impl Expression {
 }
 
 impl Statement {
-    fn expect(parse: &mut BasicParser) -> Result<Statement> {
+    fn expect(parse: &mut BasicParser) -> Result<Vec<Statement>> {
         match parse.peek() {
-            Some(Token::Ident(_)) => return Self::r#let(parse),
+            Some(Token::Ident(_)) => return Ok(vec![Self::r#let(parse)?]),
             Some(Token::Word(word)) => {
                 parse.next();
                 use Word::*;
                 match word {
-                    Clear => return Self::r#clear(parse),
-                    Cont => return Self::r#cont(parse),
-                    End => return Self::r#end(parse),
-                    For => return Self::r#for(parse),
-                    Goto1 | Goto2 => return Self::r#goto(parse),
-                    Input => return Self::r#input(parse),
-                    Let => return Self::r#let(parse),
-                    List => return Self::r#list(parse),
+                    Clear => return Ok(vec![Self::r#clear(parse)?]),
+                    Cont => return Ok(vec![Self::r#cont(parse)?]),
+                    End => return Ok(vec![Self::r#end(parse)?]),
+                    For => return Ok(vec![Self::r#for(parse)?]),
+                    Goto1 | Goto2 => return Ok(vec![Self::r#goto(parse)?]),
+                    Input => return Ok(vec![Self::r#input(parse)?]),
+                    Let => return Ok(vec![Self::r#let(parse)?]),
+                    List => return Ok(vec![Self::r#list(parse)?]),
                     Next => return Self::r#next(parse),
-                    Print1 | Print2 => return Self::r#print(parse),
-                    Run => return Self::r#run(parse),
-                    Stop => return Self::r#stop(parse),
+                    Print1 | Print2 => return Ok(vec![Self::r#print(parse)?]),
+                    Run => return Ok(vec![Self::r#run(parse)?]),
+                    Stop => return Ok(vec![Self::r#stop(parse)?]),
                     Gosub1 | Gosub2 => {
                         return Err(
                             error!(InternalError, ..&parse.col; "STATEMENT NOT YET PARSING; PANIC"),
@@ -499,7 +502,7 @@ impl Statement {
                         parse.next();
                     }
                     _ => {
-                        return Err(error!(SyntaxError, ..&column; "UNEXPECTED TOKEN"));
+                        return Err(error!(SyntaxError, ..&parse.col.clone(); "UNEXPECTED TOKEN"));
                     }
                 }
                 s.clone()
@@ -508,7 +511,7 @@ impl Statement {
         };
         let idents = parse.expect_ident_list()?;
         if idents.is_empty() {
-            return Err(error!(SyntaxError, ..&column; "MISSING VARIABLE LIST"));
+            return Err(error!(SyntaxError, ..&parse.col.clone(); "MISSING VARIABLE LIST"));
         }
         Ok(Statement::Input(
             column,
@@ -541,10 +544,19 @@ impl Statement {
         Ok(Statement::List(column, from, to))
     }
 
-    fn r#next(parse: &mut BasicParser) -> Result<Statement> {
+    fn r#next(parse: &mut BasicParser) -> Result<Vec<Statement>> {
         let column = parse.col.clone();
-        let idents = parse.expect_ident_list()?;
-        Ok(Statement::Next(column, idents))
+        let mut idents = parse.expect_ident_list()?;
+        if idents.is_empty() {
+            return Ok(vec![Statement::Next(
+                column.clone(),
+                Ident::Plain(column, "".to_string()),
+            )]);
+        }
+        Ok(idents
+            .drain(..)
+            .map(|i| Statement::Next(column.clone(), i))
+            .collect::<Vec<Statement>>())
     }
 
     fn r#print(parse: &mut BasicParser) -> Result<Statement> {

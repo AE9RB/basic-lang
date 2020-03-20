@@ -282,16 +282,9 @@ impl Compiler {
     }
 
     fn r#next(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
-        let mut full_col = col.clone();
-        if self.ident.is_empty() {
-            prog.push_next(col.clone(), "".to_string())?;
-        } else {
-            for (col, var_name) in self.ident.drain(..) {
-                full_col.end = col.end;
-                prog.push_next(col, var_name)?;
-            }
-        }
-        Ok(full_col)
+        let (ident_col, ident) = self.ident.pop()?;
+        prog.push_next(ident_col, ident)?;
+        Ok(col.clone())
     }
 
     fn r#print(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {

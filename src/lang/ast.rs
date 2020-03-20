@@ -12,7 +12,7 @@ pub enum Statement {
     Let(Column, Ident, Expression),
     LetArray(Column, Ident, Vec<Expression>, Expression),
     List(Column, Expression, Expression),
-    Next(Column, Vec<Ident>),
+    Next(Column, Ident),
     Print(Column, Vec<Expression>),
     Run(Column, Expression),
     Stop(Column),
@@ -117,10 +117,8 @@ impl AcceptVisitor for Statement {
                     var.accept(visitor);
                 }
             }
-            Next(_, vec_ident) => {
-                for var in vec_ident {
-                    var.accept(visitor);
-                }
+            Next(_, ident) => {
+                ident.accept(visitor);
             }
             Run(_, expr) => {
                 expr.accept(visitor);
