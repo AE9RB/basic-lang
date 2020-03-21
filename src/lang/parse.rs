@@ -189,24 +189,24 @@ impl<'a> BasicParser<'a> {
         Ok(idents)
     }
 
+    fn expect_var(&mut self) -> Result<Variable> {
+        let (col, ident) = self.expect_ident()?;
+        match self.peek() {
+            Some(Token::LParen) => {
+                let vec_expr = self.expect_expression_list()?;
+                Ok(Variable::Array(col.start..self.col.end, ident, vec_expr))
+            }
+            _ => Ok(Variable::Unary(col, ident)),
+        }
+    }
+
     fn expect_var_list(&mut self) -> Result<Vec<Variable>> {
         let mut vars: Vec<Variable> = vec![];
         let mut expecting = false;
         loop {
             match self.peek() {
                 None | Some(Token::Colon) if !expecting => break,
-                _ => {
-                    let (col, ident) = self.expect_ident()?;
-                    match self.peek() {
-                        Some(Token::LParen) => {
-                            let vec_expr = self.expect_expression_list()?;
-                            vars.push(Variable::Array(col.start..self.col.end, ident, vec_expr));
-                        }
-                        _ => {
-                            vars.push(Variable::Unary(col, ident));
-                        }
-                    }
-                }
+                _ => vars.push(self.expect_var()?),
             };
             if self.maybe(Token::Comma) {
                 expecting = true;
@@ -580,19 +580,10 @@ impl Statement {
 
     fn r#let(parse: &mut BasicParser) -> Result<Statement> {
         let column = parse.col.clone();
-        let ident = parse.expect_old_ident()?;
-        if matches!(parse.peek(), Some(Token::Operator(Operator::Equal))) {
-            parse.next();
-            let expr = parse.expect_expression()?;
-            return Ok(Statement::Let(column, ident, expr));
-        }
-        if !matches!(parse.peek(), Some(Token::LParen)) {
-            return Err(error!(SyntaxError, ..&column));
-        }
-        let vec_expr = parse.expect_expression_list()?;
+        let var = parse.expect_var()?;
         parse.expect(Token::Operator(Operator::Equal))?;
         let expr = parse.expect_expression()?;
-        Ok(Statement::LetArray(column, ident, vec_expr, expr))
+        Ok(Statement::Let(column, var, expr))
     }
 
     fn r#list(parse: &mut BasicParser) -> Result<Statement> {

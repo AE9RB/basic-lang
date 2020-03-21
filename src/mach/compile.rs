@@ -208,7 +208,6 @@ impl Compiler {
             Statement::Goto(col, ..) => self.r#goto(prog, col),
             Statement::Input(col, ..) => self.r#input(prog, col),
             Statement::Let(col, ..) => self.r#let(prog, col),
-            Statement::LetArray(col, ..) => self.r#let_array(prog, col),
             Statement::List(col, ..) => self.r#list(prog, col),
             Statement::Next(col, ..) => self.r#next(prog, col),
             Statement::Print(col, ..) => self.r#print(prog, col),
@@ -297,27 +296,16 @@ impl Compiler {
     }
 
     fn r#let(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
-        let (sub_col, mut ops) = self.expr.pop()?;
-        prog.append(&mut ops)?;
-        let ident = self.ident.pop()?;
-        prog.push(Opcode::Pop(ident))?;
-        Ok(col.start..sub_col.end)
-    }
-
-    fn r#let_array(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
-        let (sub_col, mut expr) = self.expr.pop()?;
-        prog.append(&mut expr)?;
-        let len = self.expr.len();
-        let mut arr_exprs = self.expr.pop_n(len)?;
-        let mut col = col.start..sub_col.end;
-        for (sub_col, mut arr_expr) in arr_exprs.drain(..) {
-            prog.append(&mut arr_expr)?;
-            col.end = sub_col.end;
+        let (expr_col, mut expr_ops) = self.expr.pop()?;
+        prog.append(&mut expr_ops)?;
+        let (_var_col, var_name, mut var_ops) = self.var.pop()?;
+        if var_ops.is_empty() {
+            prog.push(Opcode::Pop(var_name))?
+        } else {
+            prog.append(&mut var_ops)?;
+            prog.push(Opcode::PopArr(var_name))?
         }
-        prog.push(self.val_int_from_usize(len, &col)?)?;
-        let ident = self.ident.pop()?;
-        prog.push(Opcode::PopArr(ident))?;
-        Ok(col)
+        Ok(col.start..expr_col.end)
     }
 
     fn r#list(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {

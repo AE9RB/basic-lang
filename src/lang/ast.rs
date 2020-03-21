@@ -11,8 +11,7 @@ pub enum Statement {
     For(Column, OldIdent, Expression, Expression, Expression),
     Goto(Column, Expression),
     Input(Column, Expression, Expression, Vec<OldIdent>),
-    Let(Column, OldIdent, Expression),
-    LetArray(Column, OldIdent, Vec<Expression>, Expression),
+    Let(Column, Variable, Expression),
     List(Column, Expression, Expression),
     Next(Column, OldIdent),
     Print(Column, Vec<Expression>),
@@ -128,15 +127,8 @@ impl AcceptVisitor for Statement {
             Goto(_, expr) => {
                 expr.accept(visitor);
             }
-            Let(_, ident, expr) => {
-                ident.accept(visitor);
-                expr.accept(visitor);
-            }
-            LetArray(_, ident, vec_expr, expr) => {
-                ident.accept(visitor);
-                for expr in vec_expr {
-                    expr.accept(visitor);
-                }
+            Let(_, var, expr) => {
+                var.accept(visitor);
                 expr.accept(visitor);
             }
             Print(_, vec_expr) => {
