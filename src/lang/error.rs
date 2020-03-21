@@ -112,6 +112,8 @@ pub enum ErrorCode {
     Overflow = 6,
     OutOfMemory = 7,
     UndefinedLine = 8,
+    SubscriptOutOfRange = 9,
+    RedimensionedArray = 10,
     DivisionByZero = 11,
     TypeMismatch = 13,
     OutOfStringSpace = 14,

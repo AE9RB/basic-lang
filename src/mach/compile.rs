@@ -52,15 +52,7 @@ impl<'a> ast::Visitor for Visitor<'a> {
         }
     }
     fn visit_ident(&mut self, ident: &ast::Ident) {
-        use ast::Ident;
-        let ident = match ident {
-            Ident::Plain(s)
-            | Ident::String(s)
-            | Ident::Single(s)
-            | Ident::Double(s)
-            | Ident::Integer(s) => s.clone(),
-        };
-        if let Some(error) = self.comp.ident.push(ident).err() {
+        if let Some(error) = self.comp.ident.push(ident.to_string()).err() {
             self.prog.error(error)
         }
     }
