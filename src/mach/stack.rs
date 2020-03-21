@@ -5,10 +5,15 @@ type Result<T> = std::result::Result<T, Error>;
 
 /// ## Stack enforced and size limited vector
 
-#[derive(Debug)]
 pub struct Stack<T> {
     overflow_message: &'static str,
     vec: Vec<T>,
+}
+
+impl<T: std::fmt::Debug> std::fmt::Debug for Stack<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.vec)
+    }
 }
 
 impl<T> Stack<T> {

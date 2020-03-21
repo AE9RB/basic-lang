@@ -32,22 +32,41 @@ impl<'a> ast::Visitor for Visitor<'a> {
         match self.comp.statement(statement, self.prog) {
             Ok(_col) => {
                 debug_assert_eq!(0, self.comp.ident.len());
+                debug_assert_eq!(0, self.comp.var.len());
                 debug_assert_eq!(0, self.comp.expr.len());
             }
             Err(e) => self.prog.error(e),
         };
     }
-    fn visit_ident(&mut self, ident: &ast::Ident) {
-        use ast::Ident;
+    fn visit_oldident(&mut self, ident: &ast::OldIdent) {
+        use ast::OldIdent;
         let ident = match ident {
-            Ident::Plain(col, s)
-            | Ident::String(col, s)
-            | Ident::Single(col, s)
-            | Ident::Double(col, s)
-            | Ident::Integer(col, s) => (col.clone(), s.clone()),
+            OldIdent::Plain(_col, s)
+            | OldIdent::String(_col, s)
+            | OldIdent::Single(_col, s)
+            | OldIdent::Double(_col, s)
+            | OldIdent::Integer(_col, s) => s.clone(),
         };
         if let Some(error) = self.comp.ident.push(ident).err() {
             self.prog.error(error)
+        }
+    }
+    fn visit_ident(&mut self, ident: &ast::Ident) {
+        use ast::Ident;
+        let ident = match ident {
+            Ident::Plain(s)
+            | Ident::String(s)
+            | Ident::Single(s)
+            | Ident::Double(s)
+            | Ident::Integer(s) => s.clone(),
+        };
+        if let Some(error) = self.comp.ident.push(ident).err() {
+            self.prog.error(error)
+        }
+    }
+    fn visit_variable(&mut self, var: &ast::Variable) {
+        if let Err(e) = self.comp.variable(var) {
+            self.prog.error(e);
         }
     }
     fn visit_expression(&mut self, expression: &ast::Expression) {
@@ -64,7 +83,8 @@ impl<'a> ast::Visitor for Visitor<'a> {
 }
 
 struct Compiler {
-    ident: Stack<(Column, String)>,
+    ident: Stack<String>,
+    var: Stack<(Column, String, Stack<Opcode>)>,
     expr: Stack<(Column, Stack<Opcode>)>,
 }
 
@@ -72,8 +92,30 @@ impl Compiler {
     fn new() -> Compiler {
         Compiler {
             ident: Stack::new("COMPILER IDENT OVERFLOW"),
+            var: Stack::new("COMPILER VARIABLE OVERFLOW"),
             expr: Stack::new("COMPILER EXPRESSION OVERFLOW"),
         }
+    }
+
+    fn variable(&mut self, var: &ast::Variable) -> Result<Column> {
+        use ast::Variable;
+        let mut vec_opcode: Stack<Opcode> = Stack::new("");
+        let col = match var {
+            Variable::Unary(col, _ident) => col,
+            Variable::Array(col, _ident, vec_expr) => {
+                let len = vec_expr.len();
+                let vec_expr = self.expr.pop_n(len)?;
+                for (_col, mut ops) in vec_expr {
+                    vec_opcode.append(&mut ops)?
+                }
+                let len_opcode = self.val_int_from_usize(len, col)?;
+                vec_opcode.push(len_opcode)?;
+                col
+            }
+        };
+        let ident_string = self.ident.pop()?;
+        self.var.push((col.clone(), ident_string, vec_opcode))?;
+        Ok(col.clone())
     }
 
     fn expression(&mut self, prog: &mut Stack<Opcode>, expr: &ast::Expression) -> Result<Column> {
@@ -103,7 +145,7 @@ impl Compiler {
                 args_col.end = col.end;
                 prog.append(&mut opcodes)?;
             }
-            let (_, ident) = this.ident.pop()?;
+            let ident = this.ident.pop()?;
             if let Some((opcode, arity)) = Function::opcode_and_arity(&ident) {
                 if arity.contains(&len) {
                     prog.push(opcode)?;
@@ -125,8 +167,8 @@ impl Compiler {
             Expression::Integer(col, val) => literal(prog, col, Val::Integer(*val)),
             Expression::String(col, val) => literal(prog, col, Val::String(val.clone())),
             Expression::Char(col, val) => literal(prog, col, Val::Char(*val)),
-            Expression::Var(col, _) => {
-                let (_, ident) = self.ident.pop()?;
+            Expression::UnaryVar(col, _) => {
+                let ident = self.ident.pop()?;
                 prog.push(Opcode::Push(ident))?;
                 Ok(col.clone())
             }
@@ -164,6 +206,7 @@ impl Compiler {
         match statement {
             Statement::Clear(col, ..) => self.r#clear(prog, col),
             Statement::Cont(col, ..) => self.r#cont(prog, col),
+            Statement::Dim(col, ..) => self.r#dim(prog, col),
             Statement::End(col, ..) => self.r#end(prog, col),
             Statement::For(col, ..) => self.r#for(prog, col),
             Statement::Goto(col, ..) => self.r#goto(prog, col),
@@ -205,6 +248,17 @@ impl Compiler {
         Ok(col.clone())
     }
 
+    fn r#dim(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
+        let (var_col, name, mut ops) = self.var.pop()?;
+        if ops.is_empty() {
+            return Err(error!(SyntaxError, ..&var_col; "NOT AN ARRAY"));
+        } else {
+            prog.append(&mut ops)?;
+            prog.push(Opcode::DimArr(name))?;
+        }
+        Ok(col.clone())
+    }
+
     fn r#end(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
         prog.push(Opcode::End)?;
         Ok(col.clone())
@@ -214,7 +268,7 @@ impl Compiler {
         let (step_col, mut step_ops) = self.expr.pop()?;
         let (_to_col, mut to_ops) = self.expr.pop()?;
         let (_from_col, mut from_ops) = self.expr.pop()?;
-        let (_ident_col, var_name) = self.ident.pop()?;
+        let var_name = self.ident.pop()?;
         prog.append(&mut step_ops)?;
         prog.append(&mut to_ops)?;
         prog.append(&mut from_ops)?;
@@ -233,10 +287,8 @@ impl Compiler {
     }
 
     fn r#input(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
-        let mut full_col = col.clone();
         let len = self.ident.len();
-        for (col, var_name) in self.ident.drain(..) {
-            full_col.end = col.end;
+        for var_name in self.ident.drain(..) {
             prog.push(Opcode::Literal(Val::String(var_name)))?;
         }
         prog.push(self.val_int_from_usize(len, &col)?)?;
@@ -245,13 +297,13 @@ impl Compiler {
         prog.append(&mut prompt)?;
         prog.append(&mut caps)?;
         prog.push(Opcode::Input)?;
-        Ok(full_col)
+        Ok(col.clone())
     }
 
     fn r#let(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
         let (sub_col, mut ops) = self.expr.pop()?;
         prog.append(&mut ops)?;
-        let (_col, ident) = self.ident.pop()?;
+        let ident = self.ident.pop()?;
         prog.push(Opcode::Pop(ident))?;
         Ok(col.start..sub_col.end)
     }
@@ -267,7 +319,7 @@ impl Compiler {
             col.end = sub_col.end;
         }
         prog.push(self.val_int_from_usize(len, &col)?)?;
-        let (_col, ident) = self.ident.pop()?;
+        let ident = self.ident.pop()?;
         prog.push(Opcode::PopArr(ident))?;
         Ok(col)
     }
@@ -282,8 +334,8 @@ impl Compiler {
     }
 
     fn r#next(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
-        let (ident_col, ident) = self.ident.pop()?;
-        prog.push_next(ident_col, ident)?;
+        let ident = self.ident.pop()?;
+        prog.push_next(col.clone(), ident)?;
         Ok(col.clone())
     }
 

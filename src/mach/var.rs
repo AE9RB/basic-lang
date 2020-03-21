@@ -59,6 +59,11 @@ impl Var {
         Err(error!(InternalError; "fetch_array unfinished"))
     }
 
+    pub fn dimension_array(&mut self, var_name: &str, arr: Vec<Val>) -> Result<()> {
+        println!("DimArr {} {:?}", var_name, &arr);
+        Err(error!(InternalError; "dimension_array unfinished"))
+    }
+
     pub fn store(&mut self, var_name: &str, value: Val) -> Result<()> {
         if self.vars.len() > u16::max_value() as usize {
             return Err(error!(OutOfMemory));

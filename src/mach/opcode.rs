@@ -20,6 +20,7 @@ pub enum Opcode {
     Pop(String),
     PushArr(String),
     PopArr(String),
+    DimArr(String),
 
     // *** Branch control
     /// Jumps to Address if the for-loop on the stack is finished.
@@ -83,6 +84,7 @@ impl std::fmt::Display for Opcode {
             Pop(s) => write!(f, "POP({})", s),
             PushArr(s) => write!(f, "PUSHARR({})", s),
             PopArr(s) => write!(f, "POPARR({})", s),
+            DimArr(s) => write!(f, "DIMARR({})", s),
 
             For(a) => write!(f, "FOR({})", a),
             If(a) => write!(f, "IF({})", a),

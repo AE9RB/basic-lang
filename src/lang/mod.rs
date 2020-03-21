@@ -17,6 +17,7 @@ impl MaxValue<u16> for LineNumber {
 }
 
 mod error;
+mod ident;
 mod lex;
 mod line;
 mod parse;

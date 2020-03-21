@@ -1,5 +1,4 @@
 use super::{token::*, LineNumber, MaxValue};
-use std::convert::TryFrom;
 
 #[cfg(test)]
 #[path = "tests/lex_test.rs"]
@@ -239,12 +238,39 @@ impl<'a> Iterator for BasicLexer<'a> {
 
 impl<'a> BasicLexer<'a> {
     fn lex(s: &str) -> (LineNumber, Vec<Token>) {
+        let mut line_number = None;
+        let mut s = s;
+        let mut ln: usize = 0;
+        let mut seen_digit = false;
+        while let Some(n) = s.get(ln..) {
+            if let Some(ch) = n.chars().next() {
+                if seen_digit && is_basic_whitespace(ch) {
+                    break;
+                }
+                if is_basic_digit(ch) {
+                    seen_digit = true;
+                } else if !is_basic_whitespace(ch) {
+                    break;
+                }
+                ln += 1;
+            } else {
+                break;
+            }
+        }
+        if let Ok(n) = s[0..ln].trim_start().parse::<u16>() {
+            if n <= LineNumber::max_value() {
+                line_number = Some(n);
+                if let Some(' ') = s[ln..].chars().next() {
+                    ln += 1;
+                }
+                s = &s[ln..];
+            }
+        }
         let mut tokens = BasicLexer {
             chars: s.chars().peekable(),
             remark: false,
         }
         .collect();
-        let line_number = BasicLexer::take_line_number(&mut tokens);
         BasicLexer::trim_end(&mut tokens);
         BasicLexer::collapse_go(&mut tokens);
         BasicLexer::collapse_lt_gt_equal(&mut tokens);
@@ -346,41 +372,5 @@ impl<'a> BasicLexer<'a> {
                 tokens.push(Token::Unknown(s.trim_end().to_string()));
             }
         }
-    }
-
-    fn take_line_number(tokens: &mut Vec<Token>) -> LineNumber {
-        let mut pos: Option<usize> = None;
-        if let Some(Token::Literal(_)) = tokens.get(1) {
-            if let Some(Token::Whitespace(_)) = tokens.get(0) {
-                pos = Some(1);
-            }
-        } else if let Some(Token::Literal(_)) = tokens.get(0) {
-            pos = Some(0);
-        }
-        if let Some(pos) = pos {
-            if let Some(token) = tokens.get(pos) {
-                if let Ok(line) = LineNumber::try_from(token) {
-                    if let Some(val) = line {
-                        if val <= LineNumber::max_value() {
-                            tokens.drain(0..=pos);
-                            let whitespace_len: usize = match tokens.get(0) {
-                                Some(Token::Whitespace(len)) => *len,
-                                _ => 0,
-                            };
-                            if whitespace_len == 1 {
-                                tokens.remove(0);
-                            }
-                            if whitespace_len > 1 {
-                                if let Some(token) = tokens.get_mut(0) {
-                                    *token = Token::Whitespace(whitespace_len - 1);
-                                }
-                            }
-                            return line;
-                        }
-                    }
-                }
-            }
-        }
-        None
     }
 }

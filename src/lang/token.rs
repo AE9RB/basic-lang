@@ -1,3 +1,4 @@
+pub use super::ident::Ident;
 use super::{Error, LineNumber, MaxValue};
 use crate::error;
 use std::convert::TryFrom;
@@ -28,6 +29,7 @@ impl Token {
 
             "CLEAR" => Some(Token::Word(Word::Clear)),
             "CONT" => Some(Token::Word(Word::Cont)),
+            "DIM" => Some(Token::Word(Word::Dim)),
             "END" => Some(Token::Word(Word::End)),
             "FOR" => Some(Token::Word(Word::For)),
             "GOSUB" => Some(Token::Word(Word::Gosub1)),
@@ -151,6 +153,7 @@ impl std::fmt::Display for Literal {
 pub enum Word {
     Clear,
     Cont,
+    Dim,
     End,
     For,
     Gosub1,
@@ -177,6 +180,7 @@ impl std::fmt::Display for Word {
         match self {
             Clear => write!(f, "CLEAR"),
             Cont => write!(f, "CONT"),
+            Dim => write!(f, "DIM"),
             End => write!(f, "END"),
             For => write!(f, "FOR"),
             Gosub1 => write!(f, "GOSUB"),
@@ -260,28 +264,6 @@ impl std::fmt::Display for Operator {
             Xor => write!(f, "XOR"),
             Imp => write!(f, "IMP"),
             Eqv => write!(f, "EQV"),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Hash)]
-pub enum Ident {
-    Plain(String),
-    String(String),
-    Single(String),
-    Double(String),
-    Integer(String),
-}
-
-impl std::fmt::Display for Ident {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        use Ident::*;
-        match self {
-            Plain(s) => write!(f, "{}", s),
-            String(s) => write!(f, "{}", s),
-            Single(s) => write!(f, "{}", s),
-            Double(s) => write!(f, "{}", s),
-            Integer(s) => write!(f, "{}", s),
         }
     }
 }

@@ -394,6 +394,10 @@ impl Runtime {
                     let val = self.vars.fetch_array(var_name, vec)?;
                     self.stack.push(val)?;
                 }
+                Opcode::DimArr(var_name) => {
+                    let vec = self.stack.pop_vec()?;
+                    self.vars.dimension_array(var_name, vec)?;
+                }
                 Opcode::For(addr) => {
                     let addr = *addr;
                     self.r#for(addr)?;
