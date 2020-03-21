@@ -6,6 +6,10 @@
 #[allow(non_snake_case)]
 pub mod CLEAR;
 
+#[path = "statements/dim.rs"]
+#[allow(non_snake_case)]
+pub mod DIM;
+
 #[path = "statements/end.rs"]
 #[allow(non_snake_case)]
 pub mod END;

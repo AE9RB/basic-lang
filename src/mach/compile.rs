@@ -127,10 +127,14 @@ impl Compiler {
             prog.push(Opcode::Literal(val))?;
             Ok(col.clone())
         }
-        fn function(this: &mut Compiler, prog: &mut Stack<Opcode>, col: &Column) -> Result<Column> {
+        fn function(
+            this: &mut Compiler,
+            prog: &mut Stack<Opcode>,
+            col: &Column,
+            len: usize,
+        ) -> Result<Column> {
             let mut args_col: std::ops::Range<usize> = 0..0;
-            let len = this.expr.len();
-            for (col, mut opcodes) in this.expr.drain(..) {
+            for (col, mut opcodes) in this.expr.drain(this.expr.len() - len..) {
                 if args_col.start == 0 {
                     args_col.start = col.start
                 }
@@ -164,7 +168,7 @@ impl Compiler {
                 prog.push(Opcode::Push(ident))?;
                 Ok(col.clone())
             }
-            Expression::Function(col, _, _) => function(self, prog, col),
+            Expression::Function(col, _, vec_exp) => function(self, prog, col, vec_exp.len()),
             Expression::Negation(col, ..) => {
                 let (expr_col, mut ops) = self.expr.pop()?;
                 prog.append(&mut ops)?;
