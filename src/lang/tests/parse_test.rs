@@ -14,13 +14,13 @@ fn test_let_foo_eq_bar() {
     let answer = Statement::Let(
         0..3,
         Variable::Unary(3..6, Ident::Plain("TER".to_string())),
-        Expression::UnaryVar(7..10, OldIdent::Plain(7..10, "BAR".to_string())),
+        Expression::UnaryVar(7..10, Ident::Plain("BAR".to_string())),
     );
     assert_eq!(parse_str("letter=bar:"), Some(answer));
     let answer = Statement::Let(
         0..3,
         Variable::Unary(0..3, Ident::Plain("TER".to_string())),
-        Expression::UnaryVar(4..7, OldIdent::Plain(4..7, "BAR".to_string())),
+        Expression::UnaryVar(4..7, Ident::Plain("BAR".to_string())),
     );
     assert_eq!(parse_str("ter=bar:"), Some(answer));
 }
@@ -86,7 +86,7 @@ fn test_functions() {
         Variable::Unary(0..1, Ident::Plain("A".to_string())),
         Expression::Function(
             2..11,
-            OldIdent::Plain(2..5, "COS".to_string()),
+            Ident::Plain("COS".to_string()),
             vec![Expression::Single(6..10, 3.11)],
         ),
     );
@@ -108,7 +108,7 @@ fn test_precedence_and_paren() {
                     Box::new(Expression::Integer(10..11, 3)),
                     Box::new(Expression::Function(
                         12..21,
-                        OldIdent::Plain(12..15, "COS".to_string()),
+                        Ident::Plain("COS".to_string()),
                         vec![Expression::Single(16..20, 3.11)],
                     )),
                 )),

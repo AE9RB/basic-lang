@@ -191,6 +191,9 @@ impl<'a> BasicParser<'a> {
 
     fn expect_var(&mut self) -> Result<Variable> {
         let (col, ident) = self.expect_ident()?;
+        if format!("{}", ident).starts_with("FN") {
+            return Err(error!(SyntaxError, ..&col; "FN RESERVED FOR FUNCTIONS"));
+        }
         match self.peek() {
             Some(Token::LParen) => {
                 let vec_expr = self.expect_expression_list()?;
@@ -314,14 +317,7 @@ impl Expression {
                     expr
                 }
                 Some(Token::Ident(tok_ident)) => {
-                    let col = parse.col.clone();
-                    let ident = match tok_ident {
-                        token::Ident::Plain(s) => OldIdent::Plain(col, s.clone()),
-                        token::Ident::String(s) => OldIdent::String(col, s.clone()),
-                        token::Ident::Single(s) => OldIdent::Single(col, s.clone()),
-                        token::Ident::Double(s) => OldIdent::Double(col, s.clone()),
-                        token::Ident::Integer(s) => OldIdent::Integer(col, s.clone()),
-                    };
+                    let ident = tok_ident.clone();
                     let col = parse.col.clone();
                     match parse.peek() {
                         Some(&&Token::LParen) => {

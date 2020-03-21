@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub enum Ident {
     Plain(String),
     String(String),

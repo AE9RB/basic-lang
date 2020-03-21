@@ -1,10 +1,10 @@
 use basic::mach::{Event, Runtime};
 
-pub fn run(runtime: &mut Runtime) -> String {
-    run_cycles(runtime, 5000)
+pub fn exec(runtime: &mut Runtime) -> String {
+    exec_n(runtime, 5000)
 }
 
-pub fn run_cycles(runtime: &mut Runtime, cycles: usize) -> String {
+pub fn exec_n(runtime: &mut Runtime, cycles: usize) -> String {
     let mut s = String::new();
     let mut prev_running = false;
     loop {
