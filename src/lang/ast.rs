@@ -8,12 +8,12 @@ pub enum Statement {
     Cont(Column),
     Dim(Column, Variable),
     End(Column),
-    For(Column, OldIdent, Expression, Expression, Expression),
+    For(Column, Ident, Expression, Expression, Expression),
     Goto(Column, Expression),
-    Input(Column, Expression, Expression, Vec<OldIdent>),
+    Input(Column, Expression, Expression, Vec<Ident>),
     Let(Column, Variable, Expression),
     List(Column, Expression, Expression),
-    Next(Column, OldIdent),
+    Next(Column, Ident),
     Print(Column, Expression),
     Run(Column, Expression),
     Stop(Column),
@@ -24,16 +24,6 @@ pub enum Statement {
 pub enum Variable {
     Unary(Column, Ident),
     Array(Column, Ident, Vec<Expression>),
-}
-
-#[cfg_attr(test, derive(PartialEq))]
-#[derive(Debug)]
-pub enum OldIdent {
-    Plain(Column, String),
-    String(Column, String),
-    Single(Column, String),
-    Double(Column, String),
-    Integer(Column, String),
 }
 
 #[cfg_attr(test, derive(PartialEq))]
@@ -70,19 +60,12 @@ pub enum Expression {
 pub trait Visitor {
     fn visit_statement(&mut self, _: &Statement) {}
     fn visit_variable(&mut self, _: &Variable) {}
-    fn visit_oldident(&mut self, _: &OldIdent) {}
     fn visit_ident(&mut self, _: &Ident) {}
     fn visit_expression(&mut self, _: &Expression) {}
 }
 
 pub trait AcceptVisitor {
     fn accept<V: Visitor>(&self, visitor: &mut V);
-}
-
-impl AcceptVisitor for OldIdent {
-    fn accept<V: Visitor>(&self, visitor: &mut V) {
-        visitor.visit_oldident(self)
-    }
 }
 
 impl AcceptVisitor for Ident {

@@ -1,4 +1,4 @@
-use super::token::{self, Literal, Operator, Token, Word};
+use super::token::{Literal, Operator, Token, Word};
 use super::{ast::*, Column, Error, LineNumber, MaxValue};
 use crate::error;
 
@@ -147,54 +147,13 @@ impl<'a> BasicParser<'a> {
         }
     }
 
-    fn expect_old_ident(&mut self) -> Result<OldIdent> {
-        match self.next() {
-            Some(Token::Ident(ident)) => match ident {
-                token::Ident::Plain(s) => Ok(OldIdent::Plain(self.col.clone(), s.clone())),
-                token::Ident::String(s) => Ok(OldIdent::String(self.col.clone(), s.clone())),
-                token::Ident::Single(s) => Ok(OldIdent::Single(self.col.clone(), s.clone())),
-                token::Ident::Double(s) => Ok(OldIdent::Double(self.col.clone(), s.clone())),
-                token::Ident::Integer(s) => Ok(OldIdent::Integer(self.col.clone(), s.clone())),
-            },
-            _ => Err(error!(SyntaxError, ..&self.col; "EXPECTED IDENT")),
-        }
-    }
-
-    fn expect_ident(&mut self) -> Result<(Column, Ident)> {
-        match self.next() {
-            Some(Token::Ident(ident)) => match ident {
-                Ident::Plain(s) => Ok((self.col.clone(), Ident::Plain(s.clone()))),
-                Ident::String(s) => Ok((self.col.clone(), Ident::String(s.clone()))),
-                Ident::Single(s) => Ok((self.col.clone(), Ident::Single(s.clone()))),
-                Ident::Double(s) => Ok((self.col.clone(), Ident::Double(s.clone()))),
-                Ident::Integer(s) => Ok((self.col.clone(), Ident::Integer(s.clone()))),
-            },
-            _ => Err(error!(SyntaxError, ..&self.col; "EXPECTED IDENT")),
-        }
-    }
-
-    fn expect_old_ident_list(&mut self) -> Result<Vec<OldIdent>> {
-        let mut idents: Vec<OldIdent> = vec![];
-        let mut expecting = false;
-        loop {
-            match self.peek() {
-                None | Some(Token::Colon) if !expecting => break,
-                _ => {
-                    let ident = self.expect_old_ident()?;
-                    idents.push(ident);
-                }
-            };
-            if self.maybe(Token::Comma) {
-                expecting = true;
-            } else {
-                break;
-            }
-        }
-        Ok(idents)
-    }
-
     fn expect_var(&mut self) -> Result<Variable> {
-        let (col, ident) = self.expect_ident()?;
+        let ident = if let Some(Token::Ident(ident)) = self.next() {
+            ident.clone()
+        } else {
+            return Err(error!(SyntaxError, ..&self.col; "EXPECTED VARIABLE"));
+        };
+        let col = self.col.clone();
         if format!("{}", ident).starts_with("FN") {
             return Err(error!(SyntaxError, ..&col; "FN RESERVED FOR FUNCTIONS"));
         }
@@ -222,6 +181,27 @@ impl<'a> BasicParser<'a> {
             }
         }
         Ok(vars)
+    }
+
+    fn expect_unary_var(&mut self) -> Result<Ident> {
+        match self.expect_var()? {
+            Variable::Array(col, ..) => Err(error!(SyntaxError, ..&col; "ARRAY NOT ALLOWED HERE")),
+            Variable::Unary(_col, ident) => Ok(ident),
+        }
+    }
+
+    fn expect_unary_var_list(&mut self) -> Result<Vec<Ident>> {
+        let vars = self.expect_var_list()?;
+        let mut vec_ident: Vec<Ident> = vec![];
+        for var in vars {
+            match var {
+                Variable::Array(col, ..) => {
+                    return Err(error!(SyntaxError, ..&col; "ARRAY NOT ALLOWED HERE"));
+                }
+                Variable::Unary(_col, ident) => vec_ident.push(ident),
+            }
+        }
+        Ok(vec_ident)
     }
 
     fn maybe_line_number(&mut self) -> Result<LineNumber> {
@@ -521,7 +501,7 @@ impl Statement {
 
     fn r#for(parse: &mut BasicParser) -> Result<Statement> {
         let column = parse.col.clone();
-        let ident = parse.expect_old_ident()?;
+        let ident = parse.expect_unary_var()?;
         parse.expect(Token::Operator(Operator::Equal))?;
         let expr_from = parse.expect_expression()?;
         parse.expect(Token::Word(Word::To))?;
@@ -566,7 +546,7 @@ impl Statement {
             }
             _ => String::new(),
         };
-        let idents = parse.expect_old_ident_list()?;
+        let idents = parse.expect_unary_var_list()?;
         if idents.is_empty() {
             return Err(error!(SyntaxError, ..&parse.col.clone(); "MISSING VARIABLE LIST"));
         }
@@ -594,12 +574,9 @@ impl Statement {
 
     fn r#next(parse: &mut BasicParser) -> Result<Vec<Statement>> {
         let column = parse.col.clone();
-        let mut idents = parse.expect_old_ident_list()?;
+        let mut idents = parse.expect_unary_var_list()?;
         if idents.is_empty() {
-            return Ok(vec![Statement::Next(
-                column.clone(),
-                OldIdent::Plain(column, "".to_string()),
-            )]);
+            return Ok(vec![Statement::Next(column, Ident::Plain("".to_string()))]);
         }
         Ok(idents
             .drain(..)

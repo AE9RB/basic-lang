@@ -38,19 +38,6 @@ impl<'a> ast::Visitor for Visitor<'a> {
             Err(e) => self.prog.error(e),
         };
     }
-    fn visit_oldident(&mut self, ident: &ast::OldIdent) {
-        use ast::OldIdent;
-        let ident = match ident {
-            OldIdent::Plain(_col, s)
-            | OldIdent::String(_col, s)
-            | OldIdent::Single(_col, s)
-            | OldIdent::Double(_col, s)
-            | OldIdent::Integer(_col, s) => s.clone(),
-        };
-        if let Some(error) = self.comp.ident.push(ident).err() {
-            self.prog.error(error)
-        }
-    }
     fn visit_ident(&mut self, ident: &ast::Ident) {
         if let Some(error) = self.comp.ident.push(ident.to_string()).err() {
             self.prog.error(error)
