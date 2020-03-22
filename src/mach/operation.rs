@@ -17,7 +17,7 @@ impl Operation {
             Integer(n) => Ok(Integer(-n)),
             Single(n) => Ok(Single(-n)),
             Double(n) => Ok(Double(-n)),
-            String(_) | Char(_) | Return(_) => Err(error!(TypeMismatch)),
+            String(_) | Return(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -45,7 +45,7 @@ impl Operation {
                 Double(r) => Ok(Double(l * r)),
                 _ => Err(error!(TypeMismatch)),
             },
-            String(_) | Char(_) | Return(_) => Err(error!(TypeMismatch)),
+            String(_) | Return(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -79,28 +79,15 @@ impl Operation {
                 Double(r) => Ok(Double(l / r)),
                 _ => Err(error!(TypeMismatch)),
             },
-            String(_) | Char(_) | Return(_) => Err(error!(TypeMismatch)),
+            String(_) | Return(_) => Err(error!(TypeMismatch)),
         }
     }
 
     pub fn sum(lhs: Val, rhs: Val) -> Result<Val> {
         use Val::*;
         match lhs {
-            String(mut l) => match rhs {
+            String(l) => match rhs {
                 String(r) => Ok(String(l + &r)),
-                Char(r) => Ok(String({
-                    l.push(r);
-                    l
-                })),
-                _ => Err(error!(TypeMismatch)),
-            },
-            Char(l) => match rhs {
-                String(r) => Ok(String(l.to_string() + &r)),
-                Char(r) => Ok(String({
-                    let mut l = l.to_string();
-                    l.push(r);
-                    l
-                })),
                 _ => Err(error!(TypeMismatch)),
             },
             Integer(l) => match rhs {
@@ -152,7 +139,7 @@ impl Operation {
                 Double(r) => Ok(Double(l - r)),
                 _ => Err(error!(TypeMismatch)),
             },
-            String(_) | Char(_) | Return(_) => Err(error!(TypeMismatch)),
+            String(_) | Return(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -235,7 +222,7 @@ impl Operation {
                 }
                 _ => Err(error!(TypeMismatch)),
             },
-            Char(_) | String(_) => Err(error!(InternalError; "string compare not imp")),
+            String(_) => Err(error!(InternalError; "string compare not imp")),
             Return(_) => Err(error!(TypeMismatch)),
         }
     }

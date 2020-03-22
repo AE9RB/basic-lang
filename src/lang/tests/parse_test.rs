@@ -121,20 +121,23 @@ fn test_precedence_and_paren() {
 
 #[test]
 fn test_printer_list() {
-    let (lin, tokens) = lex("? 1 2,3;:?");
+    let (lin, tokens) = lex("? 1 2,3;:?0.0");
     assert_eq!(
         parse(lin, &tokens).ok(),
         Some(vec!(
+            Statement::Print(0..1, Expression::Integer(2..3, 1)),
+            Statement::Print(0..1, Expression::Integer(4..5, 2)),
             Statement::Print(
                 0..1,
-                vec!(
-                    Expression::Integer(2..3, 1),
-                    Expression::Integer(4..5, 2),
-                    Expression::Char(5..6, '\t'),
-                    Expression::Integer(6..7, 3),
+                Expression::Function(
+                    5..6,
+                    Ident::String("TAB".to_string()),
+                    vec![Expression::Integer(5..6, -14)]
                 )
             ),
-            Statement::Print(9..10, vec!(Expression::Char(10..10, '\n'),)),
+            Statement::Print(0..1, Expression::Integer(6..7, 3)),
+            Statement::Print(9..10, Expression::Single(10..13, 0.0)),
+            Statement::Print(9..10, Expression::String(13..13, '\n'.to_string())),
         ))
     );
 }

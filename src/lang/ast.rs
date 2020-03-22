@@ -14,7 +14,7 @@ pub enum Statement {
     Let(Column, Variable, Expression),
     List(Column, Expression, Expression),
     Next(Column, OldIdent),
-    Print(Column, Vec<Expression>),
+    Print(Column, Expression),
     Run(Column, Expression),
     Stop(Column),
 }
@@ -43,7 +43,6 @@ pub enum Expression {
     Double(Column, f64),
     Integer(Column, i16),
     String(Column, String),
-    Char(Column, char),
     UnaryVar(Column, Ident),
     Function(Column, Ident, Vec<Expression>),
     Negation(Column, Box<Expression>),
@@ -124,17 +123,12 @@ impl AcceptVisitor for Statement {
                 expr2.accept(visitor);
                 expr3.accept(visitor);
             }
-            Goto(_, expr) => {
+            Goto(_, expr) | Print(_, expr) | Run(_, expr) => {
                 expr.accept(visitor);
             }
             Let(_, var, expr) => {
                 var.accept(visitor);
                 expr.accept(visitor);
-            }
-            Print(_, vec_expr) => {
-                for expr in vec_expr {
-                    expr.accept(visitor);
-                }
             }
             List(_, expr1, expr2) => {
                 expr1.accept(visitor);
@@ -150,9 +144,6 @@ impl AcceptVisitor for Statement {
             Next(_, ident) => {
                 ident.accept(visitor);
             }
-            Run(_, expr) => {
-                expr.accept(visitor);
-            }
         }
         visitor.visit_statement(self)
     }
@@ -162,7 +153,7 @@ impl AcceptVisitor for Expression {
     fn accept<V: Visitor>(&self, visitor: &mut V) {
         use Expression::*;
         match self {
-            Single(..) | Double(..) | Integer(..) | String(..) | Char(..) => {}
+            Single(..) | Double(..) | Integer(..) | String(..) => {}
             UnaryVar(_, ident) => {
                 ident.accept(visitor);
             }

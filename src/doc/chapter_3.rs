@@ -23,3 +23,16 @@ pub mod SIN {
     ```
     */
 }
+
+pub mod TAB {
+    /*!
+    ## TAB(X)
+    Used in a `PRINT` statement, moves to the requested column.
+    Does nothing if already past the requested column.
+    If X is negative, moves to the start of next -X wide zone.
+    ```text
+    PRINT 1.99 TAB(20) "furlongs per year"
+     1.99               furlongs per year
+    ```
+    */
+}

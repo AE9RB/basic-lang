@@ -131,7 +131,6 @@ impl Var {
             Val::Integer(n) => *n == 0,
             Val::Single(n) => *n == 0.0,
             Val::Double(n) => *n == 0.0,
-            Val::Char(_) => false,
             Val::Return(_) => false,
         } {
             self.vars.remove(var_name);

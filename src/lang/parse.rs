@@ -119,10 +119,10 @@ impl<'a> BasicParser<'a> {
         loop {
             match self.peek() {
                 None | Some(Token::Colon) => {
+                    let mut column = self.col.clone();
+                    column.end = column.start;
                     if linefeed {
-                        let mut column = self.col.clone();
-                        column.end = column.start;
-                        expressions.push(Expression::Char(column, '\n'));
+                        expressions.push(Expression::String(column, '\n'.to_string()));
                     }
                     return Ok(expressions);
                 }
@@ -133,7 +133,11 @@ impl<'a> BasicParser<'a> {
                 Some(Token::Comma) => {
                     linefeed = false;
                     self.next();
-                    expressions.push(Expression::Char(self.col.clone(), '\t'));
+                    expressions.push(Expression::Function(
+                        self.col.clone(),
+                        Ident::String("TAB".to_string()),
+                        vec![Expression::Integer(self.col.clone(), -14)],
+                    ));
                 }
                 _ => {
                     linefeed = true;
@@ -467,7 +471,7 @@ impl Statement {
                     Let => return Ok(vec![Self::r#let(parse)?]),
                     List => return Ok(vec![Self::r#list(parse)?]),
                     Next => return Self::r#next(parse),
-                    Print1 | Print2 => return Ok(vec![Self::r#print(parse)?]),
+                    Print1 | Print2 => return Self::r#print(parse),
                     Run => return Ok(vec![Self::r#run(parse)?]),
                     Stop => return Ok(vec![Self::r#stop(parse)?]),
                     Gosub1 | Gosub2 => {
@@ -603,11 +607,13 @@ impl Statement {
             .collect::<Vec<Statement>>())
     }
 
-    fn r#print(parse: &mut BasicParser) -> Result<Statement> {
-        Ok(Statement::Print(
-            parse.col.clone(),
-            parse.expect_print_list()?,
-        ))
+    fn r#print(parse: &mut BasicParser) -> Result<Vec<Statement>> {
+        let column = parse.col.clone();
+        let mut vec_expr = parse.expect_print_list()?;
+        Ok(vec_expr
+            .drain(..)
+            .map(|e| Statement::Print(column.clone(), e))
+            .collect())
     }
 
     fn r#run(parse: &mut BasicParser) -> Result<Statement> {

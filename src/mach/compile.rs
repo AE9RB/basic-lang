@@ -162,7 +162,6 @@ impl Compiler {
             Expression::Double(col, val) => literal(prog, col, Val::Double(*val)),
             Expression::Integer(col, val) => literal(prog, col, Val::Integer(*val)),
             Expression::String(col, val) => literal(prog, col, Val::String(val.clone())),
-            Expression::Char(col, val) => literal(prog, col, Val::Char(*val)),
             Expression::UnaryVar(col, _) => {
                 let ident = self.ident.pop()?;
                 prog.push(Opcode::Push(ident))?;
@@ -324,16 +323,10 @@ impl Compiler {
     }
 
     fn r#print(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
-        let len = self.expr.len();
-        let mut exprs = self.expr.pop_n(len)?;
-        let mut col = col.clone();
-        for (sub_col, mut expr) in exprs.drain(..) {
-            prog.append(&mut expr)?;
-            col.end = sub_col.end;
-        }
-        prog.push(self.val_int_from_usize(len, &col)?)?;
+        let (_expr_col, mut expr) = self.expr.pop()?;
+        prog.append(&mut expr)?;
         prog.push(Opcode::Print)?;
-        Ok(col)
+        Ok(col.clone())
     }
 
     fn r#run(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {

@@ -467,6 +467,10 @@ impl Runtime {
 
                 Opcode::Cos => self.stack.pop_1_push(&Function::cos)?,
                 Opcode::Sin => self.stack.pop_1_push(&Function::sin)?,
+                Opcode::Tab => {
+                    let val = self.stack.pop()?;
+                    self.stack.push(Function::tab(val, self.print_col)?)?;
+                }
             }
         }
         Ok(Event::Running)
@@ -556,27 +560,13 @@ impl Runtime {
 
     fn r#print(&mut self) -> Result<Event> {
         let mut s = String::new();
-        for item in self.stack.pop_vec()? {
-            match item {
-                Val::Char('\n') => {
-                    s.push('\n');
-                    self.print_col = 0;
-                }
-                Val::Char('\t') => {
-                    let len = 14 - (self.print_col % 14);
-                    s.push_str(&" ".repeat(len));
-                    self.print_col += len;
-                }
-                _ => {
-                    let val_str = format!("{}", item);
-                    for ch in val_str.chars() {
-                        s.push(ch);
-                        match ch {
-                            '\n' => self.print_col = 0,
-                            _ => self.print_col += 1,
-                        }
-                    }
-                }
+        let item = self.stack.pop()?;
+        let val_str = format!("{}", item);
+        for ch in val_str.chars() {
+            s.push(ch);
+            match ch {
+                '\n' => self.print_col = 0,
+                _ => self.print_col += 1,
             }
         }
         Ok(Event::Print(s))

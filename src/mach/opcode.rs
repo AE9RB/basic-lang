@@ -67,6 +67,7 @@ pub enum Opcode {
     // *** Built-in functions
     Cos,
     Sin,
+    Tab,
 }
 
 impl std::fmt::Debug for Opcode {
@@ -122,6 +123,7 @@ impl std::fmt::Display for Opcode {
 
             Cos => write!(f, "COS"),
             Sin => write!(f, "SIN"),
+            Tab => write!(f, "TAB"),
         }
     }
 }
