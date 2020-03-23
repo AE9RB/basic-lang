@@ -1,9 +1,5 @@
 use super::*;
 
-#[cfg(test)]
-#[path = "tests/line_test.rs"]
-mod test;
-
 #[derive(Debug)]
 pub struct Line {
     number: LineNumber,

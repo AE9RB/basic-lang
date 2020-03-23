@@ -37,7 +37,7 @@ pub enum Opcode {
     Clear,
     Cont,
     End,
-    Input,
+    Input(String),
     List,
     Print,
     Stop,
@@ -95,7 +95,7 @@ impl std::fmt::Display for Opcode {
             Clear => write!(f, "CLEAR"),
             Cont => write!(f, "CONT"),
             End => write!(f, "END"),
-            Input => write!(f, "INPUT"),
+            Input(s) => write!(f, "INPUT({})", s),
             List => write!(f, "LIST"),
             Print => write!(f, "PRINT"),
             Stop => write!(f, "STOP"),
@@ -228,5 +228,18 @@ GoTo(:finish)
 :else
 --exec b=6
 :finish
+
+// new input
+push return addr
+lit(prompt)
+lit(#caps)
+lit(#len)
+Input(var) // pushes stuff+addr, checks len, pushes answers
+array evals
+pop var
+array evals
+pop var
+Input(nil)
+
 
 */

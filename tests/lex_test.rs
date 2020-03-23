@@ -1,4 +1,4 @@
-use super::*;
+use basic::lang::{lex, token::*, Line};
 
 fn token(s: &str) -> Option<Token> {
     let s = format!("?{}", s);
@@ -239,4 +239,17 @@ fn test_insert_spacing() {
     assert_eq!(x.next(), Some(&Token::Whitespace(1)));
     assert_eq!(x.next(), Some(&Token::Ident(Ident::Plain("K".to_string()))));
     assert_eq!(x.next(), None);
+}
+
+#[test]
+fn test_direct() {
+    let l = Line::new("run");
+    assert_eq!(&l.to_string(), "RUN");
+}
+
+#[test]
+fn test_indirect() {
+    let l = Line::new("100 end");
+    assert_eq!(&l.to_string(), "100 END");
+    assert_eq!(l.number(), Some(100));
 }

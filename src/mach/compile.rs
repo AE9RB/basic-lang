@@ -268,16 +268,22 @@ impl Compiler {
     }
 
     fn r#input(&mut self, prog: &mut Program, col: &Column) -> Result<Column> {
-        let len = self.ident.len();
-        for var_name in self.ident.drain(..) {
-            prog.push(Opcode::Literal(Val::String(var_name)))?;
-        }
-        prog.push(self.val_int_from_usize(len, &col)?)?;
+        let len = self.val_int_from_usize(self.var.len(), col)?;
         let (_prompt_col, mut prompt) = self.expr.pop()?;
         let (_caps_col, mut caps) = self.expr.pop()?;
         prog.append(&mut prompt)?;
         prog.append(&mut caps)?;
-        prog.push(Opcode::Input)?;
+        prog.push(len)?;
+        for (_var_col, var_name, mut var_ops) in self.var.drain(..) {
+            prog.push(Opcode::Input(var_name.clone()))?;
+            if var_ops.is_empty() {
+                prog.push(Opcode::Pop(var_name))?
+            } else {
+                prog.append(&mut var_ops)?;
+                prog.push(Opcode::PopArr(var_name))?
+            }
+        }
+        prog.push(Opcode::Input("".to_string()))?;
         Ok(col.clone())
     }
 

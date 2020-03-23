@@ -2,10 +2,6 @@ use super::token::{Literal, Operator, Token, Word};
 use super::{ast::*, Column, Error, LineNumber, MaxValue};
 use crate::error;
 
-#[cfg(test)]
-#[path = "tests/parse_test.rs"]
-mod test;
-
 type Result<T> = std::result::Result<T, Error>;
 
 pub fn parse(line_number: LineNumber, tokens: &[Token]) -> Result<Vec<Statement>> {
@@ -546,7 +542,7 @@ impl Statement {
             }
             _ => String::new(),
         };
-        let idents = parse.expect_unary_var_list()?;
+        let idents = parse.expect_var_list()?;
         if idents.is_empty() {
             return Err(error!(SyntaxError, ..&parse.col.clone(); "MISSING VARIABLE LIST"));
         }

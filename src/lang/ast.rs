@@ -1,8 +1,7 @@
 pub use super::ident::Ident;
 use super::Column;
 
-#[cfg_attr(test, derive(PartialEq))]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Statement {
     Clear(Column),
     Cont(Column),
@@ -10,7 +9,7 @@ pub enum Statement {
     End(Column),
     For(Column, Ident, Expression, Expression, Expression),
     Goto(Column, Expression),
-    Input(Column, Expression, Expression, Vec<Ident>),
+    Input(Column, Expression, Expression, Vec<Variable>),
     Let(Column, Variable, Expression),
     List(Column, Expression, Expression),
     Next(Column, Ident),
@@ -19,15 +18,13 @@ pub enum Statement {
     Stop(Column),
 }
 
-#[cfg_attr(test, derive(PartialEq))]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Variable {
     Unary(Column, Ident),
     Array(Column, Ident, Vec<Expression>),
 }
 
-#[cfg_attr(test, derive(PartialEq))]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Expression {
     Single(Column, f32),
     Double(Column, f64),

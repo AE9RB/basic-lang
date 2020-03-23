@@ -1,9 +1,5 @@
 use super::{token::*, LineNumber, MaxValue};
 
-#[cfg(test)]
-#[path = "tests/lex_test.rs"]
-mod test;
-
 pub fn lex(s: &str) -> (LineNumber, Vec<Token>) {
     BasicLexer::lex(s)
 }

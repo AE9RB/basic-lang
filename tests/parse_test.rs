@@ -1,5 +1,4 @@
-use super::super::lex;
-use super::*;
+use basic::lang::{ast::*, lex, parse};
 
 fn parse_str(s: &str) -> Option<Statement> {
     let (lin, tokens) = lex(s);
