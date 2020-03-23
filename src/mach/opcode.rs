@@ -205,20 +205,11 @@ GoTo(:thesub)
 -- stuff
 Return
 
-//if x then 100
+//if x then stuff
 -- eval x
-If(:100)
--- stuff
-:100
-
-//if x then 100 else 200
--- eval x
-If(:100)
-GoTo(:200)
--- stuff
-:100
--- stuff
-:200
+IfNot(:a)
+stuff
+:a
 
 //if x then a=5 else b=6
 -- eval x

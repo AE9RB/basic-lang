@@ -1,7 +1,6 @@
-use super::{Address, Function, Opcode, Operation, Program, Stack, Val, Var};
+use super::{Address, Function, Listing, Opcode, Operation, Program, Stack, Val, Var};
 use crate::error;
-use crate::lang::{Column, Error, Line, LineNumber, MaxValue};
-use std::collections::BTreeMap;
+use crate::lang::{Error, Line, LineNumber};
 use std::convert::TryFrom;
 use std::ops::Range;
 use std::sync::Arc;
@@ -15,13 +14,11 @@ const MAX_LINE_LEN: usize = 1024;
 
 pub struct Runtime {
     prompt: String,
-    source: BTreeMap<LineNumber, Line>,
+    source: Listing,
     dirty: bool,
     program: Program,
     pc: Address,
     entry_address: Address,
-    indirect_errors: Arc<Vec<Error>>,
-    direct_errors: Arc<Vec<Error>>,
     stack: RuntimeStack,
     vars: Var,
     state: State,
@@ -58,13 +55,11 @@ impl Default for Runtime {
     fn default() -> Self {
         Runtime {
             prompt: "READY.".to_owned(),
-            source: BTreeMap::new(),
+            source: Listing::default(),
             dirty: false,
-            program: Program::new(),
+            program: Program::default(),
             pc: 0,
             entry_address: 1,
-            indirect_errors: Arc::new(vec![]),
-            direct_errors: Arc::new(vec![]),
             stack: Stack::new("STACK OVERFLOW"),
             vars: Var::new(),
             state: State::Intro,
@@ -80,6 +75,10 @@ impl Runtime {
         let mut rt = Runtime::default();
         rt.prompt = prompt.to_owned();
         rt
+    }
+
+    pub fn get_listing(&self) -> Listing {
+        self.source.clone()
     }
 
     /// Enters a line of BASIC or INPUT.
@@ -112,16 +111,15 @@ impl Runtime {
     fn enter_direct(&mut self, line: Line) {
         if self.dirty {
             self.program.clear();
-            self.program
-                .compile(self.source.iter().map(|(_, line)| line));
+            self.program.compile(self.source.lines());
             self.dirty = false;
         }
         self.program.compile(&line);
         let (pc, indirect_errors, direct_errors) = self.program.link();
         self.pc = pc;
         self.entry_address = pc;
-        self.indirect_errors = indirect_errors;
-        self.direct_errors = direct_errors;
+        self.source.indirect_errors = indirect_errors;
+        self.source.direct_errors = direct_errors;
         self.state = State::Running;
     }
 
@@ -129,9 +127,9 @@ impl Runtime {
         self.cont = State::Stopped;
         self.stack.clear();
         if line.is_empty() {
-            self.dirty = self.source.remove(&line.number()).is_some();
+            self.dirty = self.source.remove(line.number()).is_some();
         } else {
-            self.source.insert(line.number(), line);
+            self.source.insert(line);
             self.dirty = true;
         }
     }
@@ -195,41 +193,6 @@ impl Runtime {
         }
     }
 
-    pub fn line(&self, num: usize) -> Option<(String, Vec<Range<usize>>)> {
-        if num > LineNumber::max_value() as usize {
-            return None;
-        }
-        let mut range = Some(num as u16)..Some(num as u16);
-        self.list_line(&mut range)
-    }
-
-    fn list_line(&self, range: &mut Range<LineNumber>) -> Option<(String, Vec<Range<usize>>)> {
-        let mut source_range = self.source.range(range.start..=range.end);
-        if let Some((line_number, line)) = source_range.next() {
-            if *line_number < range.end {
-                if let Some(num) = line_number {
-                    range.start = Some(num + 1);
-                }
-            } else {
-                range.start = Some(0);
-                range.end = Some(0);
-            }
-            let columns: Vec<Column> = self
-                .indirect_errors
-                .iter()
-                .filter_map(|e| {
-                    if e.line_number() == *line_number {
-                        Some(e.column())
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-            return Some((line.to_string(), columns));
-        }
-        None
-    }
-
     fn ready_prompt(&mut self) -> Option<Event> {
         if self.entry_address != 0 {
             self.entry_address = 0;
@@ -275,7 +238,7 @@ impl Runtime {
             }
             State::Listing(range) => {
                 let mut range = range.clone();
-                if let Some((string, columns)) = self.list_line(&mut range) {
+                if let Some((string, columns)) = self.source.list_line(&mut range) {
                     self.state = State::Listing(range);
                     return Event::List((string, columns));
                 } else {
@@ -291,9 +254,9 @@ impl Runtime {
                 return Event::Errors(Arc::new(vec![error!(RedoFromStart)]));
             }
             State::InputRunning | State::Running => {
-                if !self.direct_errors.is_empty() {
+                if !self.source.direct_errors.is_empty() {
                     self.state = State::Stopped;
-                    return Event::Errors(Arc::clone(&self.direct_errors));
+                    return Event::Errors(Arc::clone(&self.source.direct_errors));
                 }
             }
             State::RuntimeError(_) => {}
@@ -371,7 +334,7 @@ impl Runtime {
 
     #[allow(clippy::cognitive_complexity)]
     fn execute_loop(&mut self, iterations: usize) -> Result<Event> {
-        let has_indirect_errors = !self.indirect_errors.is_empty();
+        let has_indirect_errors = !self.source.indirect_errors.is_empty();
         for _ in 0..iterations {
             let op = match self.program.get(self.pc) {
                 Some(v) => v,
@@ -407,7 +370,7 @@ impl Runtime {
                     self.pc = *addr;
                     if has_indirect_errors && self.pc < self.entry_address {
                         self.state = State::Stopped;
-                        return Ok(Event::Errors(Arc::clone(&self.indirect_errors)));
+                        return Ok(Event::Errors(Arc::clone(&self.source.indirect_errors)));
                     }
                 }
                 Opcode::Return => {

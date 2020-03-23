@@ -443,6 +443,7 @@ impl Statement {
                     End => return Ok(vec![Self::r#end(parse)?]),
                     For => return Ok(vec![Self::r#for(parse)?]),
                     Goto1 | Goto2 => return Ok(vec![Self::r#goto(parse)?]),
+                    If => return Ok(vec![Self::r#if(parse)?]),
                     Input => return Ok(vec![Self::r#input(parse)?]),
                     Let => return Ok(vec![Self::r#let(parse)?]),
                     List => return Ok(vec![Self::r#list(parse)?]),
@@ -455,7 +456,7 @@ impl Statement {
                             error!(InternalError, ..&parse.col; "STATEMENT NOT YET PARSING; PANIC"),
                         );
                     }
-                    Rem1 | Rem2 | Step | To => {}
+                    Else | Rem1 | Rem2 | Step | Then | To => {}
                 }
             }
             _ => {}
@@ -514,6 +515,23 @@ impl Statement {
             parse.col.clone(),
             parse.expect_line_number()?,
         ))
+    }
+
+    fn r#if(parse: &mut BasicParser) -> Result<Statement> {
+        let column = parse.col.clone();
+        let predicate = parse.expect_expression()?;
+        if parse.maybe(Token::Word(Word::Goto1)) || parse.maybe(Token::Word(Word::Goto2)) {
+            let stmt = Statement::Goto(parse.col.clone(), parse.expect_line_number()?);
+            return Ok(Statement::If(column, predicate, vec![stmt], vec![]));
+        }
+        parse.expect(Token::Word(Word::Then))?;
+        let then_stmt = parse.expect_statement()?;
+        let else_stmt = if parse.maybe(Token::Word(Word::Then)) {
+            parse.expect_statement()?
+        } else {
+            vec![]
+        };
+        Ok(Statement::If(column, predicate, then_stmt, else_stmt))
     }
 
     fn r#input(parse: &mut BasicParser) -> Result<Statement> {

@@ -9,6 +9,7 @@ pub enum Statement {
     End(Column),
     For(Column, Ident, Expression, Expression, Expression),
     Goto(Column, Expression),
+    If(Column, Expression, Vec<Statement>, Vec<Statement>),
     Input(Column, Expression, Expression, Vec<Variable>),
     Let(Column, Variable, Expression),
     List(Column, Expression, Expression),
@@ -105,6 +106,15 @@ impl AcceptVisitor for Statement {
             }
             Goto(_, expr) | Print(_, expr) | Run(_, expr) => {
                 expr.accept(visitor);
+            }
+            If(_, predicate, vec_stmt1, vec_stmt2) => {
+                predicate.accept(visitor);
+                for stmt in vec_stmt1 {
+                    stmt.accept(visitor);
+                }
+                for stmt in vec_stmt2 {
+                    stmt.accept(visitor);
+                }
             }
             Let(_, var, expr) => {
                 var.accept(visitor);

@@ -1,7 +1,7 @@
 extern crate ansi_term;
 extern crate ctrlc;
 extern crate linefeed;
-use crate::mach::{Event, Runtime};
+use crate::mach::{Event, Listing, Runtime};
 use ansi_term::Style;
 use linefeed::{
     Command, Completer, Completion, Function, Interface, Prompter, ReadResult, Signal, Terminal,
@@ -22,7 +22,7 @@ pub fn main() {
 }
 
 fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
-    let mut runtime = Arc::new(Runtime::default());
+    let mut runtime = Runtime::default();
     let command = Interface::new("BASIC")?;
     let input_full = Interface::new("Input")?;
     input_full.set_report_signal(Signal::Interrupt, true);
@@ -32,19 +32,19 @@ fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
 
     loop {
         if interrupted.load(Ordering::SeqCst) {
-            Arc::get_mut(&mut runtime).unwrap().interrupt();
+            runtime.interrupt();
             interrupted.store(false, Ordering::SeqCst);
         };
-        match Arc::get_mut(&mut runtime).unwrap().execute(5000) {
+        match runtime.execute(5000) {
             Event::Stopped => {
                 let saved_completer = command.completer();
-                command.set_completer(Arc::new(LineCompleter::new(Arc::clone(&runtime))));
+                command.set_completer(Arc::new(LineCompleter::new(runtime.get_listing())));
                 let string = match command.read_line()? {
                     ReadResult::Input(string) => string,
                     ReadResult::Signal(_) | ReadResult::Eof => break,
                 };
                 command.set_completer(saved_completer);
-                if Arc::get_mut(&mut runtime).unwrap().enter(&string) {
+                if runtime.enter(&string) {
                     command.add_history_unique(string);
                 }
             }
@@ -53,13 +53,13 @@ fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
                 input.set_prompt(&prompt)?;
                 match input.read_line()? {
                     ReadResult::Input(string) => {
-                        if Arc::get_mut(&mut runtime).unwrap().enter(&string) {
+                        if runtime.enter(&string) {
                             input.add_history_unique(string);
                         }
                     }
                     ReadResult::Signal(Signal::Interrupt) => {
                         input.set_buffer("")?;
-                        Arc::get_mut(&mut runtime).unwrap().interrupt();
+                        runtime.interrupt();
                     }
                     ReadResult::Signal(_) | ReadResult::Eof => break,
                 };
@@ -103,11 +103,11 @@ impl<Term: Terminal> Function<Term> for CapsFunction {
 }
 
 struct LineCompleter {
-    runtime: Arc<Runtime>,
+    runtime: Listing,
 }
 
 impl LineCompleter {
-    fn new(runtime: Arc<Runtime>) -> LineCompleter {
+    fn new(runtime: Listing) -> LineCompleter {
         LineCompleter { runtime }
     }
 }

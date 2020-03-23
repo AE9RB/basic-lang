@@ -31,11 +31,13 @@ impl Token {
             "CONT" => Some(Token::Word(Word::Cont)),
             "DIM" => Some(Token::Word(Word::Dim)),
             "END" => Some(Token::Word(Word::End)),
+            "ELSE" => Some(Token::Word(Word::Else)),
             "FOR" => Some(Token::Word(Word::For)),
             "GOSUB" => Some(Token::Word(Word::Gosub1)),
             "GO SUB" => Some(Token::Word(Word::Gosub2)),
             "GOTO" => Some(Token::Word(Word::Goto1)),
             "GO TO" => Some(Token::Word(Word::Goto2)),
+            "IF" => Some(Token::Word(Word::If)),
             "INPUT" => Some(Token::Word(Word::Input)),
             "LET" => Some(Token::Word(Word::Let)),
             "LIST" => Some(Token::Word(Word::List)),
@@ -47,6 +49,7 @@ impl Token {
             "RUN" => Some(Token::Word(Word::Run)),
             "STEP" => Some(Token::Word(Word::Step)),
             "STOP" => Some(Token::Word(Word::Stop)),
+            "THEN" => Some(Token::Word(Word::Then)),
             "TO" => Some(Token::Word(Word::To)),
 
             "^" => Some(Token::Operator(Operator::Caret)),
@@ -125,7 +128,7 @@ impl TryFrom<&Token> for LineNumber {
                 return Err(error!(Overflow; msg));
             }
         }
-        Err(error!(SyntaxError; msg))
+        Err(error!(UndefinedLine; msg))
     }
 }
 
@@ -154,12 +157,14 @@ pub enum Word {
     Clear,
     Cont,
     Dim,
+    Else,
     End,
     For,
     Gosub1,
     Gosub2,
     Goto1,
     Goto2,
+    If,
     Input,
     Let,
     List,
@@ -171,6 +176,7 @@ pub enum Word {
     Step,
     Stop,
     Run,
+    Then,
     To,
 }
 
@@ -181,12 +187,14 @@ impl std::fmt::Display for Word {
             Clear => write!(f, "CLEAR"),
             Cont => write!(f, "CONT"),
             Dim => write!(f, "DIM"),
+            Else => write!(f, "ELSE"),
             End => write!(f, "END"),
             For => write!(f, "FOR"),
             Gosub1 => write!(f, "GOSUB"),
             Gosub2 => write!(f, "GO SUB"),
             Goto1 => write!(f, "GOTO"),
             Goto2 => write!(f, "GO TO"),
+            If => write!(f, "IF"),
             Input => write!(f, "INPUT"),
             Let => write!(f, "LET"),
             List => write!(f, "LIST"),
@@ -198,6 +206,7 @@ impl std::fmt::Display for Word {
             Run => write!(f, "RUN"),
             Step => write!(f, "STEP"),
             Stop => write!(f, "STOP"),
+            Then => write!(f, "THEN"),
             To => write!(f, "TO"),
         }
     }
