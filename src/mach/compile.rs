@@ -143,6 +143,9 @@ impl Compiler {
             let ident = this.ident.pop()?;
             if let Some((opcode, arity)) = Function::opcode_and_arity(&ident) {
                 if arity.contains(&len) {
+                    if arity.start() != arity.end() {
+                        prog.push(this.val_int_from_usize(len, &col)?)?;
+                    }
                     prog.push(opcode)?;
                     return Ok(args_col);
                 }

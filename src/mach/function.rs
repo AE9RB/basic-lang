@@ -11,6 +11,7 @@ impl Function {
     pub fn opcode_and_arity(func_name: &str) -> Option<(Opcode, std::ops::RangeInclusive<usize>)> {
         match func_name {
             "COS" => Some((Opcode::Cos, 1..=1)),
+            "RND" => Some((Opcode::Rnd, 0..=1)),
             "SIN" => Some((Opcode::Sin, 1..=1)),
             "TAB" => Some((Opcode::Tab, 1..=1)),
             _ => None,
@@ -26,6 +27,28 @@ impl Function {
             String(_) | Return(_) => Err(error!(TypeMismatch)),
         }
     }
+
+    pub fn rnd(st: &mut (u32, u32, u32), mut vec_val: Vec<Val>) -> Result<Val> {
+        let val = match vec_val.pop() {
+            Some(s) => f32::try_from(s)?,
+            None => 1.0,
+        };
+        if val < 0.0 {
+            let seed = u32::from_le_bytes(val.to_be_bytes()) & 0x_00FF_FFFF;
+            st.0 = seed;
+            st.1 = seed;
+            st.2 = seed;
+        }
+        if val != 0.0 {
+            st.0 = (171 * st.0) % 30269;
+            st.1 = (172 * st.1) % 30307;
+            st.2 = (170 * st.2) % 30323;
+        }
+        Ok(Val::Single(
+            (st.0 as f32 / 30269.0 + st.1 as f32 / 30307.0 + st.2 as f32 / 30323.0) % 1.0,
+        ))
+    }
+
     pub fn sin(val: Val) -> Result<Val> {
         use Val::*;
         match val {
@@ -36,7 +59,7 @@ impl Function {
         }
     }
 
-    pub fn tab(val: Val, print_col: usize) -> Result<Val> {
+    pub fn tab(print_col: usize, val: Val) -> Result<Val> {
         let mut s = String::new();
         let tab = i16::try_from(val)?;
         if tab < -255 || tab > 255 {

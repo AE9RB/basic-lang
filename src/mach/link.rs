@@ -8,12 +8,6 @@ use std::rc::Rc;
 
 type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug, Default)]
-pub struct LinkShared {
-    current_symbol: Symbol,
-    loops: Vec<(Column, String, Symbol, Symbol)>,
-}
-
 /// ## Linkable object
 
 #[derive(Debug)]
@@ -24,32 +18,32 @@ pub struct Link {
     unlinked: HashMap<Address, (Column, Symbol)>,
 }
 
-impl TryFrom<Link> for LineNumber {
-    type Error = Error;
-
-    fn try_from(mut prog: Link) -> std::result::Result<Self, Self::Error> {
-        if prog.ops.len() == 1 {
-            match prog.ops.pop() {
-                Ok(Opcode::Literal(val)) => return Ok(LineNumber::try_from(val)?),
-                Err(e) => return Err(e),
-                _ => {}
-            }
-        }
-        Err(error!(UndefinedLine; "INVALID LINE NUMBER"))
-    }
+#[derive(Debug, Default)]
+struct LinkShared {
+    current_symbol: Symbol,
+    loops: Vec<(Column, String, Symbol, Symbol)>,
 }
 
-impl Link {
-    pub fn new(shared: Rc<RefCell<LinkShared>>) -> Link {
+impl Default for Link {
+    fn default() -> Self {
         Link {
-            shared,
+            shared: Rc::default(),
             ops: Stack::new("PROGRAM TOO LARGE"),
             symbols: BTreeMap::default(),
             unlinked: HashMap::default(),
         }
     }
+}
+
+impl Link {
+    pub fn new(&mut self) -> Link {
+        let mut link = Link::default();
+        link.shared = Rc::clone(&self.shared);
+        link
+    }
 
     pub fn append(&mut self, mut link: Link) -> Result<()> {
+        debug_assert!(Rc::ptr_eq(&self.shared, &link.shared));
         let offset = self.ops.len();
         for (symbol, address) in link.symbols.iter() {
             self.symbols.insert(*symbol, *address + offset);
@@ -228,5 +222,20 @@ impl Link {
         self.symbols = self.symbols.split_off(&0);
         self.shared.borrow_mut().current_symbol = 0;
         errors
+    }
+}
+
+impl TryFrom<Link> for LineNumber {
+    type Error = Error;
+
+    fn try_from(mut prog: Link) -> std::result::Result<Self, Self::Error> {
+        if prog.ops.len() == 1 {
+            match prog.ops.pop() {
+                Ok(Opcode::Literal(val)) => return Ok(LineNumber::try_from(val)?),
+                Err(e) => return Err(e),
+                _ => {}
+            }
+        }
+        Err(error!(UndefinedLine; "INVALID LINE NUMBER"))
     }
 }

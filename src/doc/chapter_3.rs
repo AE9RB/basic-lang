@@ -13,6 +13,20 @@ pub mod COS {
     */
 }
 
+pub mod RND {
+    /*!
+    ## RND(X)
+    Wichman-Hill Random Number Generator.
+    Returns a random Single between 0 and 1 when X is missing or > 0.
+    When X is 0, return the previous random number.
+    When X < 0, seed the random number generator.
+    ```text
+    PRINT RND()
+     0.6923401
+    ```
+    */
+}
+
 pub mod SIN {
     /*!
     ## SIN(X)

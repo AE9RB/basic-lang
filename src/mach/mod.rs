@@ -22,7 +22,6 @@ mod var;
 
 pub use function::Function;
 pub use link::Link;
-pub use link::LinkShared;
 pub use listing::Listing;
 pub use opcode::Opcode;
 pub use operation::Operation;

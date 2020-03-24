@@ -25,6 +25,7 @@ pub struct Runtime {
     cont: State,
     cont_pc: Address,
     print_col: usize,
+    rand: (u32, u32, u32),
 }
 
 /// ## Events for the user interface
@@ -66,6 +67,7 @@ impl Default for Runtime {
             cont: State::Stopped,
             cont_pc: 0,
             print_col: 0,
+            rand: (1, 1, 1),
         }
     }
 }
@@ -455,8 +457,8 @@ impl Runtime {
                 Opcode::Mod => self.stack.pop_2_push(&Operation::unimplemented)?,
                 Opcode::Add => self.stack.pop_2_push(&Operation::sum)?,
                 Opcode::Sub => self.stack.pop_2_push(&Operation::subtract)?,
-                Opcode::Eq => self.stack.pop_2_push(&Operation::unimplemented)?,
-                Opcode::NotEq => self.stack.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Eq => self.stack.pop_2_push(&Operation::equal)?,
+                Opcode::NotEq => self.stack.pop_2_push(&Operation::not_equal)?,
                 Opcode::Lt => self.stack.pop_2_push(&Operation::less)?,
                 Opcode::LtEq => self.stack.pop_2_push(&Operation::unimplemented)?,
                 Opcode::Gt => self.stack.pop_2_push(&Operation::greater)?,
@@ -469,10 +471,14 @@ impl Runtime {
                 Opcode::Eqv => self.stack.pop_2_push(&Operation::unimplemented)?,
 
                 Opcode::Cos => self.stack.pop_1_push(&Function::cos)?,
+                Opcode::Rnd => {
+                    let vec = self.stack.pop_vec()?;
+                    self.stack.push(Function::rnd(&mut self.rand, vec)?)?;
+                }
                 Opcode::Sin => self.stack.pop_1_push(&Function::sin)?,
                 Opcode::Tab => {
                     let val = self.stack.pop()?;
-                    self.stack.push(Function::tab(val, self.print_col)?)?;
+                    self.stack.push(Function::tab(self.print_col, val)?)?;
                 }
             }
         }

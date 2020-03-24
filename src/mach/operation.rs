@@ -143,6 +143,51 @@ impl Operation {
         }
     }
 
+    pub fn equal(lhs: Val, rhs: Val) -> Result<Val> {
+        if Operation::equal_bool(lhs, rhs)? {
+            Ok(Val::Integer(-1))
+        } else {
+            Ok(Val::Integer(0))
+        }
+    }
+
+    pub fn not_equal(lhs: Val, rhs: Val) -> Result<Val> {
+        if Operation::equal_bool(lhs, rhs)? {
+            Ok(Val::Integer(0))
+        } else {
+            Ok(Val::Integer(-1))
+        }
+    }
+
+    fn equal_bool(lhs: Val, rhs: Val) -> Result<bool> {
+        use Val::*;
+        match lhs {
+            Integer(l) => match rhs {
+                Integer(r) => Ok(l == r),
+                Single(r) => Ok((l as f32 - r).abs() < std::f32::EPSILON),
+                Double(r) => Ok((l as f64 - r).abs() < std::f64::EPSILON),
+                _ => Err(error!(TypeMismatch)),
+            },
+            Single(l) => match rhs {
+                Integer(r) => Ok((l - r as f32).abs() < std::f32::EPSILON),
+                Single(r) => Ok((l - r).abs() < std::f32::EPSILON),
+                Double(r) => Ok((l as f64 - r).abs() < std::f64::EPSILON),
+                _ => Err(error!(TypeMismatch)),
+            },
+            Double(l) => match rhs {
+                Integer(r) => Ok((l - r as f64).abs() < std::f64::EPSILON),
+                Single(r) => Ok((l - r as f64).abs() < std::f64::EPSILON),
+                Double(r) => Ok((l - r).abs() < std::f64::EPSILON),
+                _ => Err(error!(TypeMismatch)),
+            },
+            String(l) => match rhs {
+                String(r) => Ok(l == r),
+                _ => Err(error!(TypeMismatch)),
+            },
+            Return(_) => Err(error!(TypeMismatch)),
+        }
+    }
+
     pub fn greater(lhs: Val, rhs: Val) -> Result<Val> {
         Operation::less(rhs, lhs)
     }

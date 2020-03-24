@@ -105,6 +105,10 @@ impl<'a> BasicParser<'a> {
     fn expect_expression_list(&mut self) -> Result<Vec<Expression>> {
         self.expect(Token::LParen)?;
         let mut expressions: Vec<Expression> = vec![];
+        if let Some(Token::RParen) = self.peek() {
+            self.next();
+            return Ok(expressions);
+        }
         loop {
             expressions.push(self.expect_expression()?);
             match self.next() {

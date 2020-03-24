@@ -1,8 +1,6 @@
-use super::{compile::compile, Address, Link, LinkShared, Opcode, Symbol};
+use super::{compile::compile, Address, Link, Opcode, Symbol};
 use crate::error;
 use crate::lang::{Error, Line, LineNumber};
-use std::cell::RefCell;
-use std::rc::Rc;
 use std::sync::Arc;
 
 type Result<T> = std::result::Result<T, Error>;
@@ -16,26 +14,23 @@ pub struct Program {
     direct_address: Address,
     line_number: LineNumber,
     link: Link,
-    link_shared: Rc<RefCell<LinkShared>>,
 }
 
 impl Default for Program {
     fn default() -> Self {
-        let link_shared = Rc::default();
         Program {
             errors: Arc::default(),
             indirect_errors: Arc::default(),
             direct_address: 0,
             line_number: None,
-            link: Link::new(Rc::clone(&link_shared)),
-            link_shared,
+            link: Link::default(),
         }
     }
 }
 
 impl Program {
     pub fn new_link(&mut self) -> Link {
-        Link::new(Rc::clone(&self.link_shared))
+        self.link.new()
     }
 
     pub fn error(&mut self, error: Error) {
