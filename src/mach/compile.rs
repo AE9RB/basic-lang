@@ -280,11 +280,32 @@ impl Compiler {
 
     fn r#if(
         &mut self,
-        _prog: &mut Link,
-        _col: &Column,
-        _then_len: usize,
-        _else_len: usize,
+        prog: &mut Link,
+        col: &Column,
+        then_len: usize,
+        else_len: usize,
     ) -> Result<Column> {
+        let (_predicate_col, predicate) = self.expr.pop()?;
+        prog.append(predicate)?;
+        let else_sym = prog.next_symbol();
+        prog.link_addr_to_symbol(prog.len(), col.clone(), else_sym);
+        prog.push(Opcode::IfNot(0))?;
+        let elses = self.stmt.pop_n(else_len)?;
+        for (_col, link) in self.stmt.pop_n(then_len)? {
+            prog.append(link)?;
+        }
+        if else_len == 0 {
+            prog.insert(else_sym, prog.len());
+        } else {
+            let finished_sym = prog.next_symbol();
+            prog.link_addr_to_symbol(prog.len(), col.clone(), finished_sym);
+            prog.push(Opcode::Jump(0))?;
+            prog.insert(else_sym, prog.len());
+            for (_col, link) in elses {
+                prog.append(link)?;
+            }
+            prog.insert(finished_sym, prog.len());
+        }
         Ok(0..0)
     }
 

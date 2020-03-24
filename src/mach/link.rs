@@ -212,7 +212,7 @@ impl Link {
                     if let Some(op) = self.ops.get_mut(op_addr) {
                         if let Some(new_op) = match op {
                             Opcode::For(_) => Some(Opcode::For(*dest)),
-                            Opcode::If(_) => Some(Opcode::If(*dest)),
+                            Opcode::IfNot(_) => Some(Opcode::IfNot(*dest)),
                             Opcode::Jump(_) => Some(Opcode::Jump(*dest)),
                             _ => None,
                         } {

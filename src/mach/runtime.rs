@@ -363,8 +363,15 @@ impl Runtime {
                     let addr = *addr;
                     self.r#for(addr)?;
                 }
-                Opcode::If(_) => {
-                    return Err(error!(InternalError; "'IF' NOT YET IMPLEMENTED; PANIC"))
+                Opcode::IfNot(addr) => {
+                    if match self.stack.pop()? {
+                        Val::Return(_) | Val::String(_) => return Err(error!(TypeMismatch)),
+                        Val::Integer(n) => n == 0,
+                        Val::Single(n) => n == 0.0,
+                        Val::Double(n) => n == 0.0,
+                    } {
+                        self.pc = *addr;
+                    }
                 }
                 Opcode::Jump(addr) => {
                     self.pc = *addr;

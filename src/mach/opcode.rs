@@ -26,7 +26,7 @@ pub enum Opcode {
     /// Jumps to Address if the for-loop on the stack is finished.
     For(Address),
     /// Pop stack and branch to Address if not zero.
-    If(Address),
+    IfNot(Address),
     /// Unconditional branch to Address.
     Jump(Address),
     /// Expect Return(Address) on stack or else error: RETURN WITHOUT GOSUB.
@@ -88,7 +88,7 @@ impl std::fmt::Display for Opcode {
             DimArr(s) => write!(f, "DIMARR({})", s),
 
             For(a) => write!(f, "FOR({})", a),
-            If(a) => write!(f, "IF({})", a),
+            IfNot(a) => write!(f, "IFNOT({})", a),
             Jump(a) => write!(f, "JUMP({})", a),
             Return => write!(f, "RETURN"),
 

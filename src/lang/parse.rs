@@ -35,21 +35,11 @@ impl<'a> BasicParser<'a> {
             _ => {}
         }
         let mut statements: Vec<Statement> = vec![];
-        let mut expect_colon = false;
         loop {
             match parse.peek() {
                 None | Some(Token::Word(Word::Rem1)) => return Ok(statements),
-                Some(Token::Colon) => {
-                    expect_colon = false;
-                    parse.next();
-                    continue;
-                }
                 Some(_) => {
-                    if expect_colon {
-                        return Err(error!(SyntaxError, ..&parse.col; "UNEXPECTED TOKEN"));
-                    }
-                    statements.append(&mut parse.expect_statement()?);
-                    expect_colon = true;
+                    statements.append(&mut parse.expect_statements()?);
                 }
             }
         }
@@ -84,8 +74,28 @@ impl<'a> BasicParser<'a> {
         self.peeked.as_ref()
     }
 
-    fn expect_statement(&mut self) -> Result<Vec<Statement>> {
-        Statement::expect(self)
+    fn expect_statements(&mut self) -> Result<Vec<Statement>> {
+        let mut statements: Vec<Statement> = vec![];
+        let mut expect_colon = false;
+        loop {
+            match self.peek() {
+                None | Some(Token::Word(Word::Rem1)) | Some(Token::Word(Word::Else)) => {
+                    return Ok(statements)
+                }
+                Some(Token::Colon) => {
+                    expect_colon = false;
+                    self.next();
+                    continue;
+                }
+                Some(_) => {
+                    if expect_colon {
+                        return Err(error!(SyntaxError, ..&self.col; "UNEXPECTED TOKEN"));
+                    }
+                    statements.append(&mut Statement::expect(self)?);
+                    expect_colon = true;
+                }
+            }
+        }
     }
 
     fn expect_expression(&mut self) -> Result<Expression> {
@@ -114,7 +124,7 @@ impl<'a> BasicParser<'a> {
         let mut linefeed = true;
         loop {
             match self.peek() {
-                None | Some(Token::Colon) => {
+                None | Some(Token::Colon) | Some(Token::Word(Word::Else)) => {
                     let mut column = self.col.clone();
                     column.end = column.start;
                     if linefeed {
@@ -167,7 +177,7 @@ impl<'a> BasicParser<'a> {
         let mut expecting = false;
         loop {
             match self.peek() {
-                None | Some(Token::Colon) if !expecting => break,
+                None | Some(Token::Colon) | Some(Token::Word(Word::Else)) if !expecting => break,
                 _ => vars.push(self.expect_var()?),
             };
             if self.maybe(Token::Comma) {
@@ -467,7 +477,7 @@ impl Statement {
     fn r#clear(parse: &mut BasicParser) -> Result<Statement> {
         let result = Ok(Statement::Clear(parse.col.clone()));
         while match parse.peek() {
-            None | Some(Token::Colon) => false,
+            None | Some(Token::Colon) | Some(Token::Word(Word::Else)) => false,
             _ => true,
         } {
             parse.next();
@@ -525,9 +535,21 @@ impl Statement {
             return Ok(Statement::If(column, predicate, vec![stmt], vec![]));
         }
         parse.expect(Token::Word(Word::Then))?;
-        let then_stmt = parse.expect_statement()?;
-        let else_stmt = if parse.maybe(Token::Word(Word::Then)) {
-            parse.expect_statement()?
+        let then_stmt = match parse.maybe_line_number()? {
+            Some(n) => vec![Statement::Goto(
+                column.clone(),
+                Expression::Single(parse.col.clone(), n as f32),
+            )],
+            None => parse.expect_statements()?,
+        };
+        let else_stmt = if parse.maybe(Token::Word(Word::Else)) {
+            match parse.maybe_line_number()? {
+                Some(n) => vec![Statement::Goto(
+                    column.clone(),
+                    Expression::Single(parse.col.clone(), n as f32),
+                )],
+                None => parse.expect_statements()?,
+            }
         } else {
             vec![]
         };
@@ -548,7 +570,7 @@ impl Statement {
                 parse.next();
                 prompt_col = parse.col.clone();
                 match parse.peek() {
-                    None | Some(Token::Colon) => {}
+                    None | Some(Token::Colon) | Some(Token::Word(Word::Else)) => {}
                     Some(Token::Semicolon) => {
                         parse.next();
                     }
