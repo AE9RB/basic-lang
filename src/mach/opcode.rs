@@ -66,6 +66,7 @@ pub enum Opcode {
 
     // *** Built-in functions
     Cos,
+    Int,
     Rnd,
     Sin,
     Tab,
@@ -123,6 +124,7 @@ impl std::fmt::Display for Opcode {
             Eqv => write!(f, "EQV"),
 
             Cos => write!(f, "COS"),
+            Int => write!(f, "INT"),
             Rnd => write!(f, "RND"),
             Sin => write!(f, "SIN"),
             Tab => write!(f, "TAB"),

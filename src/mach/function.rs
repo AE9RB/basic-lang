@@ -11,6 +11,7 @@ impl Function {
     pub fn opcode_and_arity(func_name: &str) -> Option<(Opcode, std::ops::RangeInclusive<usize>)> {
         match func_name {
             "COS" => Some((Opcode::Cos, 1..=1)),
+            "INT" => Some((Opcode::Int, 1..=1)),
             "RND" => Some((Opcode::Rnd, 0..=1)),
             "SIN" => Some((Opcode::Sin, 1..=1)),
             "TAB" => Some((Opcode::Tab, 1..=1)),
@@ -24,6 +25,16 @@ impl Function {
             Integer(n) => Ok(Single((n as f32).cos())),
             Single(n) => Ok(Single(n.cos())),
             Double(n) => Ok(Double(n.cos())),
+            String(_) | Return(_) => Err(error!(TypeMismatch)),
+        }
+    }
+
+    pub fn int(val: Val) -> Result<Val> {
+        use Val::*;
+        match val {
+            Integer(n) => Ok(Integer(n)),
+            Single(n) => Ok(Single(n.floor())),
+            Double(n) => Ok(Double(n.floor())),
             String(_) | Return(_) => Err(error!(TypeMismatch)),
         }
     }

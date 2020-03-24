@@ -189,85 +189,85 @@ impl Operation {
     }
 
     pub fn greater(lhs: Val, rhs: Val) -> Result<Val> {
-        Operation::less(rhs, lhs)
+        if Operation::less_bool(rhs, lhs)? {
+            Ok(Val::Integer(-1))
+        } else {
+            Ok(Val::Integer(0))
+        }
     }
 
     pub fn less(lhs: Val, rhs: Val) -> Result<Val> {
+        if Operation::less_bool(lhs, rhs)? {
+            Ok(Val::Integer(-1))
+        } else {
+            Ok(Val::Integer(0))
+        }
+    }
+
+    pub fn less_bool(lhs: Val, rhs: Val) -> Result<bool> {
         use Val::*;
         match lhs {
             Integer(l) => match rhs {
-                Integer(r) => {
-                    if l < r {
-                        Ok(Integer(-1))
-                    } else {
-                        Ok(Integer(0))
-                    }
-                }
-                Single(r) => {
-                    if (l as f32) < r {
-                        Ok(Integer(-1))
-                    } else {
-                        Ok(Integer(0))
-                    }
-                }
-                Double(r) => {
-                    if (l as f64) < r {
-                        Ok(Integer(-1))
-                    } else {
-                        Ok(Integer(0))
-                    }
-                }
+                Integer(r) => Ok(l < r),
+                Single(r) => Ok((l as f32) < r),
+                Double(r) => Ok((l as f64) < r),
                 _ => Err(error!(TypeMismatch)),
             },
             Single(l) => match rhs {
-                Integer(r) => {
-                    if l < r as f32 {
-                        Ok(Integer(-1))
-                    } else {
-                        Ok(Integer(0))
-                    }
-                }
-                Single(r) => {
-                    if l < r {
-                        Ok(Integer(-1))
-                    } else {
-                        Ok(Integer(0))
-                    }
-                }
-                Double(r) => {
-                    if (l as f64) < r {
-                        Ok(Integer(-1))
-                    } else {
-                        Ok(Integer(0))
-                    }
-                }
+                Integer(r) => Ok(l < r as f32),
+                Single(r) => Ok(l < r),
+                Double(r) => Ok((l as f64) < r),
                 _ => Err(error!(TypeMismatch)),
             },
             Double(l) => match rhs {
-                Integer(r) => {
-                    if l < r as f64 {
-                        Ok(Integer(-1))
-                    } else {
-                        Ok(Integer(0))
-                    }
-                }
-                Single(r) => {
-                    if l < r as f64 {
-                        Ok(Integer(-1))
-                    } else {
-                        Ok(Integer(0))
-                    }
-                }
-                Double(r) => {
-                    if l < r {
-                        Ok(Integer(-1))
-                    } else {
-                        Ok(Integer(0))
-                    }
-                }
+                Integer(r) => Ok(l < r as f64),
+                Single(r) => Ok(l < r as f64),
+                Double(r) => Ok(l < r),
                 _ => Err(error!(TypeMismatch)),
             },
-            String(_) => Err(error!(InternalError; "string compare not imp")),
+            String(_) => Err(error!(InternalError; "TODO; PANIC")),
+            Return(_) => Err(error!(TypeMismatch)),
+        }
+    }
+
+    pub fn greater_equal(lhs: Val, rhs: Val) -> Result<Val> {
+        if Operation::less_equal_bool(rhs, lhs)? {
+            Ok(Val::Integer(-1))
+        } else {
+            Ok(Val::Integer(0))
+        }
+    }
+
+    pub fn less_equal(lhs: Val, rhs: Val) -> Result<Val> {
+        if Operation::less_equal_bool(lhs, rhs)? {
+            Ok(Val::Integer(-1))
+        } else {
+            Ok(Val::Integer(0))
+        }
+    }
+
+    pub fn less_equal_bool(lhs: Val, rhs: Val) -> Result<bool> {
+        use Val::*;
+        match lhs {
+            Integer(l) => match rhs {
+                Integer(r) => Ok(l <= r),
+                Single(r) => Ok((l as f32) <= r),
+                Double(r) => Ok((l as f64) <= r),
+                _ => Err(error!(TypeMismatch)),
+            },
+            Single(l) => match rhs {
+                Integer(r) => Ok(l <= r as f32),
+                Single(r) => Ok(l <= r),
+                Double(r) => Ok((l as f64) <= r),
+                _ => Err(error!(TypeMismatch)),
+            },
+            Double(l) => match rhs {
+                Integer(r) => Ok(l <= r as f64),
+                Single(r) => Ok(l <= r as f64),
+                Double(r) => Ok(l <= r),
+                _ => Err(error!(TypeMismatch)),
+            },
+            String(_) => Err(error!(InternalError; "TODO; PANIC")),
             Return(_) => Err(error!(TypeMismatch)),
         }
     }

@@ -40,14 +40,16 @@ impl<'a> Visitor<'a> {
 impl<'a> ast::Visitor for Visitor<'a> {
     fn visit_statement(&mut self, statement: &ast::Statement) {
         let mut prog = self.prog.new_link();
-        match self.comp.statement(&mut prog, statement) {
-            Ok(col) => {
-                if let Some(error) = self.comp.stmt.push((col.clone(), prog)).err() {
-                    self.prog.error(error.in_column(&col))
-                }
+        let col = match self.comp.statement(&mut prog, statement) {
+            Ok(col) => col,
+            Err(e) => {
+                self.prog.error(e);
+                0..0
             }
-            Err(e) => self.prog.error(e),
         };
+        if let Some(error) = self.comp.stmt.push((col.clone(), prog)).err() {
+            self.prog.error(error.in_column(&col))
+        }
     }
     fn visit_ident(&mut self, ident: &ast::Ident) {
         if let Some(error) = self.comp.ident.push(ident.to_string()).err() {
@@ -56,25 +58,29 @@ impl<'a> ast::Visitor for Visitor<'a> {
     }
     fn visit_variable(&mut self, var: &ast::Variable) {
         let mut prog = self.prog.new_link();
-        match self.comp.variable(&mut prog, var) {
-            Ok((col, name)) => {
-                if let Some(error) = self.comp.var.push((col.clone(), name, prog)).err() {
-                    self.prog.error(error.in_column(&col))
-                }
+        let (col, name) = match self.comp.variable(&mut prog, var) {
+            Ok((col, name)) => (col, name),
+            Err(e) => {
+                self.prog.error(e);
+                (0..0, "".to_string())
             }
-            Err(e) => self.prog.error(e),
         };
+        if let Some(error) = self.comp.var.push((col.clone(), name, prog)).err() {
+            self.prog.error(error.in_column(&col))
+        }
     }
     fn visit_expression(&mut self, expression: &ast::Expression) {
         let mut prog = self.prog.new_link();
-        match self.comp.expression(&mut prog, expression) {
-            Ok(col) => {
-                if let Some(error) = self.comp.expr.push((col.clone(), prog)).err() {
-                    self.prog.error(error.in_column(&col))
-                }
+        let col = match self.comp.expression(&mut prog, expression) {
+            Ok(col) => col,
+            Err(e) => {
+                self.prog.error(e);
+                0..0
             }
-            Err(e) => self.prog.error(e),
         };
+        if let Some(error) = self.comp.expr.push((col.clone(), prog)).err() {
+            self.prog.error(error.in_column(&col))
+        }
     }
 }
 

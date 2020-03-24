@@ -13,6 +13,17 @@ pub mod COS {
     */
 }
 
+pub mod INT {
+    /*!
+    ## INT(X)
+    Returns the largest integer <= X.
+    ```text
+    PRINT INT(9.9) INT(-9.9)
+     9 -10
+    ```
+    */
+}
+
 pub mod RND {
     /*!
     ## RND(X)

@@ -460,9 +460,9 @@ impl Runtime {
                 Opcode::Eq => self.stack.pop_2_push(&Operation::equal)?,
                 Opcode::NotEq => self.stack.pop_2_push(&Operation::not_equal)?,
                 Opcode::Lt => self.stack.pop_2_push(&Operation::less)?,
-                Opcode::LtEq => self.stack.pop_2_push(&Operation::unimplemented)?,
+                Opcode::LtEq => self.stack.pop_2_push(&Operation::less_equal)?,
                 Opcode::Gt => self.stack.pop_2_push(&Operation::greater)?,
-                Opcode::GtEq => self.stack.pop_2_push(&Operation::unimplemented)?,
+                Opcode::GtEq => self.stack.pop_2_push(&Operation::greater_equal)?,
                 Opcode::Not => self.stack.pop_2_push(&Operation::unimplemented)?,
                 Opcode::And => self.stack.pop_2_push(&Operation::unimplemented)?,
                 Opcode::Or => self.stack.pop_2_push(&Operation::unimplemented)?,
@@ -471,6 +471,7 @@ impl Runtime {
                 Opcode::Eqv => self.stack.pop_2_push(&Operation::unimplemented)?,
 
                 Opcode::Cos => self.stack.pop_1_push(&Function::cos)?,
+                Opcode::Int => self.stack.pop_1_push(&Function::int)?,
                 Opcode::Rnd => {
                     let vec = self.stack.pop_vec()?;
                     self.stack.push(Function::rnd(&mut self.rand, vec)?)?;
