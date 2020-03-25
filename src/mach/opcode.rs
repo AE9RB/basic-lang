@@ -25,12 +25,12 @@ pub enum Opcode {
     DimArr(Rc<str>),
 
     // *** Branch control
-    /// Jumps to Address if the for-loop on the stack is finished.
-    For(Address),
     /// Pop stack and branch to Address if not zero.
     IfNot(Address),
     /// Unconditional branch to Address.
     Jump(Address),
+    /// Process the FOR loop on the stack.
+    Next(Rc<str>),
     /// Expect Return(Address) on stack or else error: RETURN WITHOUT GOSUB.
     /// Branch to Address.
     Return,
@@ -92,9 +92,9 @@ impl std::fmt::Display for Opcode {
             PopArr(s) => write!(f, "POPARR({})", s),
             DimArr(s) => write!(f, "DIMARR({})", s),
 
-            For(a) => write!(f, "FOR({})", a),
             IfNot(a) => write!(f, "IFNOT({})", a),
             Jump(a) => write!(f, "JUMP({})", a),
+            Next(a) => write!(f, "Next({})", a),
             Return => write!(f, "RETURN"),
 
             Clear => write!(f, "CLEAR"),
@@ -194,6 +194,17 @@ For(:done) // pop [int],var,to,step; if done goto label ; else push back without
 -- stuff
 Goto(:loop)
 :done
+
+// Old school for-next
+--eval FROM
+Pop("A")
+--eval TO
+--eval STEP
+Literal("A")
+Literal(:foo)
+:foo
+...
+Next() pop :foo,var,step,to, if !done push all jump foo
 
 // while _expr
 :again

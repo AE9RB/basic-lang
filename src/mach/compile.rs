@@ -40,7 +40,7 @@ impl<'a> Visitor<'a> {
 
 impl<'a> ast::Visitor for Visitor<'a> {
     fn visit_statement(&mut self, statement: &ast::Statement) {
-        let mut link = self.link.new_link();
+        let mut link = Link::default();
         let col = match self.comp.statement(&mut link, statement) {
             Ok(col) => col,
             Err(e) => {
@@ -65,7 +65,7 @@ impl<'a> ast::Visitor for Visitor<'a> {
         }
     }
     fn visit_variable(&mut self, var: &ast::Variable) {
-        let mut link = self.link.new_link();
+        let mut link = Link::default();
         let (col, name) = match self.comp.variable(&mut link, var) {
             Ok((col, name)) => (col, name),
             Err(e) => {
@@ -78,7 +78,7 @@ impl<'a> ast::Visitor for Visitor<'a> {
         }
     }
     fn visit_expression(&mut self, expression: &ast::Expression) {
-        let mut link = self.link.new_link();
+        let mut link = Link::default();
         let col = match self.comp.expression(&mut link, expression) {
             Ok(col) => col,
             Err(e) => {
@@ -281,13 +281,12 @@ impl Compiler {
         let (_to_col, to_ops) = self.expr.pop()?;
         let (_from_col, from_ops) = self.expr.pop()?;
         let var_name = self.ident.pop()?;
-        link.append(step_ops)?;
-        link.append(to_ops)?;
         link.append(from_ops)?;
         link.push(Opcode::Pop(var_name.clone()))?;
-        link.push(Opcode::Literal(Val::String(var_name.clone())))?;
-        link.push(Opcode::Literal(Val::Integer(0)))?;
-        link.push_for(col.start..step_col.end, var_name)?;
+        link.append(to_ops)?;
+        link.append(step_ops)?;
+        link.push(Opcode::Literal(Val::String(var_name)))?;
+        link.push_for(col.start..step_col.end)?;
         Ok(col.start..step_col.end)
     }
 
@@ -383,7 +382,7 @@ impl Compiler {
 
     fn r#next(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
         let ident = self.ident.pop()?;
-        link.push_next(col.clone(), ident)?;
+        link.push(Opcode::Next(ident))?;
         Ok(col.clone())
     }
 

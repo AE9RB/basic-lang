@@ -1,10 +1,8 @@
 use super::{Address, Opcode, Stack, Symbol, Val};
 use crate::error;
 use crate::lang::{Column, Error, LineNumber, MaxValue};
-use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
-use std::rc::Rc;
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -14,22 +12,16 @@ const OVERFLOW_MESSAGE: &str = "PROGRAM TOO LARGE";
 
 #[derive(Debug)]
 pub struct Link {
-    shared: Rc<RefCell<LinkShared>>,
+    current_symbol: Symbol,
     ops: Stack<Opcode>,
     symbols: BTreeMap<Symbol, Address>,
     unlinked: HashMap<Address, (Column, Symbol)>,
 }
 
-#[derive(Debug, Default)]
-struct LinkShared {
-    current_symbol: Symbol,
-    loops: Vec<(Column, Rc<str>, Symbol, Symbol)>,
-}
-
 impl Default for Link {
     fn default() -> Self {
         Link {
-            shared: Rc::default(),
+            current_symbol: 0,
             ops: Stack::new(OVERFLOW_MESSAGE),
             symbols: BTreeMap::default(),
             unlinked: HashMap::default(),
@@ -38,24 +30,25 @@ impl Default for Link {
 }
 
 impl Link {
-    pub fn new(&mut self) -> Link {
-        Link {
-            shared: Rc::clone(&self.shared),
-            ops: Stack::new(OVERFLOW_MESSAGE),
-            symbols: BTreeMap::default(),
-            unlinked: HashMap::default(),
-        }
-    }
-
     pub fn append(&mut self, mut link: Link) -> Result<()> {
-        debug_assert!(Rc::ptr_eq(&self.shared, &link.shared));
-        let offset = self.ops.len();
+        let addr_offset = self.ops.len();
+        let sym_offset = self.current_symbol;
         for (symbol, address) in link.symbols.iter() {
-            self.symbols.insert(*symbol, *address + offset);
+            let mut symbol = *symbol;
+            if symbol < 0 {
+                symbol += sym_offset
+            }
+            self.symbols.insert(symbol, *address + addr_offset);
         }
-        for (address, cs) in link.unlinked.iter() {
-            self.unlinked.insert(*address + offset, cs.clone());
+        for (address, (col, symbol)) in link.unlinked.iter() {
+            let mut symbol = *symbol;
+            if symbol < 0 {
+                symbol += sym_offset
+            }
+            self.unlinked
+                .insert(*address + addr_offset, (col.clone(), symbol));
         }
+        self.current_symbol += link.current_symbol;
         self.ops.append(&mut link.ops)
     }
 
@@ -87,16 +80,15 @@ impl Link {
     }
 
     pub fn clear(&mut self) {
-        self.shared.borrow_mut().current_symbol = 0;
-        self.shared.borrow_mut().loops.clear();
+        self.current_symbol = 0;
         self.ops.clear();
         self.symbols.clear();
         self.unlinked.clear();
     }
 
     pub fn next_symbol(&mut self) -> Symbol {
-        self.shared.borrow_mut().current_symbol -= 1;
-        self.shared.borrow().current_symbol
+        self.current_symbol -= 1;
+        self.current_symbol
     }
 
     fn symbol_for_line_number(&mut self, line_number: LineNumber) -> Result<Symbol> {
@@ -106,37 +98,12 @@ impl Link {
         }
     }
 
-    fn begin_for_loop(&mut self, addr: Address, col: Column, var_name: Rc<str>) -> Result<()> {
-        let loop_start = self.next_symbol();
-        let loop_end = self.next_symbol();
-        self.shared
-            .borrow_mut()
-            .loops
-            .push((col.clone(), var_name, loop_start, loop_end));
-        self.symbols.insert(loop_start, addr);
-        self.unlinked.insert(addr, (col, loop_end));
+    pub fn push_for(&mut self, col: Column) -> Result<()> {
+        let next = self.next_symbol();
+        self.unlinked.insert(self.ops.len(), (col, next));
+        self.ops.push(Opcode::Literal(Val::Next(0)))?;
+        self.push_symbol(next);
         Ok(())
-    }
-
-    pub fn next_for_loop(&mut self, addr: Address, col: Column, var_name: Rc<str>) -> Result<()> {
-        let (_col, _for_name, loop_start, loop_end) = match self.shared.borrow_mut().loops.pop() {
-            Some((col, for_name, loop_start, loop_end)) => {
-                if var_name.is_empty() || var_name == for_name {
-                    (col, for_name, loop_start, loop_end)
-                } else {
-                    return Err(error!(NextWithoutFor, ..&col));
-                }
-            }
-            _ => return Err(error!(NextWithoutFor, ..&col)),
-        };
-        self.unlinked.insert(addr, (col, loop_start));
-        self.symbols.insert(loop_end, addr + 1);
-        Ok(())
-    }
-
-    pub fn push_for(&mut self, col: Column, ident: Rc<str>) -> Result<()> {
-        self.begin_for_loop(self.ops.len(), col, ident)?;
-        self.ops.push(Opcode::For(0))
     }
 
     pub fn push_gosub(&mut self, col: Column, line_number: LineNumber) -> Result<()> {
@@ -164,12 +131,6 @@ impl Link {
     pub fn push_jump(&mut self, col: Column, sym: Symbol) -> Result<()> {
         self.unlinked.insert(self.ops.len(), (col, sym));
         self.push(Opcode::Jump(0))
-    }
-
-    pub fn push_next(&mut self, col: Column, ident: Rc<str>) -> Result<()> {
-        self.ops.push(Opcode::Literal(Val::String(ident.clone())))?;
-        self.next_for_loop(self.ops.len(), col, ident)?;
-        self.ops.push(Opcode::Jump(0))
     }
 
     pub fn push_run(&mut self, col: Column, line_number: LineNumber) -> Result<()> {
@@ -209,16 +170,6 @@ impl Link {
 
     pub fn link(&mut self) -> Vec<Error> {
         let mut errors: Vec<Error> = vec![];
-        for (col, _, loop_start, _) in self.shared.borrow_mut().loops.drain(..) {
-            let line_number = match self.symbols.get(&loop_start) {
-                None => None,
-                Some(addr) => {
-                    self.unlinked.remove(addr);
-                    self.line_number_for(*addr)
-                }
-            };
-            errors.push(error!(ForWithoutNext, line_number, ..&col));
-        }
         for (op_addr, (col, symbol)) in std::mem::take(&mut self.unlinked) {
             match self.symbols.get(&symbol) {
                 None => {
@@ -231,11 +182,13 @@ impl Link {
                 Some(dest) => {
                     if let Some(op) = self.ops.get_mut(op_addr) {
                         if let Some(new_op) = match op {
-                            Opcode::For(_) => Some(Opcode::For(*dest)),
                             Opcode::IfNot(_) => Some(Opcode::IfNot(*dest)),
                             Opcode::Jump(_) => Some(Opcode::Jump(*dest)),
                             Opcode::Literal(Val::Return(_)) => {
                                 Some(Opcode::Literal(Val::Return(*dest)))
+                            }
+                            Opcode::Literal(Val::Next(_)) => {
+                                Some(Opcode::Literal(Val::Next(*dest)))
                             }
                             _ => None,
                         } {
@@ -249,7 +202,7 @@ impl Link {
             errors.push(error!(InternalError, line_number, ..&col; "LINK FAILURE"));
         }
         self.symbols = self.symbols.split_off(&0);
-        self.shared.borrow_mut().current_symbol = 0;
+        self.current_symbol = 0;
         errors
     }
 }

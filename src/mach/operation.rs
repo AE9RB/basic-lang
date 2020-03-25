@@ -17,7 +17,36 @@ impl Operation {
             Integer(n) => Ok(Integer(-n)),
             Single(n) => Ok(Single(-n)),
             Double(n) => Ok(Double(-n)),
-            String(_) | Return(_) => Err(error!(TypeMismatch)),
+            String(_) | Return(_) | Next(_) => Err(error!(TypeMismatch)),
+        }
+    }
+
+    pub fn exponentiation(lhs: Val, rhs: Val) -> Result<Val> {
+        use Val::*;
+        match lhs {
+            Integer(l) => match rhs {
+                Integer(r) if r >= 0 => match l.checked_pow(r as u32) {
+                    Some(i) => Ok(Integer(i)),
+                    None => Err(error!(Overflow)),
+                },
+                Integer(r) => Ok(Single((l as f32).powf(r as f32))),
+                Single(r) => Ok(Single((l as f32).powf(r))),
+                Double(r) => Ok(Double((l as f64).powf(r))),
+                _ => Err(error!(TypeMismatch)),
+            },
+            Single(l) => match rhs {
+                Integer(r) => Ok(Single(l.powi(r as i32))),
+                Single(r) => Ok(Single(l.powf(r))),
+                Double(r) => Ok(Double((l as f64).powf(r))),
+                _ => Err(error!(TypeMismatch)),
+            },
+            Double(l) => match rhs {
+                Integer(r) => Ok(Double(l.powi(r as i32))),
+                Single(r) => Ok(Double(l.powf(r as f64))),
+                Double(r) => Ok(Double(l.powf(r))),
+                _ => Err(error!(TypeMismatch)),
+            },
+            String(_) | Return(_) | Next(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -45,7 +74,7 @@ impl Operation {
                 Double(r) => Ok(Double(l * r)),
                 _ => Err(error!(TypeMismatch)),
             },
-            String(_) | Return(_) => Err(error!(TypeMismatch)),
+            String(_) | Return(_) | Next(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -79,7 +108,7 @@ impl Operation {
                 Double(r) => Ok(Double(l / r)),
                 _ => Err(error!(TypeMismatch)),
             },
-            String(_) | Return(_) => Err(error!(TypeMismatch)),
+            String(_) | Return(_) | Next(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -111,7 +140,7 @@ impl Operation {
                 Double(r) => Ok(Double(l + r)),
                 _ => Err(error!(TypeMismatch)),
             },
-            Return(_) => Err(error!(TypeMismatch)),
+            Return(_) | Next(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -139,7 +168,7 @@ impl Operation {
                 Double(r) => Ok(Double(l - r)),
                 _ => Err(error!(TypeMismatch)),
             },
-            String(_) | Return(_) => Err(error!(TypeMismatch)),
+            String(_) | Return(_) | Next(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -184,7 +213,7 @@ impl Operation {
                 String(r) => Ok(l == r),
                 _ => Err(error!(TypeMismatch)),
             },
-            Return(_) => Err(error!(TypeMismatch)),
+            Return(_) | Next(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -226,7 +255,7 @@ impl Operation {
                 _ => Err(error!(TypeMismatch)),
             },
             String(_) => Err(error!(InternalError; "TODO; PANIC")),
-            Return(_) => Err(error!(TypeMismatch)),
+            Return(_) | Next(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -268,7 +297,7 @@ impl Operation {
                 _ => Err(error!(TypeMismatch)),
             },
             String(_) => Err(error!(InternalError; "TODO; PANIC")),
-            Return(_) => Err(error!(TypeMismatch)),
+            Return(_) | Next(_) => Err(error!(TypeMismatch)),
         }
     }
 }

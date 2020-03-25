@@ -13,15 +13,11 @@ On subsequent iterations, the variable I gets 2 added to it.
 If the result exceeds 7 the loop breaks.
 Otherwise the statements get executed again.
 
-The first iteration will evaluate z, then y, then set variable to x.
-Note that some versions of BASIC evaluate x then y then z; this is the older style.
-The evaluated x and y along with the variable name is stored on the stack.
-Because `FOR` loops are stack-based, you can nest them for iterating over
-multiple dimensions.
+The first iteration will evaluate x, then y, then z.
+Newer versions of BASIC evaluate z first.
 
-The expressions are skipped if the variable is already past the end
-on the first execution. Some versions of basic always execute
-the statements because the logic is done at the NEXT statement.
+The first iteration always executes even if starting past the end.
+Newer versions of BASIC may skip the first iteration.
 
 ## Example 1
 ```text

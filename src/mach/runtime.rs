@@ -363,12 +363,11 @@ impl Runtime {
                     let vec = self.stack.pop_vec()?;
                     self.vars.dimension_array(&var_name, vec)?;
                 }
-                Opcode::For(addr) => {
-                    self.r#for(addr)?;
-                }
                 Opcode::IfNot(addr) => {
                     if match self.stack.pop()? {
-                        Val::Return(_) | Val::String(_) => return Err(error!(TypeMismatch)),
+                        Val::Return(_) | Val::String(_) | Val::Next(_) => {
+                            return Err(error!(TypeMismatch))
+                        }
                         Val::Integer(n) => n == 0,
                         Val::Single(n) => n == 0.0,
                         Val::Double(n) => n == 0.0,
@@ -383,9 +382,15 @@ impl Runtime {
                         return Ok(Event::Errors(Arc::clone(&self.source.indirect_errors)));
                     }
                 }
-                Opcode::Return => match self.stack.pop() {
-                    Ok(Val::Return(addr)) => self.pc = addr,
-                    _ => return Err(error!(ReturnWithoutGosub)),
+                Opcode::Return => loop {
+                    match self.stack.pop() {
+                        Ok(Val::Return(addr)) => {
+                            self.pc = addr;
+                            break;
+                        }
+                        Ok(_) => continue,
+                        Err(_) => return Err(error!(ReturnWithoutGosub)),
+                    }
                 },
 
                 Opcode::Clear => self.r#clear()?,
@@ -402,11 +407,12 @@ impl Runtime {
                 }
                 Opcode::List => return self.r#list(),
                 Opcode::New => return self.r#new_(),
+                Opcode::Next(var_name) => self.r#next(var_name)?,
                 Opcode::Print => return self.r#print(),
                 Opcode::Stop => return Err(error!(Break)),
 
                 Opcode::Neg => self.stack.pop_1_push(&Operation::negate)?,
-                Opcode::Exp => self.stack.pop_2_push(&Operation::unimplemented)?,
+                Opcode::Exp => self.stack.pop_2_push(&Operation::exponentiation)?,
                 Opcode::Mul => self.stack.pop_2_push(&Operation::multiply)?,
                 Opcode::Div => self.stack.pop_2_push(&Operation::divide)?,
                 Opcode::DivInt => self.stack.pop_2_push(&Operation::unimplemented)?,
@@ -476,50 +482,6 @@ impl Runtime {
         Ok(Event::Stopped)
     }
 
-    fn r#for(&mut self, addr: Address) -> Result<()> {
-        loop {
-            if self.stack.len() < 4 {
-                break;
-            }
-            let (first_iter, next_name) = match self.stack.pop()? {
-                Val::String(s) => (false, s),
-                _ => (true, "".into()),
-            };
-            let var_name_val = self.stack.pop()?;
-            let to_val = self.stack.pop()?;
-            let step_val = self.stack.pop()?;
-            if let Val::String(var_name) = var_name_val {
-                if !next_name.is_empty() && var_name != next_name {
-                    self.stack.push(Val::String(next_name))?;
-                    continue;
-                }
-                let mut current = self.vars.fetch(&var_name);
-                if !first_iter {
-                    current = Operation::sum(current, step_val.clone())?;
-                    self.vars.store(&var_name, current.clone())?;
-                }
-                if let Ok(step) = f64::try_from(step_val.clone()) {
-                    let done = Val::Integer(-1)
-                        == if step < 0.0 {
-                            Operation::less(current, to_val.clone())?
-                        } else {
-                            Operation::less(to_val.clone(), current)?
-                        };
-                    if done {
-                        self.pc = addr;
-                    } else {
-                        self.stack.push(step_val)?;
-                        self.stack.push(to_val)?;
-                        self.stack.push(Val::String(var_name))?;
-                    }
-                    return Ok(());
-                }
-            }
-            break;
-        }
-        Err(error!(NextWithoutFor; "MISSING STACK FRAME"))
-    }
-
     fn r#input(&mut self, var_name: Rc<str>) -> Result<Option<Event>> {
         if let State::Running = self.state {
             self.state = State::Input;
@@ -577,6 +539,50 @@ impl Runtime {
         self.state = State::Stopped;
         self.cont = State::Stopped;
         Ok(Event::Stopped)
+    }
+
+    fn r#next(&mut self, next_name: Rc<str>) -> Result<()> {
+        loop {
+            let next;
+            loop {
+                match self.stack.pop() {
+                    Ok(Val::Next(addr)) => {
+                        next = addr;
+                        break;
+                    }
+                    Ok(_) => continue,
+                    Err(_) => return Err(error!(NextWithoutFor)),
+                }
+            }
+            let var_name_val = self.stack.pop()?;
+            let step_val = self.stack.pop()?;
+            let to_val = self.stack.pop()?;
+            if let Val::String(var_name) = var_name_val {
+                if !next_name.is_empty() && var_name != next_name {
+                    //self.stack.push(Val::String(next_name))?;
+                    continue;
+                }
+                let mut current = self.vars.fetch(&var_name);
+                current = Operation::sum(current, step_val.clone())?;
+                self.vars.store(&var_name, current.clone())?;
+                if let Ok(step) = f64::try_from(step_val.clone()) {
+                    let done = Val::Integer(-1)
+                        == if step < 0.0 {
+                            Operation::less(current, to_val.clone())?
+                        } else {
+                            Operation::less(to_val.clone(), current)?
+                        };
+                    if !done {
+                        self.stack.push(to_val)?;
+                        self.stack.push(step_val)?;
+                        self.stack.push(Val::String(var_name))?;
+                        self.stack.push(Val::Next(next))?;
+                        self.pc = next;
+                    }
+                    return Ok(());
+                }
+            }
+        }
     }
 
     fn r#print(&mut self) -> Result<Event> {

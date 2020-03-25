@@ -25,7 +25,7 @@ impl Function {
             Integer(n) => Ok(Single((n as f32).cos())),
             Single(n) => Ok(Single(n.cos())),
             Double(n) => Ok(Double(n.cos())),
-            String(_) | Return(_) => Err(error!(TypeMismatch)),
+            String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -35,7 +35,7 @@ impl Function {
             Integer(n) => Ok(Integer(n)),
             Single(n) => Ok(Single(n.floor())),
             Double(n) => Ok(Double(n.floor())),
-            String(_) | Return(_) => Err(error!(TypeMismatch)),
+            String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -66,7 +66,7 @@ impl Function {
             Integer(n) => Ok(Single((n as f32).sin())),
             Single(n) => Ok(Single(n.sin())),
             Double(n) => Ok(Double(n.sin())),
-            String(_) | Return(_) => Err(error!(TypeMismatch)),
+            String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
         }
     }
 

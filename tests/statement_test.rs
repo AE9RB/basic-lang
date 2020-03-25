@@ -3,7 +3,7 @@ use basic::mach::Runtime;
 use common::*;
 
 #[test]
-fn test_breaking_out_of_loop_with_goto() {
+fn test_breaking_out_of_for_loop_with_goto() {
     let mut r = Runtime::default();
     r.enter(r#"10fory=1to2"#);
     r.enter(r#"20forx=8to9"#);
@@ -13,6 +13,20 @@ fn test_breaking_out_of_loop_with_goto() {
     r.enter(r#"60nexty"#);
     r.enter(r#"run"#);
     assert_eq!(exec(&mut r), " 1  8 \n 2  8 \n");
+}
+
+#[test]
+fn test_for_loop_always_runs_once() {
+    let mut r = Runtime::default();
+    r.enter(r#"FOR I=3 TO 0:PRINT I:NEXT I"#);
+    assert_eq!(exec(&mut r), " 3 \n");
+}
+
+#[test]
+fn test_for_loop_assign_step_after_var() {
+    let mut r = Runtime::default();
+    r.enter(r#"I=1:FOR I=3 TO 9 STEP I:PRINT I;:NEXT"#);
+    assert_eq!(exec(&mut r), " 3  6  9 \n");
 }
 
 #[test]
@@ -38,6 +52,10 @@ fn test_if_then_else() {
     assert_eq!(exec(&mut r), "two 2 \n");
     r.enter(r#"if 1 then ? "one" else ? "two":?2"#);
     assert_eq!(exec(&mut r), "one\n");
+    r.enter(r#"if 1 then ? "one";:?2"#);
+    assert_eq!(exec(&mut r), "one 2 \n");
+    r.enter(r#"if 0 then ? "one";:?2"#);
+    assert_eq!(exec(&mut r), "");
 }
 
 #[test]

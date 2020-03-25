@@ -13,6 +13,7 @@ pub enum Val {
     Double(f64),
     Integer(i16),
     Return(Address),
+    Next(Address),
 }
 
 impl std::fmt::Display for Val {
@@ -41,7 +42,7 @@ impl std::fmt::Display for Val {
                     write!(f, " {} ", n)
                 }
             }
-            Return(..) => {
+            Return(..) | Next(..) => {
                 debug_assert!(false);
                 write!(f, "")
             }
@@ -96,7 +97,7 @@ impl TryFrom<Val> for u16 {
                     Err(error!(Overflow))
                 }
             }
-            Val::String(_) | Val::Return(_) => Err(error!(TypeMismatch)),
+            Val::String(_) | Val::Return(_) | Val::Next(..) => Err(error!(TypeMismatch)),
         }
     }
 }
@@ -120,7 +121,7 @@ impl TryFrom<Val> for i16 {
                     Err(error!(Overflow))
                 }
             }
-            Val::String(_) | Val::Return(_) => Err(error!(TypeMismatch)),
+            Val::String(_) | Val::Return(_) | Val::Next(..) => Err(error!(TypeMismatch)),
         }
     }
 }
@@ -132,7 +133,7 @@ impl TryFrom<Val> for f32 {
             Val::Integer(i) => Ok(i as f32),
             Val::Single(f) => Ok(f),
             Val::Double(d) => Ok(d as f32),
-            Val::String(_) | Val::Return(_) => Err(error!(TypeMismatch)),
+            Val::String(_) | Val::Return(_) | Val::Next(..) => Err(error!(TypeMismatch)),
         }
     }
 }
@@ -144,7 +145,7 @@ impl TryFrom<Val> for f64 {
             Val::Integer(i) => Ok(i as f64),
             Val::Single(f) => Ok(f as f64),
             Val::Double(d) => Ok(d),
-            Val::String(_) | Val::Return(_) => Err(error!(TypeMismatch)),
+            Val::String(_) | Val::Return(_) | Val::Next(..) => Err(error!(TypeMismatch)),
         }
     }
 }

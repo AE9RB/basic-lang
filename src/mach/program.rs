@@ -29,10 +29,6 @@ impl Default for Program {
 }
 
 impl Program {
-    pub fn new_link(&mut self) -> Link {
-        self.link.new()
-    }
-
     pub fn error(&mut self, error: Error) {
         Arc::make_mut(&mut self.errors).push(error.in_line_number(self.line_number));
     }
