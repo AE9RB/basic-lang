@@ -456,20 +456,18 @@ impl Statement {
                     Dim => return Self::r#dim(parse),
                     End => return Ok(vec![Self::r#end(parse)?]),
                     For => return Ok(vec![Self::r#for(parse)?]),
+                    Gosub1 | Gosub2 => return Ok(vec![Self::r#gosub(parse)?]),
                     Goto1 | Goto2 => return Ok(vec![Self::r#goto(parse)?]),
                     If => return Ok(vec![Self::r#if(parse)?]),
                     Input => return Ok(vec![Self::r#input(parse)?]),
                     Let => return Ok(vec![Self::r#let(parse)?]),
                     List => return Ok(vec![Self::r#list(parse)?]),
+                    New => return Ok(vec![Self::r#new(parse)?]),
                     Next => return Self::r#next(parse),
                     Print1 | Print2 => return Self::r#print(parse),
+                    Return => return Ok(vec![Self::r#return(parse)?]),
                     Run => return Ok(vec![Self::r#run(parse)?]),
                     Stop => return Ok(vec![Self::r#stop(parse)?]),
-                    Gosub1 | Gosub2 => {
-                        return Err(
-                            error!(InternalError, ..&parse.col; "STATEMENT NOT YET PARSING; PANIC"),
-                        );
-                    }
                     Else | Rem1 | Rem2 | Step | Then | To => {}
                 }
             }
@@ -522,6 +520,13 @@ impl Statement {
             expr_step = parse.expect_expression()?
         }
         Ok(Statement::For(column, ident, expr_from, expr_to, expr_step))
+    }
+
+    fn r#gosub(parse: &mut BasicParser) -> Result<Statement> {
+        Ok(Statement::Gosub(
+            parse.col.clone(),
+            parse.expect_line_number()?,
+        ))
     }
 
     fn r#goto(parse: &mut BasicParser) -> Result<Statement> {
@@ -612,6 +617,10 @@ impl Statement {
         Ok(Statement::List(column, from, to))
     }
 
+    fn r#new(parse: &mut BasicParser) -> Result<Statement> {
+        Ok(Statement::New(parse.col.clone()))
+    }
+
     fn r#next(parse: &mut BasicParser) -> Result<Vec<Statement>> {
         let column = parse.col.clone();
         let mut idents = parse.expect_unary_var_list()?;
@@ -631,6 +640,10 @@ impl Statement {
             .drain(..)
             .map(|e| Statement::Print(column.clone(), e))
             .collect())
+    }
+
+    fn r#return(parse: &mut BasicParser) -> Result<Statement> {
+        Ok(Statement::Return(parse.col.clone()))
     }
 
     fn r#run(parse: &mut BasicParser) -> Result<Statement> {

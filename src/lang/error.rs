@@ -109,6 +109,7 @@ pub enum ErrorCode {
     Break = 0,
     NextWithoutFor = 1,
     SyntaxError = 2,
+    ReturnWithoutGosub = 3,
     Overflow = 6,
     OutOfMemory = 7,
     UndefinedLine = 8,

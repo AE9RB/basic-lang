@@ -15,6 +15,12 @@ impl Listing {
         self.source.values()
     }
 
+    pub fn clear(&mut self) {
+        self.source = Arc::default();
+        self.indirect_errors = Arc::default();
+        self.direct_errors = Arc::default();
+    }
+
     pub fn insert(&mut self, line: Line) -> Option<Line> {
         Arc::get_mut(&mut self.source)
             .unwrap()

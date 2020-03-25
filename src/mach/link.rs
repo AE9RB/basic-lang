@@ -8,6 +8,8 @@ use std::rc::Rc;
 
 type Result<T> = std::result::Result<T, Error>;
 
+const OVERFLOW_MESSAGE: &str = "PROGRAM TOO LARGE";
+
 /// ## Linkable object
 
 #[derive(Debug)]
@@ -28,7 +30,7 @@ impl Default for Link {
     fn default() -> Self {
         Link {
             shared: Rc::default(),
-            ops: Stack::new("PROGRAM TOO LARGE"),
+            ops: Stack::new(OVERFLOW_MESSAGE),
             symbols: BTreeMap::default(),
             unlinked: HashMap::default(),
         }
@@ -37,9 +39,12 @@ impl Default for Link {
 
 impl Link {
     pub fn new(&mut self) -> Link {
-        let mut link = Link::default();
-        link.shared = Rc::clone(&self.shared);
-        link
+        Link {
+            shared: Rc::clone(&self.shared),
+            ops: Stack::new(OVERFLOW_MESSAGE),
+            symbols: BTreeMap::default(),
+            unlinked: HashMap::default(),
+        }
     }
 
     pub fn append(&mut self, mut link: Link) -> Result<()> {
@@ -94,19 +99,11 @@ impl Link {
         self.shared.borrow().current_symbol
     }
 
-    pub fn insert(&mut self, sym: Symbol, addr: Address) {
-        self.symbols.insert(sym, addr);
-    }
-
-    pub fn symbol_for_line_number(&mut self, line_number: LineNumber) -> Result<Symbol> {
+    fn symbol_for_line_number(&mut self, line_number: LineNumber) -> Result<Symbol> {
         match line_number {
             Some(number) => Ok(number as Symbol),
             None => Err(error!(InternalError; "NO SYMBOL FOR LINE NUMBER")),
         }
-    }
-
-    pub fn link_addr_to_symbol(&mut self, addr: Address, col: Column, symbol: Symbol) {
-        self.unlinked.insert(addr, (col, symbol));
     }
 
     fn begin_for_loop(&mut self, addr: Address, col: Column, var_name: String) -> Result<()> {
@@ -116,8 +113,8 @@ impl Link {
             .borrow_mut()
             .loops
             .push((col.clone(), var_name, loop_start, loop_end));
-        self.insert(loop_start, addr);
-        self.link_addr_to_symbol(addr, col, loop_end);
+        self.symbols.insert(loop_start, addr);
+        self.unlinked.insert(addr, (col, loop_end));
         Ok(())
     }
 
@@ -132,9 +129,8 @@ impl Link {
             }
             _ => return Err(error!(NextWithoutFor, ..&col)),
         };
-
-        self.link_addr_to_symbol(addr, col, loop_start);
-        self.insert(loop_end, addr + 1);
+        self.unlinked.insert(addr, (col, loop_start));
+        self.symbols.insert(loop_end, addr + 1);
         Ok(())
     }
 
@@ -143,29 +139,54 @@ impl Link {
         self.ops.push(Opcode::For(0))
     }
 
-    pub fn push_next(&mut self, col: Column, ident: String) -> Result<()> {
-        self.ops.push(Opcode::Literal(Val::String(ident.clone())))?;
-        self.next_for_loop(self.ops.len(), col, ident)?;
-        self.ops.push(Opcode::Jump(0))
+    pub fn push_gosub(&mut self, col: Column, line_number: LineNumber) -> Result<()> {
+        let sym = self.symbol_for_line_number(line_number)?;
+        self.unlinked.insert(self.ops.len(), (col, sym));
+        self.ops.push(Opcode::Gosub(0))
     }
 
     pub fn push_goto(&mut self, col: Column, line_number: LineNumber) -> Result<()> {
         let sym = self.symbol_for_line_number(line_number)?;
-        self.link_addr_to_symbol(self.ops.len(), col, sym);
-        self.ops.push(Opcode::Jump(0))
+        self.unlinked.insert(self.ops.len(), (col, sym));
+        self.ops.push(Opcode::Goto(0))
+    }
+
+    pub fn push_ifnot(&mut self, col: Column, sym: Symbol) -> Result<()> {
+        self.unlinked.insert(self.ops.len(), (col, sym));
+        self.push(Opcode::IfNot(0))
+    }
+
+    pub fn push_jump(&mut self, col: Column, sym: Symbol) -> Result<()> {
+        self.unlinked.insert(self.ops.len(), (col, sym));
+        self.push(Opcode::Goto(0))
+    }
+
+    pub fn push_next(&mut self, col: Column, ident: String) -> Result<()> {
+        self.ops.push(Opcode::Literal(Val::String(ident.clone())))?;
+        self.next_for_loop(self.ops.len(), col, ident)?;
+        self.ops.push(Opcode::Goto(0))
     }
 
     pub fn push_run(&mut self, col: Column, line_number: LineNumber) -> Result<()> {
         self.ops.push(Opcode::Clear)?;
         if line_number.is_some() {
             let sym = self.symbol_for_line_number(line_number)?;
-            self.link_addr_to_symbol(self.ops.len(), col, sym);
+            self.unlinked.insert(self.ops.len(), (col, sym));
         }
-        self.ops.push(Opcode::Jump(0))
+        self.ops.push(Opcode::Goto(0))
     }
 
+    pub fn push_symbol(&mut self, sym: Symbol) {
+        if self.symbols.insert(sym, self.ops.len()).is_some() {
+            debug_assert!(false, "Symbol already exists.");
+        }
+    }
+
+    // ***
+
     pub fn set_start_of_direct(&mut self, op_addr: Address) {
-        self.insert(LineNumber::max_value() as isize + 1 as Symbol, op_addr);
+        self.symbols
+            .insert(LineNumber::max_value() as isize + 1 as Symbol, op_addr);
     }
 
     pub fn line_number_for(&self, op_addr: Address) -> LineNumber {
@@ -207,7 +228,8 @@ impl Link {
                         if let Some(new_op) = match op {
                             Opcode::For(_) => Some(Opcode::For(*dest)),
                             Opcode::IfNot(_) => Some(Opcode::IfNot(*dest)),
-                            Opcode::Jump(_) => Some(Opcode::Jump(*dest)),
+                            Opcode::Gosub(_) => Some(Opcode::Gosub(*dest)),
+                            Opcode::Goto(_) => Some(Opcode::Goto(*dest)),
                             _ => None,
                         } {
                             *op = new_op;

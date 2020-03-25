@@ -77,7 +77,7 @@ impl Program {
             }
             self.line_number = line.number();
             if let Some(line_number) = self.line_number {
-                self.link.insert(line_number as Symbol, self.link.len());
+                self.link.push_symbol(line_number as Symbol);
             } else {
                 debug_assert!(!direct_seen, "Can't handle multiple direct lines.");
                 direct_seen = true;

@@ -34,9 +34,33 @@ fn test_if_then() {
 #[test]
 fn test_if_then_else() {
     let mut r = Runtime::default();
-
     r.enter(r#"if 0 then ? "one" else ? "two";:?2"#);
     assert_eq!(exec(&mut r), "two 2 \n");
     r.enter(r#"if 1 then ? "one" else ? "two":?2"#);
     assert_eq!(exec(&mut r), "one\n");
+}
+
+#[test]
+fn test_gosub_return() {
+    let mut r = Runtime::default();
+    r.enter(r#"10 GOSUB 100"#);
+    r.enter(r#"20 PRINT "WORLD""#);
+    r.enter(r#"90 END"#);
+    r.enter(r#"100 PRINT "HELLO ";"#);
+    r.enter(r#"110 RETURN"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), "HELLO WORLD\n");
+}
+
+#[test]
+fn test_new() {
+    let mut r = Runtime::default();
+    r.enter(r#"10 A=1"#);
+    r.enter(r#"20 NEW"#);
+    r.enter(r#"RUN:PRINT 9"#);
+    assert_eq!(exec(&mut r), "");
+    r.enter(r#"PRINT A"#);
+    assert_eq!(exec(&mut r), " 0 \n");
+    r.enter(r#"LIST"#);
+    assert_eq!(exec(&mut r), "");
 }

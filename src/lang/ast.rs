@@ -8,13 +8,16 @@ pub enum Statement {
     Dim(Column, Variable),
     End(Column),
     For(Column, Ident, Expression, Expression, Expression),
+    Gosub(Column, Expression),
     Goto(Column, Expression),
     If(Column, Expression, Vec<Statement>, Vec<Statement>),
     Input(Column, Expression, Expression, Vec<Variable>),
     Let(Column, Variable, Expression),
     List(Column, Expression, Expression),
+    New(Column),
     Next(Column, Ident),
     Print(Column, Expression),
+    Return(Column),
     Run(Column, Expression),
     Stop(Column),
 }
@@ -94,7 +97,7 @@ impl AcceptVisitor for Statement {
     fn accept<V: Visitor>(&self, visitor: &mut V) {
         use Statement::*;
         match self {
-            Clear(_) | Cont(_) | End(_) | Stop(_) => {}
+            Clear(_) | Cont(_) | End(_) | New(_) | Stop(_) | Return(_) => {}
             Dim(_, var) => {
                 var.accept(visitor);
             }
@@ -104,7 +107,7 @@ impl AcceptVisitor for Statement {
                 expr2.accept(visitor);
                 expr3.accept(visitor);
             }
-            Goto(_, expr) | Print(_, expr) | Run(_, expr) => {
+            Gosub(_, expr) | Goto(_, expr) | Print(_, expr) | Run(_, expr) => {
                 expr.accept(visitor);
             }
             If(_, predicate, vec_stmt1, vec_stmt2) => {

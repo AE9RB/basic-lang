@@ -375,20 +375,25 @@ impl Runtime {
                         self.pc = *addr;
                     }
                 }
-                Opcode::Jump(addr) => {
+                Opcode::Gosub(addr) => {
+                    self.stack.push(Val::Return(self.pc))?;
                     self.pc = *addr;
                     if has_indirect_errors && self.pc < self.entry_address {
                         self.state = State::Stopped;
                         return Ok(Event::Errors(Arc::clone(&self.source.indirect_errors)));
                     }
                 }
-                Opcode::Return => {
-                    return Err(error!(InternalError; "'RETURN' NOT YET IMPLEMENTED; PANIC"))
+                Opcode::Goto(addr) => {
+                    self.pc = *addr;
+                    if has_indirect_errors && self.pc < self.entry_address {
+                        self.state = State::Stopped;
+                        return Ok(Event::Errors(Arc::clone(&self.source.indirect_errors)));
+                    }
                 }
-                Opcode::Clear => {
-                    self.stack.clear();
-                    self.vars.clear();
-                }
+                Opcode::Return => match self.stack.pop() {
+                    Ok(Val::Return(addr)) => self.pc = addr,
+                    _ => return Err(error!(ReturnWithoutGosub)),
+                },
                 Opcode::Cont => {
                     if let State::Stopped = self.cont {
                         return Err(error!(CantContinue));
@@ -441,13 +446,13 @@ impl Runtime {
                         return Err(error!(InternalError));
                     }
                 }
-                Opcode::List => return self.r#list(),
+
+                Opcode::Clear => self.r#clear()?,
                 Opcode::End => return self.r#end(),
+                Opcode::List => return self.r#list(),
+                Opcode::New => return self.r#new_(),
                 Opcode::Print => return self.r#print(),
-                Opcode::Stop => {
-                    self.r#end()?;
-                    return Err(error!(Break));
-                }
+                Opcode::Stop => return self.r#stop(),
 
                 Opcode::Neg => self.stack.pop_1_push(&Operation::negate)?,
                 Opcode::Exp => self.stack.pop_2_push(&Operation::unimplemented)?,
@@ -484,6 +489,22 @@ impl Runtime {
             }
         }
         Ok(Event::Running)
+    }
+
+    fn r#clear(&mut self) -> Result<()> {
+        self.vars.clear();
+        Ok(())
+    }
+
+    fn r#end(&mut self) -> Result<Event> {
+        self.cont = State::Stopped;
+        std::mem::swap(&mut self.cont, &mut self.state);
+        self.cont_pc = self.pc;
+        if self.pc >= self.entry_address {
+            self.cont = State::Stopped;
+            self.stack.clear();
+        }
+        Ok(Event::Stopped)
     }
 
     fn r#for(&mut self, addr: Address) -> Result<()> {
@@ -541,14 +562,13 @@ impl Runtime {
         Ok(Event::Running)
     }
 
-    fn r#end(&mut self) -> Result<Event> {
+    fn r#new_(&mut self) -> Result<Event> {
+        self.stack.clear();
+        self.vars.clear();
+        self.source.clear();
+        self.dirty = true;
+        self.state = State::Stopped;
         self.cont = State::Stopped;
-        std::mem::swap(&mut self.cont, &mut self.state);
-        self.cont_pc = self.pc;
-        if self.pc >= self.entry_address {
-            self.cont = State::Stopped;
-            self.stack.clear();
-        }
         Ok(Event::Stopped)
     }
 
@@ -564,6 +584,11 @@ impl Runtime {
             }
         }
         Ok(Event::Print(s))
+    }
+
+    fn r#stop(&mut self) -> Result<Event> {
+        self.r#end()?;
+        Err(error!(Break))
     }
 }
 
