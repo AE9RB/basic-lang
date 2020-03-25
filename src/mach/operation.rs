@@ -87,7 +87,7 @@ impl Operation {
         use Val::*;
         match lhs {
             String(l) => match rhs {
-                String(r) => Ok(String(l + &r)),
+                String(r) => Ok(String((l.to_string() + &r).into())),
                 _ => Err(error!(TypeMismatch)),
             },
             Integer(l) => match rhs {

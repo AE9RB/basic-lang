@@ -64,3 +64,26 @@ fn test_new() {
     r.enter(r#"LIST"#);
     assert_eq!(exec(&mut r), "");
 }
+
+#[test]
+fn test_end_cont() {
+    let mut r = Runtime::default();
+    r.enter(r#"10 A=1"#);
+    r.enter(r#"20 END"#);
+    r.enter(r#"30 PRINT A"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), "");
+    r.enter(r#"CONT"#);
+    assert_eq!(exec(&mut r), " 1 \n");
+}
+#[test]
+fn test_stop_cont() {
+    let mut r = Runtime::default();
+    r.enter(r#"10 A=1"#);
+    r.enter(r#"20 STOP"#);
+    r.enter(r#"30 PRINT A"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), "?BREAK IN 20\n");
+    r.enter(r#"CONT"#);
+    assert_eq!(exec(&mut r), " 1 \n");
+}

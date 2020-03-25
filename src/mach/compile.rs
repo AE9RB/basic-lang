@@ -3,6 +3,7 @@ use crate::error;
 use crate::lang::ast::{self, AcceptVisitor};
 use crate::lang::{Column, Error, LineNumber};
 use std::convert::TryFrom;
+use std::rc::Rc;
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -52,7 +53,14 @@ impl<'a> ast::Visitor for Visitor<'a> {
         }
     }
     fn visit_ident(&mut self, ident: &ast::Ident) {
-        if let Some(error) = self.comp.ident.push(ident.to_string()).err() {
+        let s = match ident {
+            ast::Ident::Plain(s) => s,
+            ast::Ident::String(s) => s,
+            ast::Ident::Single(s) => s,
+            ast::Ident::Double(s) => s,
+            ast::Ident::Integer(s) => s,
+        };
+        if let Some(error) = self.comp.ident.push(s.clone()).err() {
             self.link.error(error)
         }
     }
@@ -62,7 +70,7 @@ impl<'a> ast::Visitor for Visitor<'a> {
             Ok((col, name)) => (col, name),
             Err(e) => {
                 self.link.error(e);
-                (0..0, "".to_string())
+                (0..0, "".into())
             }
         };
         if let Some(error) = self.comp.var.push((col.clone(), name, link)).err() {
@@ -85,8 +93,8 @@ impl<'a> ast::Visitor for Visitor<'a> {
 }
 
 struct Compiler {
-    ident: Stack<String>,
-    var: Stack<(Column, String, Link)>,
+    ident: Stack<Rc<str>>,
+    var: Stack<(Column, Rc<str>, Link)>,
     expr: Stack<(Column, Link)>,
     stmt: Stack<(Column, Link)>,
 }
@@ -101,7 +109,7 @@ impl Compiler {
         }
     }
 
-    fn variable(&mut self, link: &mut Link, var: &ast::Variable) -> Result<(Column, String)> {
+    fn variable(&mut self, link: &mut Link, var: &ast::Variable) -> Result<(Column, Rc<str>)> {
         use ast::Variable;
         let col = match var {
             Variable::Unary(col, _ident) => col,
@@ -342,7 +350,7 @@ impl Compiler {
                 link.push(Opcode::PopArr(var_name))?
             }
         }
-        link.push(Opcode::Input("".to_string()))?;
+        link.push(Opcode::Input("".into()))?;
         Ok(col.clone())
     }
 

@@ -1,4 +1,5 @@
 use super::{Address, Val};
+use std::rc::Rc;
 
 /// ## Virtual machine instruction set
 ///
@@ -9,18 +10,19 @@ use super::{Address, Val};
 ///
 /// See <https://en.wikipedia.org/wiki/Reverse_Polish_notation>
 
+#[derive(Clone)]
 pub enum Opcode {
     // *** Stack manipulation
     /// Push literal value on to the stack.
     Literal(Val),
     /// Push stack value of named variable. Infallible.
-    Push(String),
+    Push(Rc<str>),
     /// Pop stack value to named variable. This is the `LET` statement
     /// and may generate errors.
-    Pop(String),
-    PushArr(String),
-    PopArr(String),
-    DimArr(String),
+    Pop(Rc<str>),
+    PushArr(Rc<str>),
+    PopArr(Rc<str>),
+    DimArr(Rc<str>),
 
     // *** Branch control
     /// Jumps to Address if the for-loop on the stack is finished.
@@ -39,7 +41,7 @@ pub enum Opcode {
     Clear,
     Cont,
     End,
-    Input(String),
+    Input(Rc<str>),
     List,
     New,
     Print,

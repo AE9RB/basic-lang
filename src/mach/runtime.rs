@@ -3,6 +3,7 @@ use crate::error;
 use crate::lang::{Error, Line, LineNumber};
 use std::convert::TryFrom;
 use std::ops::Range;
+use std::rc::Rc;
 use std::sync::Arc;
 
 type Result<T> = std::result::Result<T, Error>;
@@ -30,6 +31,7 @@ pub struct Runtime {
 
 /// ## Events for the user interface
 
+#[derive(Debug)]
 pub enum Event {
     Errors(Arc<Vec<Error>>),
     Input(String, bool),
@@ -155,7 +157,7 @@ impl Runtime {
         };
         let mut vv: Vec<Val> = vec![];
         if len <= 1 {
-            vv.push(Val::String(string.to_string()));
+            vv.push(Val::String(string.into()));
         } else {
             let mut start: usize = 0;
             let mut in_quote = false;
@@ -165,13 +167,13 @@ impl Runtime {
                         in_quote = !in_quote;
                     }
                     ',' if !in_quote => {
-                        vv.push(Val::String(string[start..i].to_string()));
+                        vv.push(Val::String(string[start..i].into()));
                         start = i + 1;
                     }
                     _ => {}
                 }
             }
-            vv.push(Val::String(string[start..].to_string()));
+            vv.push(Val::String(string[start..].into()));
             if len as usize != vv.len() {
                 self.state = State::InputRedo;
                 return Ok(());
@@ -320,7 +322,7 @@ impl Runtime {
         let len = self.stack.pop()?;
         let caps = self.stack.pop()?;
         let mut prompt = match self.stack.last() {
-            Some(Val::String(s)) => s.clone(),
+            Some(Val::String(s)) => s.to_string(),
             _ => return Err(error!(InternalError)),
         };
         prompt.push('?');
@@ -345,24 +347,23 @@ impl Runtime {
             self.pc += 1;
             match op {
                 Opcode::Literal(val) => self.stack.push(val.clone())?,
-                Opcode::Pop(var_name) => self.vars.store(var_name, self.stack.pop()?)?,
-                Opcode::Push(var_name) => self.stack.push(self.vars.fetch(var_name))?,
+                Opcode::Pop(var_name) => self.vars.store(&var_name, self.stack.pop()?)?,
+                Opcode::Push(var_name) => self.stack.push(self.vars.fetch(&var_name))?,
                 Opcode::PopArr(var_name) => {
                     let vec = self.stack.pop_vec()?;
                     let val = self.stack.pop()?;
-                    self.vars.store_array(var_name, vec, val)?;
+                    self.vars.store_array(&var_name, vec, val)?;
                 }
                 Opcode::PushArr(var_name) => {
                     let vec = self.stack.pop_vec()?;
-                    let val = self.vars.fetch_array(var_name, vec)?;
+                    let val = self.vars.fetch_array(&var_name, vec)?;
                     self.stack.push(val)?;
                 }
                 Opcode::DimArr(var_name) => {
                     let vec = self.stack.pop_vec()?;
-                    self.vars.dimension_array(var_name, vec)?;
+                    self.vars.dimension_array(&var_name, vec)?;
                 }
                 Opcode::For(addr) => {
-                    let addr = *addr;
                     self.r#for(addr)?;
                 }
                 Opcode::IfNot(addr) => {
@@ -372,19 +373,19 @@ impl Runtime {
                         Val::Single(n) => n == 0.0,
                         Val::Double(n) => n == 0.0,
                     } {
-                        self.pc = *addr;
+                        self.pc = addr;
                     }
                 }
                 Opcode::Gosub(addr) => {
                     self.stack.push(Val::Return(self.pc))?;
-                    self.pc = *addr;
+                    self.pc = addr;
                     if has_indirect_errors && self.pc < self.entry_address {
                         self.state = State::Stopped;
                         return Ok(Event::Errors(Arc::clone(&self.source.indirect_errors)));
                     }
                 }
                 Opcode::Goto(addr) => {
-                    self.pc = *addr;
+                    self.pc = addr;
                     if has_indirect_errors && self.pc < self.entry_address {
                         self.state = State::Stopped;
                         return Ok(Event::Errors(Arc::clone(&self.source.indirect_errors)));
@@ -394,65 +395,23 @@ impl Runtime {
                     Ok(Val::Return(addr)) => self.pc = addr,
                     _ => return Err(error!(ReturnWithoutGosub)),
                 },
-                Opcode::Cont => {
-                    if let State::Stopped = self.cont {
-                        return Err(error!(CantContinue));
-                    }
-                    if let State::Running = self.state {
-                        self.state = State::Stopped;
-                        std::mem::swap(&mut self.cont, &mut self.state);
-                        self.pc = self.cont_pc;
-                    } else {
-                        return Err(error!(CantContinue));
-                    }
-                    if let State::Running = self.state {
-                    } else {
-                        return Ok(Event::Running);
-                    }
-                }
-                Opcode::Input(var_name) => {
-                    if let State::Running = self.state {
-                        self.state = State::Input;
-                        self.pc -= 1;
-                        return Ok(Event::Running);
-                    } else if let State::InputRunning = self.state {
-                        if var_name.is_empty() {
-                            self.state = State::Running;
-                            self.stack.pop()?;
-                            self.stack.pop()?;
-                            self.stack.pop()?;
-                            self.stack.pop()?;
-                        } else {
-                            let mut pop = self.stack.pop()?;
-                            if let Val::String(v) = pop {
-                                let mut v = v.trim();
-                                if var_name.ends_with('$') {
-                                    if v.len() >= 2 && v.starts_with('"') && v.ends_with('"') {
-                                        v = &v[1..v.len() - 1];
-                                    }
-                                    pop = Val::String(v.to_string());
-                                } else if v.is_empty() {
-                                    pop = Val::Integer(0);
-                                } else {
-                                    pop = Val::from(v);
-                                }
-                                self.stack.push(pop)?;
-                            } else {
-                                self.stack.push(pop)?;
-                                debug_assert!(false, "input stack corrupt");
-                            }
-                        }
-                    } else {
-                        return Err(error!(InternalError));
-                    }
-                }
 
                 Opcode::Clear => self.r#clear()?,
+                Opcode::Cont => {
+                    if let Some(event) = self.r#cont()? {
+                        return Ok(event);
+                    }
+                }
                 Opcode::End => return self.r#end(),
+                Opcode::Input(var_name) => {
+                    if let Some(event) = self.r#input(var_name)? {
+                        return Ok(event);
+                    }
+                }
                 Opcode::List => return self.r#list(),
                 Opcode::New => return self.r#new_(),
                 Opcode::Print => return self.r#print(),
-                Opcode::Stop => return self.r#stop(),
+                Opcode::Stop => return Err(error!(Break)),
 
                 Opcode::Neg => self.stack.pop_1_push(&Operation::negate)?,
                 Opcode::Exp => self.stack.pop_2_push(&Operation::unimplemented)?,
@@ -496,6 +455,24 @@ impl Runtime {
         Ok(())
     }
 
+    fn r#cont(&mut self) -> Result<Option<Event>> {
+        if let State::Stopped = self.cont {
+            return Err(error!(CantContinue));
+        }
+        if let State::Running = self.state {
+            self.state = State::Stopped;
+            std::mem::swap(&mut self.cont, &mut self.state);
+            self.pc = self.cont_pc;
+        } else {
+            return Err(error!(CantContinue));
+        }
+        if let State::Running = self.state {
+            Ok(None)
+        } else {
+            Ok(Some(Event::Running))
+        }
+    }
+
     fn r#end(&mut self) -> Result<Event> {
         self.cont = State::Stopped;
         std::mem::swap(&mut self.cont, &mut self.state);
@@ -514,7 +491,7 @@ impl Runtime {
             }
             let (first_iter, next_name) = match self.stack.pop()? {
                 Val::String(s) => (false, s),
-                _ => (true, "".to_string()),
+                _ => (true, "".into()),
             };
             let var_name_val = self.stack.pop()?;
             let to_val = self.stack.pop()?;
@@ -551,6 +528,44 @@ impl Runtime {
         Err(error!(NextWithoutFor; "MISSING STACK FRAME"))
     }
 
+    fn r#input(&mut self, var_name: Rc<str>) -> Result<Option<Event>> {
+        if let State::Running = self.state {
+            self.state = State::Input;
+            self.pc -= 1;
+            Ok(Some(Event::Running))
+        } else if let State::InputRunning = self.state {
+            if var_name.is_empty() {
+                self.state = State::Running;
+                self.stack.pop()?;
+                self.stack.pop()?;
+                self.stack.pop()?;
+                self.stack.pop()?;
+            } else {
+                let mut pop = self.stack.pop()?;
+                if let Val::String(v) = pop {
+                    let mut v = v.trim();
+                    if var_name.ends_with('$') {
+                        if v.len() >= 2 && v.starts_with('"') && v.ends_with('"') {
+                            v = &v[1..v.len() - 1];
+                        }
+                        pop = Val::String(v.into());
+                    } else if v.is_empty() {
+                        pop = Val::Integer(0);
+                    } else {
+                        pop = Val::from(v);
+                    }
+                    self.stack.push(pop)?;
+                } else {
+                    self.stack.push(pop)?;
+                    debug_assert!(false, "input stack corrupt");
+                }
+            }
+            Ok(None)
+        } else {
+            Err(error!(InternalError))
+        }
+    }
+
     fn r#list(&mut self) -> Result<Event> {
         let (from, to) = self.stack.pop_2()?;
         let from = LineNumber::try_from(from)?;
@@ -584,11 +599,6 @@ impl Runtime {
             }
         }
         Ok(Event::Print(s))
-    }
-
-    fn r#stop(&mut self) -> Result<Event> {
-        self.r#end()?;
-        Err(error!(Break))
     }
 }
 

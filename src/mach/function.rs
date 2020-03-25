@@ -84,6 +84,6 @@ impl Function {
             let len = tab as usize - print_col;
             s.push_str(&" ".repeat(len));
         }
-        Ok(Val::String(s))
+        Ok(Val::String(s.into()))
     }
 }

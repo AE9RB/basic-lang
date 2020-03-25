@@ -1,4 +1,3 @@
-pub use super::ident::Ident;
 use super::{Error, LineNumber, MaxValue};
 use crate::error;
 use std::convert::TryFrom;
@@ -279,6 +278,28 @@ impl std::fmt::Display for Operator {
             Xor => write!(f, "XOR"),
             Imp => write!(f, "IMP"),
             Eqv => write!(f, "EQV"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Hash)]
+pub enum Ident {
+    Plain(String),
+    String(String),
+    Single(String),
+    Double(String),
+    Integer(String),
+}
+
+impl std::fmt::Display for Ident {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use Ident::*;
+        match self {
+            Plain(s) => write!(f, "{}", s),
+            String(s) => write!(f, "{}", s),
+            Single(s) => write!(f, "{}", s),
+            Double(s) => write!(f, "{}", s),
+            Integer(s) => write!(f, "{}", s),
         }
     }
 }

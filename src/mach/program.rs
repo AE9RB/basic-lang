@@ -41,8 +41,11 @@ impl Program {
         self.link.append(link)
     }
 
-    pub fn get(&self, addr: Address) -> Option<&Opcode> {
-        self.link.get(addr)
+    pub fn get(&self, addr: Address) -> Option<Opcode> {
+        match self.link.get(addr) {
+            Some(o) => Some(o.clone()),
+            None => None,
+        }
     }
 
     pub fn line_number_for(&self, op_addr: Address) -> LineNumber {

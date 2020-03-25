@@ -2,12 +2,13 @@ use super::Address;
 use crate::error;
 use crate::lang::{Error, LineNumber, MaxValue};
 use std::convert::TryFrom;
+use std::rc::Rc;
 
 /// ## Runtime values for stack and variables
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Val {
-    String(String),
+    String(Rc<str>),
     Single(f32),
     Double(f64),
     Integer(i16),
@@ -160,7 +161,7 @@ impl From<&str> for Val {
         if let Ok(num) = s.parse::<f64>() {
             Val::Double(num)
         } else {
-            Val::String(string.to_string())
+            Val::String(string.into())
         }
     }
 }

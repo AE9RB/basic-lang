@@ -23,7 +23,7 @@ pub struct Link {
 #[derive(Debug, Default)]
 struct LinkShared {
     current_symbol: Symbol,
-    loops: Vec<(Column, String, Symbol, Symbol)>,
+    loops: Vec<(Column, Rc<str>, Symbol, Symbol)>,
 }
 
 impl Default for Link {
@@ -106,7 +106,7 @@ impl Link {
         }
     }
 
-    fn begin_for_loop(&mut self, addr: Address, col: Column, var_name: String) -> Result<()> {
+    fn begin_for_loop(&mut self, addr: Address, col: Column, var_name: Rc<str>) -> Result<()> {
         let loop_start = self.next_symbol();
         let loop_end = self.next_symbol();
         self.shared
@@ -118,7 +118,7 @@ impl Link {
         Ok(())
     }
 
-    pub fn next_for_loop(&mut self, addr: Address, col: Column, var_name: String) -> Result<()> {
+    pub fn next_for_loop(&mut self, addr: Address, col: Column, var_name: Rc<str>) -> Result<()> {
         let (_col, _for_name, loop_start, loop_end) = match self.shared.borrow_mut().loops.pop() {
             Some((col, for_name, loop_start, loop_end)) => {
                 if var_name.is_empty() || var_name == for_name {
@@ -134,7 +134,7 @@ impl Link {
         Ok(())
     }
 
-    pub fn push_for(&mut self, col: Column, ident: String) -> Result<()> {
+    pub fn push_for(&mut self, col: Column, ident: Rc<str>) -> Result<()> {
         self.begin_for_loop(self.ops.len(), col, ident)?;
         self.ops.push(Opcode::For(0))
     }
@@ -161,7 +161,7 @@ impl Link {
         self.push(Opcode::Goto(0))
     }
 
-    pub fn push_next(&mut self, col: Column, ident: String) -> Result<()> {
+    pub fn push_next(&mut self, col: Column, ident: Rc<str>) -> Result<()> {
         self.ops.push(Opcode::Literal(Val::String(ident.clone())))?;
         self.next_for_loop(self.ops.len(), col, ident)?;
         self.ops.push(Opcode::Goto(0))

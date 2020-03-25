@@ -18,6 +18,19 @@ struct BasicParser<'a> {
     col: Column,
 }
 
+impl From<super::token::Ident> for Ident {
+    fn from(ident: super::token::Ident) -> Self {
+        use super::token::Ident::*;
+        match ident {
+            Plain(s) => Ident::Plain(s.into()),
+            String(s) => Ident::Plain(s.into()),
+            Single(s) => Ident::Plain(s.into()),
+            Double(s) => Ident::Plain(s.into()),
+            Integer(s) => Ident::Plain(s.into()),
+        }
+    }
+}
+
 impl<'a> BasicParser<'a> {
     fn parse(tokens: &'a [Token]) -> Result<Vec<Statement>> {
         let mut parse = BasicParser {
@@ -132,7 +145,7 @@ impl<'a> BasicParser<'a> {
                     let mut column = self.col.clone();
                     column.end = column.start;
                     if linefeed {
-                        expressions.push(Expression::String(column, '\n'.to_string()));
+                        expressions.push(Expression::String(column, "\n".into()));
                     }
                     return Ok(expressions);
                 }
@@ -145,7 +158,7 @@ impl<'a> BasicParser<'a> {
                     self.next();
                     expressions.push(Expression::Function(
                         self.col.clone(),
-                        Ident::String("TAB".to_string()),
+                        Ident::String("TAB".into()),
                         vec![Expression::Integer(self.col.clone(), -14)],
                     ));
                 }
@@ -170,9 +183,13 @@ impl<'a> BasicParser<'a> {
         match self.peek() {
             Some(Token::LParen) => {
                 let vec_expr = self.expect_expression_list()?;
-                Ok(Variable::Array(col.start..self.col.end, ident, vec_expr))
+                Ok(Variable::Array(
+                    col.start..self.col.end,
+                    ident.into(),
+                    vec_expr,
+                ))
             }
-            _ => Ok(Variable::Unary(col, ident)),
+            _ => Ok(Variable::Unary(col, ident.into())),
         }
     }
 
@@ -317,9 +334,9 @@ impl Expression {
                         Some(&&Token::LParen) => {
                             let vec_expr = parse.expect_expression_list()?;
                             let col = col.start..parse.col.end;
-                            Expression::Function(col, ident, vec_expr)
+                            Expression::Function(col, ident.into(), vec_expr)
                         }
-                        _ => Expression::UnaryVar(col, ident),
+                        _ => Expression::UnaryVar(col, ident.into()),
                     }
                 }
                 Some(Token::Operator(Operator::Plus)) => {
@@ -436,7 +453,7 @@ impl Expression {
                 if s.chars().count() > 255 {
                     Err(error!(StringTooLong, ..&col; "MAXIMUM LITERAL LENGTH IS 255"))
                 } else {
-                    Ok(Expression::String(col, s.to_string()))
+                    Ok(Expression::String(col, s.clone().into()))
                 }
             }
         }
@@ -598,7 +615,7 @@ impl Statement {
         Ok(Statement::Input(
             column,
             caps,
-            Expression::String(prompt_col, prompt),
+            Expression::String(prompt_col, prompt.into()),
             idents,
         ))
     }
@@ -625,7 +642,7 @@ impl Statement {
         let column = parse.col.clone();
         let mut idents = parse.expect_unary_var_list()?;
         if idents.is_empty() {
-            return Ok(vec![Statement::Next(column, Ident::Plain("".to_string()))]);
+            return Ok(vec![Statement::Next(column, Ident::Plain("".into()))]);
         }
         Ok(idents
             .drain(..)

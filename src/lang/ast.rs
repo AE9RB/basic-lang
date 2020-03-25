@@ -1,5 +1,5 @@
-pub use super::ident::Ident;
 use super::Column;
+use std::rc::Rc;
 
 #[derive(Debug, PartialEq)]
 pub enum Statement {
@@ -23,6 +23,15 @@ pub enum Statement {
 }
 
 #[derive(Debug, PartialEq)]
+pub enum Ident {
+    Plain(Rc<str>),
+    String(Rc<str>),
+    Single(Rc<str>),
+    Double(Rc<str>),
+    Integer(Rc<str>),
+}
+
+#[derive(Debug, PartialEq)]
 pub enum Variable {
     Unary(Column, Ident),
     Array(Column, Ident, Vec<Expression>),
@@ -33,7 +42,7 @@ pub enum Expression {
     Single(Column, f32),
     Double(Column, f64),
     Integer(Column, i16),
-    String(Column, String),
+    String(Column, Rc<str>),
     UnaryVar(Column, Ident),
     Function(Column, Ident, Vec<Expression>),
     Negation(Column, Box<Expression>),
