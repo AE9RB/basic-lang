@@ -140,15 +140,20 @@ impl Link {
     }
 
     pub fn push_gosub(&mut self, col: Column, line_number: LineNumber) -> Result<()> {
-        let sym = self.symbol_for_line_number(line_number)?;
-        self.unlinked.insert(self.ops.len(), (col, sym));
-        self.ops.push(Opcode::Gosub(0))
+        let ret_sym = self.next_symbol();
+        self.unlinked.insert(self.ops.len(), (col.clone(), ret_sym));
+        self.ops.push(Opcode::Literal(Val::Return(0)))?;
+        let line_number_sym = self.symbol_for_line_number(line_number)?;
+        self.unlinked.insert(self.ops.len(), (col, line_number_sym));
+        self.ops.push(Opcode::Jump(0))?;
+        self.push_symbol(ret_sym);
+        Ok(())
     }
 
     pub fn push_goto(&mut self, col: Column, line_number: LineNumber) -> Result<()> {
         let sym = self.symbol_for_line_number(line_number)?;
         self.unlinked.insert(self.ops.len(), (col, sym));
-        self.ops.push(Opcode::Goto(0))
+        self.ops.push(Opcode::Jump(0))
     }
 
     pub fn push_ifnot(&mut self, col: Column, sym: Symbol) -> Result<()> {
@@ -158,13 +163,13 @@ impl Link {
 
     pub fn push_jump(&mut self, col: Column, sym: Symbol) -> Result<()> {
         self.unlinked.insert(self.ops.len(), (col, sym));
-        self.push(Opcode::Goto(0))
+        self.push(Opcode::Jump(0))
     }
 
     pub fn push_next(&mut self, col: Column, ident: Rc<str>) -> Result<()> {
         self.ops.push(Opcode::Literal(Val::String(ident.clone())))?;
         self.next_for_loop(self.ops.len(), col, ident)?;
-        self.ops.push(Opcode::Goto(0))
+        self.ops.push(Opcode::Jump(0))
     }
 
     pub fn push_run(&mut self, col: Column, line_number: LineNumber) -> Result<()> {
@@ -173,7 +178,7 @@ impl Link {
             let sym = self.symbol_for_line_number(line_number)?;
             self.unlinked.insert(self.ops.len(), (col, sym));
         }
-        self.ops.push(Opcode::Goto(0))
+        self.ops.push(Opcode::Jump(0))
     }
 
     pub fn push_symbol(&mut self, sym: Symbol) {
@@ -228,8 +233,10 @@ impl Link {
                         if let Some(new_op) = match op {
                             Opcode::For(_) => Some(Opcode::For(*dest)),
                             Opcode::IfNot(_) => Some(Opcode::IfNot(*dest)),
-                            Opcode::Gosub(_) => Some(Opcode::Gosub(*dest)),
-                            Opcode::Goto(_) => Some(Opcode::Goto(*dest)),
+                            Opcode::Jump(_) => Some(Opcode::Jump(*dest)),
+                            Opcode::Literal(Val::Return(_)) => {
+                                Some(Opcode::Literal(Val::Return(*dest)))
+                            }
                             _ => None,
                         } {
                             *op = new_op;

@@ -29,10 +29,8 @@ pub enum Opcode {
     For(Address),
     /// Pop stack and branch to Address if not zero.
     IfNot(Address),
-    /// Branch to address, saving return.
-    Gosub(Address),
     /// Unconditional branch to Address.
-    Goto(Address),
+    Jump(Address),
     /// Expect Return(Address) on stack or else error: RETURN WITHOUT GOSUB.
     /// Branch to Address.
     Return,
@@ -96,8 +94,7 @@ impl std::fmt::Display for Opcode {
 
             For(a) => write!(f, "FOR({})", a),
             IfNot(a) => write!(f, "IFNOT({})", a),
-            Gosub(a) => write!(f, "GOSUB({})", a),
-            Goto(a) => write!(f, "GOTO({})", a),
+            Jump(a) => write!(f, "JUMP({})", a),
             Return => write!(f, "RETURN"),
 
             Clear => write!(f, "CLEAR"),

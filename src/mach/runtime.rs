@@ -376,15 +376,7 @@ impl Runtime {
                         self.pc = addr;
                     }
                 }
-                Opcode::Gosub(addr) => {
-                    self.stack.push(Val::Return(self.pc))?;
-                    self.pc = addr;
-                    if has_indirect_errors && self.pc < self.entry_address {
-                        self.state = State::Stopped;
-                        return Ok(Event::Errors(Arc::clone(&self.source.indirect_errors)));
-                    }
-                }
-                Opcode::Goto(addr) => {
+                Opcode::Jump(addr) => {
                     self.pc = addr;
                     if has_indirect_errors && self.pc < self.entry_address {
                         self.state = State::Stopped;
