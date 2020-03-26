@@ -10,12 +10,31 @@ pub struct Function {}
 impl Function {
     pub fn opcode_and_arity(func_name: &str) -> Option<(Opcode, std::ops::RangeInclusive<usize>)> {
         match func_name {
+            "ABS" => Some((Opcode::Abs, 1..=1)),
+            "CHR$" => Some((Opcode::Chr, 1..=1)),
             "COS" => Some((Opcode::Cos, 1..=1)),
             "INT" => Some((Opcode::Int, 1..=1)),
             "RND" => Some((Opcode::Rnd, 0..=1)),
             "SIN" => Some((Opcode::Sin, 1..=1)),
             "TAB" => Some((Opcode::Tab, 1..=1)),
             _ => None,
+        }
+    }
+
+    pub fn abs(val: Val) -> Result<Val> {
+        use Val::*;
+        match val {
+            Integer(n) => Ok(Integer(n.abs())),
+            Single(n) => Ok(Single(n.abs())),
+            Double(n) => Ok(Double(n.abs())),
+            String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
+        }
+    }
+
+    pub fn chr(val: Val) -> Result<Val> {
+        match char::try_from(u32::try_from(val)?) {
+            Ok(n) => Ok(Val::String(n.to_string().into())),
+            Err(_) => Err(error!(Overflow)),
         }
     }
 

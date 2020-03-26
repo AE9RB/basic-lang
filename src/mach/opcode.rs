@@ -70,6 +70,8 @@ pub enum Opcode {
     Eqv,
 
     // *** Built-in functions
+    Abs,
+    Chr,
     Cos,
     Int,
     Rnd,
@@ -130,6 +132,8 @@ impl std::fmt::Display for Opcode {
             Imp => write!(f, "IMP"),
             Eqv => write!(f, "EQV"),
 
+            Abs => write!(f, "ABS"),
+            Chr => write!(f, "CHR"),
             Cos => write!(f, "COS"),
             Int => write!(f, "INT"),
             Rnd => write!(f, "RND"),

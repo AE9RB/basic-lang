@@ -50,7 +50,9 @@ impl<'a> BasicParser<'a> {
         let mut statements: Vec<Statement> = vec![];
         loop {
             match parse.peek() {
-                None | Some(Token::Word(Word::Rem1)) => return Ok(statements),
+                None | Some(Token::Word(Word::Rem1)) | Some(Token::Word(Word::Else)) => {
+                    return Ok(statements)
+                }
                 Some(_) => {
                     statements.append(&mut parse.expect_statements()?);
                 }

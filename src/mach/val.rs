@@ -126,6 +126,36 @@ impl TryFrom<Val> for i16 {
     }
 }
 
+impl TryFrom<Val> for u32 {
+    type Error = Error;
+    fn try_from(val: Val) -> std::result::Result<Self, Self::Error> {
+        match val {
+            Val::Integer(i) => {
+                if i >= 0 {
+                    Ok(i as u32)
+                } else {
+                    Err(error!(Overflow))
+                }
+            }
+            Val::Single(f) => {
+                if f >= 0.0 && f <= u32::max_value() as f32 {
+                    Ok(f as u32)
+                } else {
+                    Err(error!(Overflow))
+                }
+            }
+            Val::Double(d) => {
+                if d >= 0.0 && d <= u32::max_value() as f64 {
+                    Ok(d as u32)
+                } else {
+                    Err(error!(Overflow))
+                }
+            }
+            Val::String(_) | Val::Return(_) | Val::Next(..) => Err(error!(TypeMismatch)),
+        }
+    }
+}
+
 impl TryFrom<Val> for f32 {
     type Error = Error;
     fn try_from(val: Val) -> std::result::Result<Self, Self::Error> {

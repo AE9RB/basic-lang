@@ -9,12 +9,12 @@ use std::sync::Arc;
 type Result<T> = std::result::Result<T, Error>;
 
 const INTRO: &str = "64K BASIC";
+const PROMPT: &str = "READY.";
 const MAX_LINE_LEN: usize = 1024;
 
 /// ## Virtual machine
 
 pub struct Runtime {
-    prompt: String,
     source: Listing,
     dirty: bool,
     program: Program,
@@ -57,7 +57,6 @@ enum State {
 impl Default for Runtime {
     fn default() -> Self {
         Runtime {
-            prompt: "READY.".to_owned(),
             source: Listing::default(),
             dirty: false,
             program: Program::default(),
@@ -75,16 +74,6 @@ impl Default for Runtime {
 }
 
 impl Runtime {
-    pub fn new(prompt: &str) -> Runtime {
-        let mut rt = Runtime::default();
-        rt.prompt = prompt.to_owned();
-        rt
-    }
-
-    pub fn get_listing(&self) -> Listing {
-        self.source.clone()
-    }
-
     /// Enters a line of BASIC or INPUT.
     /// Returns true if good candidate for history.
     pub fn enter(&mut self, string: &str) -> bool {
@@ -187,6 +176,27 @@ impl Runtime {
         Ok(())
     }
 
+    fn ready_prompt(&mut self) -> Option<Event> {
+        if self.entry_address != 0 {
+            self.entry_address = 0;
+            let mut s = String::new();
+            if self.print_col > 0 {
+                s.push('\n');
+                self.print_col = 0;
+            }
+            s.push_str(PROMPT);
+            s.push('\n');
+            return Some(Event::Print(s));
+        };
+        None
+    }
+
+    /// Obtain a thread-safe Listing useful for line completion.
+    pub fn get_listing(&self) -> Listing {
+        self.source.clone()
+    }
+
+    /// Interrupt the program. Displays `BREAK` error.
     pub fn interrupt(&mut self) {
         self.cont = State::Interrupt;
         std::mem::swap(&mut self.state, &mut self.cont);
@@ -197,21 +207,8 @@ impl Runtime {
         }
     }
 
-    fn ready_prompt(&mut self) -> Option<Event> {
-        if self.entry_address != 0 {
-            self.entry_address = 0;
-            let mut s = String::new();
-            if self.print_col > 0 {
-                s.push('\n');
-                self.print_col = 0;
-            }
-            s.push_str(&self.prompt);
-            s.push('\n');
-            return Some(Event::Print(s));
-        };
-        None
-    }
-
+    /// Use a large number for iterations but not so much
+    /// that interrupts aren't responsive.
     pub fn execute(&mut self, iterations: usize) -> Event {
         fn line_number(this: &Runtime) -> LineNumber {
             let mut pc = this.pc;
@@ -434,6 +431,8 @@ impl Runtime {
                 Opcode::Imp => self.stack.pop_2_push(&Operation::unimplemented)?,
                 Opcode::Eqv => self.stack.pop_2_push(&Operation::unimplemented)?,
 
+                Opcode::Abs => self.stack.pop_1_push(&Function::abs)?,
+                Opcode::Chr => self.stack.pop_1_push(&Function::chr)?,
                 Opcode::Cos => self.stack.pop_1_push(&Function::cos)?,
                 Opcode::Int => self.stack.pop_1_push(&Function::int)?,
                 Opcode::Rnd => {
