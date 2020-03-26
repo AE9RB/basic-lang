@@ -389,21 +389,18 @@ impl Compiler {
     }
 
     fn r#on(&mut self, link: &mut Link, col: &Column, is_gosub: bool) -> Result<Column> {
-        let len = self.val_int_from_usize(self.expr.len(), col)?;
-        let (mut sub_col, var_name, var_ops) = self.var.pop()?;
+        let len = self.expr.len() - 1;
+        let line_numbers = self.expr.pop_n(len)?;
+        let len = self.val_int_from_usize(len, col)?;
+        let (mut sub_col, var_ops) = self.expr.pop()?;
         let ret_symbol = link.next_symbol();
         if is_gosub {
             link.push_return_val(col.clone(), ret_symbol)?;
         }
         link.push(len)?;
-        if var_ops.is_empty() {
-            link.push(Opcode::Push(var_name))?
-        } else {
-            link.append(var_ops)?;
-            link.push(Opcode::PushArr(var_name))?
-        }
+        link.append(var_ops)?;
         link.push(Opcode::On)?;
-        for (column, ops) in self.expr.drain(..) {
+        for (column, ops) in line_numbers {
             sub_col.end = column.end;
             let ln = match LineNumber::try_from(ops) {
                 Ok(ln) => ln,

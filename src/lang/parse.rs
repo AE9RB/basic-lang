@@ -47,17 +47,7 @@ impl<'a> BasicParser<'a> {
             }
             _ => {}
         }
-        let mut statements: Vec<Statement> = vec![];
-        loop {
-            match parse.peek() {
-                None | Some(Token::Word(Word::Rem1)) | Some(Token::Word(Word::Else)) => {
-                    return Ok(statements)
-                }
-                Some(_) => {
-                    statements.append(&mut parse.expect_statements()?);
-                }
-            }
-        }
+        parse.expect_statements()
     }
 
     fn next(&mut self) -> Option<&'a Token> {
@@ -672,16 +662,16 @@ impl Statement {
 
     fn r#on(parse: &mut BasicParser) -> Result<Statement> {
         let column = parse.col.clone();
-        let var = parse.expect_var()?;
+        let expr = parse.expect_expression()?;
         match parse.next() {
             Some(Token::Word(Word::Goto1)) => Ok(Statement::OnGoto(
                 column,
-                var,
+                expr,
                 parse.expect_line_number_list()?,
             )),
             Some(Token::Word(Word::Gosub1)) => Ok(Statement::OnGosub(
                 column,
-                var,
+                expr,
                 parse.expect_line_number_list()?,
             )),
             _ => Err(error!(SyntaxError, ..&parse.col; "EXPECTED GOTO OR GOSUB")),

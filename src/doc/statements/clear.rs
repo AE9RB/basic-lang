@@ -2,7 +2,7 @@
 # `CLEAR [...]`
 
 ## Purpose
-Clear all variables and the stack.
+Clear all variables.
 
 ## Remarks
 This statement will ignore any options. Other versions of basic use

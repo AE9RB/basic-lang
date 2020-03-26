@@ -26,6 +26,10 @@ pub mod GOSUB;
 #[allow(non_snake_case)]
 pub mod GOTO;
 
+#[path = "statements/if.rs"]
+#[allow(non_snake_case)]
+pub mod IF;
+
 #[path = "statements/input.rs"]
 #[allow(non_snake_case)]
 pub mod INPUT;
@@ -45,6 +49,10 @@ pub mod NEW;
 #[path = "statements/next.rs"]
 #[allow(non_snake_case)]
 pub mod NEXT;
+
+#[path = "statements/on.rs"]
+#[allow(non_snake_case)]
+pub mod ON;
 
 #[path = "statements/print.rs"]
 #[allow(non_snake_case)]
