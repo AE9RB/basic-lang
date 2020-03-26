@@ -105,3 +105,42 @@ fn test_stop_cont() {
     r.enter(r#"CONT"#);
     assert_eq!(exec(&mut r), " 1 \n");
 }
+
+#[test]
+fn test_on_gosub() {
+    let mut r = Runtime::default();
+    r.enter(r#"10 X=2"#);
+    r.enter(r#"20 ON X GOSUB 100,200"#);
+    r.enter(r#"30 PRINT 30:END"#);
+    r.enter(r#"100 PRINT 100;"#);
+    r.enter(r#"200 PRINT 200;"#);
+    r.enter(r#"300 RETURN"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), " 200  30 \n");
+}
+
+#[test]
+fn test_on_gosub_neg() {
+    let mut r = Runtime::default();
+    r.enter(r#"10 X=-1"#);
+    r.enter(r#"20 ON X GOSUB 100,200"#);
+    r.enter(r#"30 PRINT 30:END"#);
+    r.enter(r#"100 PRINT 100;"#);
+    r.enter(r#"200 PRINT 200;"#);
+    r.enter(r#"300 RETURN"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), "?ILLEGAL FUNCTION CALL IN 20\n");
+}
+
+#[test]
+fn test_on_gosub_invalid() {
+    let mut r = Runtime::default();
+    r.enter(r#"10 X=3"#);
+    r.enter(r#"20 ON X GOSUB 100,200"#);
+    r.enter(r#"30 PRINT 30:END"#);
+    r.enter(r#"100 PRINT 100;"#);
+    r.enter(r#"200 PRINT 200;"#);
+    r.enter(r#"300 RETURN"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), " 30 \n");
+}

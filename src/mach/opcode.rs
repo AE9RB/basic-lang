@@ -31,6 +31,8 @@ pub enum Opcode {
     Jump(Address),
     /// Process the FOR loop on the stack.
     Next(Rc<str>),
+    /// ON x GOTO/GOSUB lines
+    On,
     /// Expect Return(Address) on stack or else error: RETURN WITHOUT GOSUB.
     /// Branch to Address.
     Return,
@@ -94,7 +96,8 @@ impl std::fmt::Display for Opcode {
 
             IfNot(a) => write!(f, "IFNOT({})", a),
             Jump(a) => write!(f, "JUMP({})", a),
-            Next(a) => write!(f, "Next({})", a),
+            Next(a) => write!(f, "NEXT({})", a),
+            On => write!(f, "ON"),
             Return => write!(f, "RETURN"),
 
             Clear => write!(f, "CLEAR"),
@@ -251,5 +254,16 @@ array evals
 pop var
 Input(nil)
 
+
+on x gosub
+
+push :return-addr
+push len 3
+push var
+On
+goto 1
+goto 2
+goto 3
+:return-addr
 
 */

@@ -12,6 +12,22 @@ fn test_precedence() {
 }
 
 #[test]
+fn test_left_assoc() {
+    let mut r = Runtime::default();
+    r.enter(r#"?1.5/2*3"#);
+    assert_eq!(exec(&mut r), " 2.25 \n");
+    r.enter(r#"?1.5/(2.0*3)"#);
+    assert_eq!(exec(&mut r), " 0.25 \n");
+}
+
+#[test]
+fn test_int_division() {
+    let mut r = Runtime::default();
+    r.enter(r#"?10/4"#);
+    assert_eq!(exec(&mut r), " 2.5 \n");
+}
+
+#[test]
 fn test_variables() {
     let mut r = Runtime::default();
     r.enter(r#"a=1+2*3:?a*2"#);

@@ -256,6 +256,23 @@ impl<'a> BasicParser<'a> {
         }
     }
 
+    fn expect_line_number_list(&mut self) -> Result<Vec<Expression>> {
+        let mut vars: Vec<Expression> = vec![];
+        let mut expecting = false;
+        loop {
+            match self.peek() {
+                None | Some(Token::Colon) | Some(Token::Word(Word::Else)) if !expecting => break,
+                _ => vars.push(self.expect_line_number()?),
+            };
+            if self.maybe(Token::Comma) {
+                expecting = true;
+            } else {
+                break;
+            }
+        }
+        Ok(vars)
+    }
+
     fn expect_line_number_range(&mut self) -> Result<(Expression, Expression)> {
         let from;
         let from_num;
@@ -355,7 +372,7 @@ impl Expression {
             let mut rhs;
             while let Some(Token::Operator(op)) = parse.peek() {
                 let op_prec = Expression::binary_op_prec(op);
-                if op_prec < precedence {
+                if op_prec <= precedence {
                     break;
                 }
                 parse.next();
@@ -481,6 +498,7 @@ impl Statement {
                     List => return Ok(vec![Self::r#list(parse)?]),
                     New => return Ok(vec![Self::r#new(parse)?]),
                     Next => return Self::r#next(parse),
+                    On => return Ok(vec![Self::r#on(parse)?]),
                     Print1 | Print2 => return Self::r#print(parse),
                     Return => return Ok(vec![Self::r#return(parse)?]),
                     Run => return Ok(vec![Self::r#run(parse)?]),
@@ -648,6 +666,24 @@ impl Statement {
             .drain(..)
             .map(|i| Statement::Next(column.clone(), i))
             .collect::<Vec<Statement>>())
+    }
+
+    fn r#on(parse: &mut BasicParser) -> Result<Statement> {
+        let column = parse.col.clone();
+        let var = parse.expect_var()?;
+        match parse.next() {
+            Some(Token::Word(Word::Goto1)) => Ok(Statement::OnGoto(
+                column,
+                var,
+                parse.expect_line_number_list()?,
+            )),
+            Some(Token::Word(Word::Gosub1)) => Ok(Statement::OnGosub(
+                column,
+                var,
+                parse.expect_line_number_list()?,
+            )),
+            _ => Err(error!(SyntaxError, ..&parse.col; "EXPECTED GOTO OR GOSUB")),
+        }
     }
 
     fn r#print(parse: &mut BasicParser) -> Result<Vec<Statement>> {

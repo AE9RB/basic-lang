@@ -110,6 +110,7 @@ pub enum ErrorCode {
     NextWithoutFor = 1,
     SyntaxError = 2,
     ReturnWithoutGosub = 3,
+    IllegalFunctionCall = 5,
     Overflow = 6,
     OutOfMemory = 7,
     UndefinedLine = 8,

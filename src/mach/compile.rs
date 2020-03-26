@@ -228,6 +228,8 @@ impl Compiler {
             Statement::List(col, ..) => self.r#list(link, col),
             Statement::New(col, ..) => self.r#new_(link, col),
             Statement::Next(col, ..) => self.r#next(link, col),
+            Statement::OnGoto(col, ..) => self.r#on(link, col, false),
+            Statement::OnGosub(col, ..) => self.r#on(link, col, true),
             Statement::Print(col, ..) => self.r#print(link, col),
             Statement::Return(col, ..) => self.r#return(link, col),
             Statement::Run(col, ..) => self.r#run(link, col),
@@ -384,6 +386,35 @@ impl Compiler {
         let ident = self.ident.pop()?;
         link.push(Opcode::Next(ident))?;
         Ok(col.clone())
+    }
+
+    fn r#on(&mut self, link: &mut Link, col: &Column, is_gosub: bool) -> Result<Column> {
+        let len = self.val_int_from_usize(self.expr.len(), col)?;
+        let (mut sub_col, var_name, var_ops) = self.var.pop()?;
+        let ret_symbol = link.next_symbol();
+        if is_gosub {
+            link.push_return_val(col.clone(), ret_symbol)?;
+        }
+        link.push(len)?;
+        if var_ops.is_empty() {
+            link.push(Opcode::Push(var_name))?
+        } else {
+            link.append(var_ops)?;
+            link.push(Opcode::PushArr(var_name))?
+        }
+        link.push(Opcode::On)?;
+        for (column, ops) in self.expr.drain(..) {
+            sub_col.end = column.end;
+            let ln = match LineNumber::try_from(ops) {
+                Ok(ln) => ln,
+                Err(e) => return Err(e),
+            };
+            link.push_goto(column, ln)?;
+        }
+        if is_gosub {
+            link.push_symbol(ret_symbol);
+        }
+        Ok(col.start..sub_col.end)
     }
 
     fn r#print(&mut self, link: &mut Link, col: &Column) -> Result<Column> {

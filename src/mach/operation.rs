@@ -1,6 +1,7 @@
 use super::Val;
 use crate::error;
 use crate::lang::Error;
+use std::convert::TryFrom;
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -29,7 +30,7 @@ impl Operation {
                     Some(i) => Ok(Integer(i)),
                     None => Err(error!(Overflow)),
                 },
-                Integer(r) => Ok(Single((l as f32).powf(r as f32))),
+                Integer(r) => Ok(Single((l as f32).powi(r as i32))),
                 Single(r) => Ok(Single((l as f32).powf(r))),
                 Double(r) => Ok(Double((l as f64).powf(r))),
                 _ => Err(error!(TypeMismatch)),
@@ -82,16 +83,7 @@ impl Operation {
         use Val::*;
         match lhs {
             Integer(l) => match rhs {
-                Integer(r) => match l.checked_div(r) {
-                    Some(i) => Ok(Integer(i)),
-                    None => {
-                        if r == 0 {
-                            Err(error!(DivisionByZero))
-                        } else {
-                            Err(error!(Overflow))
-                        }
-                    }
-                },
+                Integer(r) => Ok(Single(l as f32 / r as f32)),
                 Single(r) => Ok(Single(l as f32 / r)),
                 Double(r) => Ok(Double(l as f64 / r)),
                 _ => Err(error!(TypeMismatch)),
@@ -254,7 +246,10 @@ impl Operation {
                 Double(r) => Ok(l < r),
                 _ => Err(error!(TypeMismatch)),
             },
-            String(_) => Err(error!(InternalError; "TODO; PANIC")),
+            String(l) => match rhs {
+                String(r) => Ok(l < r),
+                _ => Err(error!(TypeMismatch)),
+            },
             Return(_) | Next(_) => Err(error!(TypeMismatch)),
         }
     }
@@ -296,8 +291,29 @@ impl Operation {
                 Double(r) => Ok(l <= r),
                 _ => Err(error!(TypeMismatch)),
             },
-            String(_) => Err(error!(InternalError; "TODO; PANIC")),
+            String(l) => match rhs {
+                String(r) => Ok(l <= r),
+                _ => Err(error!(TypeMismatch)),
+            },
             Return(_) | Next(_) => Err(error!(TypeMismatch)),
         }
+    }
+
+    pub fn and(lhs: Val, rhs: Val) -> Result<Val> {
+        let lhs = i16::try_from(lhs)?;
+        let rhs = i16::try_from(rhs)?;
+        Ok(Val::Integer(lhs & rhs))
+    }
+
+    pub fn or(lhs: Val, rhs: Val) -> Result<Val> {
+        let lhs = i16::try_from(lhs)?;
+        let rhs = i16::try_from(rhs)?;
+        Ok(Val::Integer(lhs | rhs))
+    }
+
+    pub fn xor(lhs: Val, rhs: Val) -> Result<Val> {
+        let lhs = i16::try_from(lhs)?;
+        let rhs = i16::try_from(rhs)?;
+        Ok(Val::Integer(lhs ^ rhs))
     }
 }

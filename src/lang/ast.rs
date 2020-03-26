@@ -16,6 +16,8 @@ pub enum Statement {
     List(Column, Expression, Expression),
     New(Column),
     Next(Column, Ident),
+    OnGoto(Column, Variable, Vec<Expression>),
+    OnGosub(Column, Variable, Vec<Expression>),
     Print(Column, Expression),
     Return(Column),
     Run(Column, Expression),
@@ -145,6 +147,12 @@ impl AcceptVisitor for Statement {
             }
             Next(_, ident) => {
                 ident.accept(visitor);
+            }
+            OnGoto(_, var, vec_expr) | OnGosub(_, var, vec_expr) => {
+                var.accept(visitor);
+                for expr in vec_expr {
+                    expr.accept(visitor);
+                }
             }
         }
         visitor.visit_statement(self)

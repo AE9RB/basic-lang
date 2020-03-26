@@ -108,13 +108,17 @@ impl Link {
 
     pub fn push_gosub(&mut self, col: Column, line_number: LineNumber) -> Result<()> {
         let ret_sym = self.next_symbol();
-        self.unlinked.insert(self.ops.len(), (col.clone(), ret_sym));
-        self.ops.push(Opcode::Literal(Val::Return(0)))?;
+        self.push_return_val(col.clone(), ret_sym)?;
         let line_number_sym = self.symbol_for_line_number(line_number)?;
         self.unlinked.insert(self.ops.len(), (col, line_number_sym));
         self.ops.push(Opcode::Jump(0))?;
         self.push_symbol(ret_sym);
         Ok(())
+    }
+
+    pub fn push_return_val(&mut self, col: Column, symbol: Symbol) -> Result<()> {
+        self.unlinked.insert(self.ops.len(), (col, symbol));
+        self.ops.push(Opcode::Literal(Val::Return(0)))
     }
 
     pub fn push_goto(&mut self, col: Column, line_number: LineNumber) -> Result<()> {

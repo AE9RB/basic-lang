@@ -333,6 +333,7 @@ impl Runtime {
         };
         self.stack.push(caps)?;
         self.stack.push(len)?;
+        self.print_col += prompt.len();
         Ok(Event::Input(prompt, is_caps))
     }
 
@@ -407,6 +408,7 @@ impl Runtime {
                 }
                 Opcode::List => return self.r#list(),
                 Opcode::New => return self.r#new_(),
+                Opcode::On => self.r#on()?,
                 Opcode::Next(var_name) => self.r#next(var_name)?,
                 Opcode::Print => return self.r#print(),
                 Opcode::Stop => return Err(error!(Break)),
@@ -426,9 +428,9 @@ impl Runtime {
                 Opcode::Gt => self.stack.pop_2_push(&Operation::greater)?,
                 Opcode::GtEq => self.stack.pop_2_push(&Operation::greater_equal)?,
                 Opcode::Not => self.stack.pop_2_push(&Operation::unimplemented)?,
-                Opcode::And => self.stack.pop_2_push(&Operation::unimplemented)?,
-                Opcode::Or => self.stack.pop_2_push(&Operation::unimplemented)?,
-                Opcode::Xor => self.stack.pop_2_push(&Operation::unimplemented)?,
+                Opcode::And => self.stack.pop_2_push(&Operation::and)?,
+                Opcode::Or => self.stack.pop_2_push(&Operation::or)?,
+                Opcode::Xor => self.stack.pop_2_push(&Operation::xor)?,
                 Opcode::Imp => self.stack.pop_2_push(&Operation::unimplemented)?,
                 Opcode::Eqv => self.stack.pop_2_push(&Operation::unimplemented)?,
 
@@ -585,10 +587,27 @@ impl Runtime {
         }
     }
 
+    fn r#on(&mut self) -> Result<()> {
+        let select = i16::try_from(self.stack.pop()?)?;
+        let len = i16::try_from(self.stack.pop()?)?;
+        if select < 0 || len < 0 {
+            return Err(error!(IllegalFunctionCall));
+        }
+        if select == 0 || select > len {
+            self.pc += len as usize;
+        } else {
+            self.pc += select as usize - 1;
+        }
+        Ok(())
+    }
+
     fn r#print(&mut self) -> Result<Event> {
         let mut s = String::new();
         let item = self.stack.pop()?;
-        let val_str = format!("{}", item);
+        let val_str = match item {
+            Val::String(s) => s,
+            _ => format!("{} ", item).into(),
+        };
         for ch in val_str.chars() {
             s.push(ch);
             match ch {

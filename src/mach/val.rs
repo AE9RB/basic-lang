@@ -23,23 +23,23 @@ impl std::fmt::Display for Val {
             String(s) => write!(f, "{}", s),
             Integer(n) => {
                 if *n < 0 {
-                    write!(f, "{} ", n)
+                    write!(f, "{}", n)
                 } else {
-                    write!(f, " {} ", n)
+                    write!(f, " {}", n)
                 }
             }
             Single(n) => {
                 if *n < 0.0 {
-                    write!(f, "{} ", n)
+                    write!(f, "{}", n)
                 } else {
-                    write!(f, " {} ", n)
+                    write!(f, " {}", n)
                 }
             }
             Double(n) => {
                 if *n < 0.0 {
-                    write!(f, "{} ", n)
+                    write!(f, "{}", n)
                 } else {
-                    write!(f, " {} ", n)
+                    write!(f, " {}", n)
                 }
             }
             Return(..) | Next(..) => {
