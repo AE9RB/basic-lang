@@ -25,7 +25,7 @@ pub enum Statement {
     Stop(Column),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Ident {
     Plain(Rc<str>),
     String(Rc<str>),

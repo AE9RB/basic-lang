@@ -96,17 +96,24 @@ impl<'a> BasicParser<'a> {
     }
 
     fn expect_expression(&mut self) -> Result<Expression> {
-        Expression::expect(self, &HashMap::default())
+        self.expect_fn_expression(&HashMap::default())
     }
 
-    fn expect_function(
+    fn expect_expression_list(&mut self) -> Result<Vec<Expression>> {
+        self.expect_fn_expression_list(&HashMap::default())
+    }
+
+    fn expect_fn_expression(
         &mut self,
-        var_map: &HashMap<token::Ident, token::Ident>,
+        var_map: &HashMap<token::Ident, Ident>,
     ) -> Result<Expression> {
         Expression::expect(self, var_map)
     }
 
-    fn expect_expression_list(&mut self) -> Result<Vec<Expression>> {
+    fn expect_fn_expression_list(
+        &mut self,
+        var_map: &HashMap<token::Ident, Ident>,
+    ) -> Result<Vec<Expression>> {
         self.expect(Token::LParen)?;
         let mut expressions: Vec<Expression> = vec![];
         if let Some(Token::RParen) = self.peek() {
@@ -114,7 +121,7 @@ impl<'a> BasicParser<'a> {
             return Ok(expressions);
         }
         loop {
-            expressions.push(self.expect_expression()?);
+            expressions.push(self.expect_fn_expression(var_map)?);
             match self.next() {
                 Some(Token::RParen) => return Ok(expressions),
                 Some(Token::Comma) => continue,
@@ -341,11 +348,11 @@ impl<'a> BasicParser<'a> {
 impl Expression {
     fn expect(
         parse: &mut BasicParser,
-        var_map: &HashMap<token::Ident, token::Ident>,
+        var_map: &HashMap<token::Ident, Ident>,
     ) -> Result<Expression> {
         fn descend(
             parse: &mut BasicParser,
-            var_map: &HashMap<token::Ident, token::Ident>,
+            var_map: &HashMap<token::Ident, Ident>,
             precedence: usize,
         ) -> Result<Expression> {
             let mut lhs = match parse.next() {
@@ -359,7 +366,7 @@ impl Expression {
                     let col = parse.col.clone();
                     match parse.peek() {
                         Some(&&Token::LParen) => {
-                            let vec_expr = parse.expect_expression_list()?;
+                            let vec_expr = parse.expect_fn_expression_list(var_map)?;
                             let col = col.start..parse.col.end;
                             Expression::Function(col, ident.into(), vec_expr)
                         }
@@ -368,7 +375,7 @@ impl Expression {
                                 return Err(error!(SyntaxError, ..&col; FN_RESERVED));
                             }
                             match var_map.get(&ident) {
-                                Some(x) => Expression::UnaryVar(col, x.clone().into()),
+                                Some(x) => Expression::UnaryVar(col, x.clone()),
                                 None => Expression::UnaryVar(col, ident.into()),
                             }
                         }
@@ -547,31 +554,28 @@ impl Statement {
 
     fn r#def(parse: &mut BasicParser) -> Result<Statement> {
         let column = parse.col.clone();
-        let var = if let Some(Token::Ident(ident)) = parse.next() {
+        let fn_ident = if let Some(Token::Ident(ident)) = parse.next() {
             ident.clone()
         } else {
             return Err(error!(SyntaxError, ..&parse.col; EXPECTED_VARIABLE));
         };
-        if !var.is_user_function() {
+        if !fn_ident.is_user_function() {
             return Err(error!(SyntaxError, ..&parse.col; "MUST START WITH FN"));
         }
-        let prefix = var.to_string();
-        let var: Ident = var.into();
         parse.expect(Token::LParen)?;
-        let mut var_list = parse.expect_ident_list()?;
+        let ident_list = parse.expect_ident_list()?;
         parse.expect(Token::RParen)?;
         parse.expect(Token::Operator(Operator::Equal))?;
-        let var_map: HashMap<token::Ident, token::Ident> = var_list
+        let var_map: HashMap<token::Ident, Ident> = ident_list
             .iter()
             .map(|i1| {
-                let i2 = token::Ident::from((prefix.as_str(), i1.clone()));
+                let i2 = Ident::from((&fn_ident, i1));
                 (i1.clone(), i2)
             })
             .collect();
-
-        let var_list: Vec<Ident> = var_list.drain(..).map(|v| v.into()).collect();
-        let expr = parse.expect_function(&var_map)?;
-        Ok(Statement::Def(column, var, var_list, expr))
+        let var_ident: Vec<Ident> = var_map.iter().map(|(_, v)| v.clone()).collect();
+        let expr = parse.expect_fn_expression(&var_map)?;
+        Ok(Statement::Def(column, fn_ident.into(), var_ident, expr))
     }
 
     fn r#dim(parse: &mut BasicParser) -> Result<Vec<Statement>> {
@@ -579,7 +583,7 @@ impl Statement {
         let mut v: Vec<Statement> = vec![];
         let var_list = parse.expect_var_list()?;
         if var_list.is_empty() {
-            return Err(error!(SyntaxError, ..&column; "EXPECTED ARRAY LIST"));
+            return Err(error!(SyntaxError, ..&column; "EXPECTED ARRAY DIMENSIONS"));
         }
         for var in var_list {
             v.push(Statement::Dim(column.clone(), var));
@@ -780,32 +784,37 @@ impl From<token::Ident> for Ident {
     }
 }
 
-impl From<(&str, token::Ident)> for token::Ident {
-    fn from(f: (&str, token::Ident)) -> Self {
-        let (string, ident) = f;
-        let mut string = string.to_string();
+impl From<(&token::Ident, &token::Ident)> for Ident {
+    fn from(f: (&token::Ident, &token::Ident)) -> Self {
+        let mut string = match f.0 {
+            token::Ident::Plain(s) => s,
+            token::Ident::String(s) => s,
+            token::Ident::Single(s) => s,
+            token::Ident::Double(s) => s,
+            token::Ident::Integer(s) => s,
+        }
+        .to_string();
         string.push('.');
-        use token::Ident::*;
-        match ident {
-            Plain(s) => Plain({
+        match f.1 {
+            token::Ident::Plain(s) => Ident::Plain({
                 string.push_str(&s);
-                string
+                string.into()
             }),
-            String(s) => String({
+            token::Ident::String(s) => Ident::String({
                 string.push_str(&s);
-                string
+                string.into()
             }),
-            Single(s) => Single({
+            token::Ident::Single(s) => Ident::Single({
                 string.push_str(&s);
-                string
+                string.into()
             }),
-            Double(s) => Double({
+            token::Ident::Double(s) => Ident::Double({
                 string.push_str(&s);
-                string
+                string.into()
             }),
-            Integer(s) => Integer({
+            token::Ident::Integer(s) => Ident::Integer({
                 string.push_str(&s);
-                string
+                string.into()
             }),
         }
     }
