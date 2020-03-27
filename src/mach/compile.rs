@@ -166,6 +166,7 @@ impl Compiler {
                 return Err(error!(SyntaxError, ..&args_col; "WRONG NUMBER OF ARGUMENTS"));
             }
             if ident.starts_with("FN") {
+                ///
                 return Err(error!(UndefinedUserFunction, ..col));
             }
             link.push(this.val_int_from_usize(len, &col)?)?;
@@ -217,6 +218,7 @@ impl Compiler {
         match statement {
             Statement::Clear(col, ..) => self.r#clear(link, col),
             Statement::Cont(col, ..) => self.r#cont(link, col),
+            Statement::Def(col, ..) => self.r#def(link, col),
             Statement::Dim(col, ..) => self.r#dim(link, col),
             Statement::End(col, ..) => self.r#end(link, col),
             Statement::For(col, ..) => self.r#for(link, col),
@@ -260,6 +262,15 @@ impl Compiler {
     fn r#cont(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
         link.push(Opcode::Cont)?;
         Ok(col.clone())
+    }
+
+    fn r#def(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
+        dbg!(
+            self.ident.drain(..),
+            self.var.drain(..),
+            self.expr.drain(..)
+        );
+        Err(error!(SyntaxError; "TODO!!!!!!"))
     }
 
     fn r#dim(&mut self, link: &mut Link, col: &Column) -> Result<Column> {

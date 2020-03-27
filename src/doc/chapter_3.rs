@@ -22,7 +22,6 @@ pub mod CHR {
     */
 }
 
-
 pub mod COS {
     /*!
     ## `COS(X)` Returns the cosine of X in radians.

@@ -1,8 +1,13 @@
-use super::token::{Literal, Operator, Token, Word};
+use super::token::{self, Literal, Operator, Token, Word};
 use super::{ast::*, Column, Error, LineNumber, MaxValue};
 use crate::error;
+use std::collections::HashMap;
 
 type Result<T> = std::result::Result<T, Error>;
+
+const FN_RESERVED: &str = "FN RESERVED FOR FUNCTIONS";
+const ARRAY_NOT_ALLOWED: &str = "ARRAY NOT ALLOWED";
+const EXPECTED_VARIABLE: &str = "EXPECTED VARIABLE";
 
 pub fn parse(line_number: LineNumber, tokens: &[Token]) -> Result<Vec<Statement>> {
     match BasicParser::parse(tokens) {
@@ -16,19 +21,6 @@ struct BasicParser<'a> {
     peeked: Option<&'a Token>,
     rem2: bool,
     col: Column,
-}
-
-impl From<super::token::Ident> for Ident {
-    fn from(ident: super::token::Ident) -> Self {
-        use super::token::Ident::*;
-        match ident {
-            Plain(s) => Ident::Plain(s.into()),
-            String(s) => Ident::Plain(s.into()),
-            Single(s) => Ident::Plain(s.into()),
-            Double(s) => Ident::Plain(s.into()),
-            Integer(s) => Ident::Plain(s.into()),
-        }
-    }
 }
 
 impl<'a> BasicParser<'a> {
@@ -104,7 +96,14 @@ impl<'a> BasicParser<'a> {
     }
 
     fn expect_expression(&mut self) -> Result<Expression> {
-        Expression::expect(self)
+        Expression::expect(self, &HashMap::default())
+    }
+
+    fn expect_function(
+        &mut self,
+        var_map: &HashMap<token::Ident, token::Ident>,
+    ) -> Result<Expression> {
+        Expression::expect(self, var_map)
     }
 
     fn expect_expression_list(&mut self) -> Result<Vec<Expression>> {
@@ -162,15 +161,48 @@ impl<'a> BasicParser<'a> {
         }
     }
 
+    fn expect_ident(&mut self) -> Result<token::Ident> {
+        let ident = if let Some(Token::Ident(ident)) = self.next() {
+            ident.clone()
+        } else {
+            return Err(error!(SyntaxError, ..&self.col; EXPECTED_VARIABLE));
+        };
+        let col = self.col.clone();
+        if ident.is_user_function() {
+            return Err(error!(SyntaxError, ..&col; FN_RESERVED));
+        }
+        if let Some(Token::LParen) = self.peek() {
+            return Err(error!(SyntaxError, ..&(col); ARRAY_NOT_ALLOWED));
+        }
+        Ok(ident)
+    }
+
+    fn expect_ident_list(&mut self) -> Result<Vec<token::Ident>> {
+        let mut vars: Vec<token::Ident> = vec![];
+        let mut expecting = false;
+        loop {
+            match self.peek() {
+                None | Some(Token::Colon) | Some(Token::Word(Word::Else)) if !expecting => break,
+                _ => vars.push(self.expect_ident()?),
+            };
+            if self.maybe(Token::Comma) {
+                expecting = true;
+            } else {
+                break;
+            }
+        }
+        Ok(vars)
+    }
+
     fn expect_var(&mut self) -> Result<Variable> {
         let ident = if let Some(Token::Ident(ident)) = self.next() {
             ident.clone()
         } else {
-            return Err(error!(SyntaxError, ..&self.col; "EXPECTED VARIABLE"));
+            return Err(error!(SyntaxError, ..&self.col; EXPECTED_VARIABLE));
         };
         let col = self.col.clone();
-        if format!("{}", ident).starts_with("FN") {
-            return Err(error!(SyntaxError, ..&col; "FN RESERVED FOR FUNCTIONS"));
+        if ident.is_user_function() {
+            return Err(error!(SyntaxError, ..&col; FN_RESERVED));
         }
         match self.peek() {
             Some(Token::LParen) => {
@@ -200,27 +232,6 @@ impl<'a> BasicParser<'a> {
             }
         }
         Ok(vars)
-    }
-
-    fn expect_unary_var(&mut self) -> Result<Ident> {
-        match self.expect_var()? {
-            Variable::Array(col, ..) => Err(error!(SyntaxError, ..&col; "ARRAY NOT ALLOWED HERE")),
-            Variable::Unary(_col, ident) => Ok(ident),
-        }
-    }
-
-    fn expect_unary_var_list(&mut self) -> Result<Vec<Ident>> {
-        let vars = self.expect_var_list()?;
-        let mut vec_ident: Vec<Ident> = vec![];
-        for var in vars {
-            match var {
-                Variable::Array(col, ..) => {
-                    return Err(error!(SyntaxError, ..&col; "ARRAY NOT ALLOWED HERE"));
-                }
-                Variable::Unary(_col, ident) => vec_ident.push(ident),
-            }
-        }
-        Ok(vec_ident)
     }
 
     fn maybe_line_number(&mut self) -> Result<LineNumber> {
@@ -328,11 +339,18 @@ impl<'a> BasicParser<'a> {
 }
 
 impl Expression {
-    fn expect(parse: &mut BasicParser) -> Result<Expression> {
-        fn descend(parse: &mut BasicParser, precedence: usize) -> Result<Expression> {
+    fn expect(
+        parse: &mut BasicParser,
+        var_map: &HashMap<token::Ident, token::Ident>,
+    ) -> Result<Expression> {
+        fn descend(
+            parse: &mut BasicParser,
+            var_map: &HashMap<token::Ident, token::Ident>,
+            precedence: usize,
+        ) -> Result<Expression> {
             let mut lhs = match parse.next() {
                 Some(Token::LParen) => {
-                    let expr = descend(parse, 0)?;
+                    let expr = descend(parse, var_map, 0)?;
                     parse.expect(Token::RParen)?;
                     expr
                 }
@@ -345,17 +363,25 @@ impl Expression {
                             let col = col.start..parse.col.end;
                             Expression::Function(col, ident.into(), vec_expr)
                         }
-                        _ => Expression::UnaryVar(col, ident.into()),
+                        _ => {
+                            if ident.is_user_function() {
+                                return Err(error!(SyntaxError, ..&col; FN_RESERVED));
+                            }
+                            match var_map.get(&ident) {
+                                Some(x) => Expression::UnaryVar(col, x.clone().into()),
+                                None => Expression::UnaryVar(col, ident.into()),
+                            }
+                        }
                     }
                 }
                 Some(Token::Operator(Operator::Plus)) => {
                     let op_prec = Expression::unary_op_prec(&Operator::Plus);
-                    descend(parse, op_prec)?
+                    descend(parse, var_map, op_prec)?
                 }
                 Some(Token::Operator(Operator::Minus)) => {
                     let col = parse.col.clone();
                     let op_prec = Expression::unary_op_prec(&Operator::Minus);
-                    let expr = descend(parse, op_prec)?;
+                    let expr = descend(parse, var_map, op_prec)?;
                     Expression::Negation(col, Box::new(expr))
                 }
                 Some(Token::Literal(lit)) => Expression::for_literal(parse.col.clone(), lit)?,
@@ -369,12 +395,12 @@ impl Expression {
                 }
                 parse.next();
                 let column = parse.col.clone();
-                rhs = descend(parse, op_prec)?;
+                rhs = descend(parse, var_map, op_prec)?;
                 lhs = Expression::for_binary_op(column, op, lhs, rhs)?;
             }
             Ok(lhs)
         };
-        descend(parse, 0)
+        descend(parse, var_map, 0)
     }
 
     fn for_binary_op(
@@ -479,6 +505,7 @@ impl Statement {
                 match word {
                     Clear => return Ok(vec![Self::r#clear(parse)?]),
                     Cont => return Ok(vec![Self::r#cont(parse)?]),
+                    Def => return Ok(vec![Self::r#def(parse)?]),
                     Dim => return Self::r#dim(parse),
                     End => return Ok(vec![Self::r#end(parse)?]),
                     For => return Ok(vec![Self::r#for(parse)?]),
@@ -518,6 +545,35 @@ impl Statement {
         Ok(Statement::Cont(parse.col.clone()))
     }
 
+    fn r#def(parse: &mut BasicParser) -> Result<Statement> {
+        let column = parse.col.clone();
+        let var = if let Some(Token::Ident(ident)) = parse.next() {
+            ident.clone()
+        } else {
+            return Err(error!(SyntaxError, ..&parse.col; EXPECTED_VARIABLE));
+        };
+        if !var.is_user_function() {
+            return Err(error!(SyntaxError, ..&parse.col; "MUST START WITH FN"));
+        }
+        let prefix = var.to_string();
+        let var: Ident = var.into();
+        parse.expect(Token::LParen)?;
+        let mut var_list = parse.expect_ident_list()?;
+        parse.expect(Token::RParen)?;
+        parse.expect(Token::Operator(Operator::Equal))?;
+        let var_map: HashMap<token::Ident, token::Ident> = var_list
+            .iter()
+            .map(|i1| {
+                let i2 = token::Ident::from((prefix.as_str(), i1.clone()));
+                (i1.clone(), i2)
+            })
+            .collect();
+
+        let var_list: Vec<Ident> = var_list.drain(..).map(|v| v.into()).collect();
+        let expr = parse.expect_function(&var_map)?;
+        Ok(Statement::Def(column, var, var_list, expr))
+    }
+
     fn r#dim(parse: &mut BasicParser) -> Result<Vec<Statement>> {
         let column = parse.col.clone();
         let mut v: Vec<Statement> = vec![];
@@ -537,7 +593,7 @@ impl Statement {
 
     fn r#for(parse: &mut BasicParser) -> Result<Statement> {
         let column = parse.col.clone();
-        let ident = parse.expect_unary_var()?;
+        let ident: Ident = parse.expect_ident()?.into();
         parse.expect(Token::Operator(Operator::Equal))?;
         let expr_from = parse.expect_expression()?;
         parse.expect(Token::Word(Word::To))?;
@@ -650,13 +706,13 @@ impl Statement {
 
     fn r#next(parse: &mut BasicParser) -> Result<Vec<Statement>> {
         let column = parse.col.clone();
-        let mut idents = parse.expect_unary_var_list()?;
+        let mut idents = parse.expect_ident_list()?;
         if idents.is_empty() {
             return Ok(vec![Statement::Next(column, Ident::Plain("".into()))]);
         }
         Ok(idents
             .drain(..)
-            .map(|i| Statement::Next(column.clone(), i))
+            .map(|i| Statement::Next(column.clone(), i.into()))
             .collect::<Vec<Statement>>())
     }
 
@@ -708,5 +764,63 @@ impl Statement {
 
     fn r#stop(parse: &mut BasicParser) -> Result<Statement> {
         Ok(Statement::Stop(parse.col.clone()))
+    }
+}
+
+impl From<token::Ident> for Ident {
+    fn from(ident: token::Ident) -> Self {
+        use token::Ident::*;
+        match ident {
+            Plain(s) => Ident::Plain(s.into()),
+            String(s) => Ident::String(s.into()),
+            Single(s) => Ident::Single(s.into()),
+            Double(s) => Ident::Double(s.into()),
+            Integer(s) => Ident::Integer(s.into()),
+        }
+    }
+}
+
+impl From<(&str, token::Ident)> for token::Ident {
+    fn from(f: (&str, token::Ident)) -> Self {
+        let (string, ident) = f;
+        let mut string = string.to_string();
+        string.push('.');
+        use token::Ident::*;
+        match ident {
+            Plain(s) => Plain({
+                string.push_str(&s);
+                string
+            }),
+            String(s) => String({
+                string.push_str(&s);
+                string
+            }),
+            Single(s) => Single({
+                string.push_str(&s);
+                string
+            }),
+            Double(s) => Double({
+                string.push_str(&s);
+                string
+            }),
+            Integer(s) => Integer({
+                string.push_str(&s);
+                string
+            }),
+        }
+    }
+}
+
+impl token::Ident {
+    pub fn is_user_function(&self) -> bool {
+        use token::Ident::*;
+        match self {
+            Plain(s) => s,
+            String(s) => s,
+            Single(s) => s,
+            Double(s) => s,
+            Integer(s) => s,
+        }
+        .starts_with("FN")
     }
 }

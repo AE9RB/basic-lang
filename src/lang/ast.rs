@@ -5,6 +5,7 @@ use std::rc::Rc;
 pub enum Statement {
     Clear(Column),
     Cont(Column),
+    Def(Column, Ident, Vec<Ident>, Expression),
     Dim(Column, Variable),
     End(Column),
     For(Column, Ident, Expression, Expression, Expression),
@@ -109,6 +110,13 @@ impl AcceptVisitor for Statement {
         use Statement::*;
         match self {
             Clear(_) | Cont(_) | End(_) | New(_) | Stop(_) | Return(_) => {}
+            Def(_, ident, vec_ident, expr) => {
+                ident.accept(visitor);
+                for v in vec_ident {
+                    v.accept(visitor);
+                }
+                expr.accept(visitor);
+            }
             Dim(_, var) => {
                 var.accept(visitor);
             }

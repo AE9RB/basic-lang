@@ -28,6 +28,7 @@ impl Token {
 
             "CLEAR" => Some(Token::Word(Word::Clear)),
             "CONT" => Some(Token::Word(Word::Cont)),
+            "DEF" => Some(Token::Word(Word::Def)),
             "DIM" => Some(Token::Word(Word::Dim)),
             "END" => Some(Token::Word(Word::End)),
             "ELSE" => Some(Token::Word(Word::Else)),
@@ -158,6 +159,7 @@ impl std::fmt::Display for Literal {
 pub enum Word {
     Clear,
     Cont,
+    Def,
     Dim,
     Else,
     End,
@@ -191,6 +193,7 @@ impl std::fmt::Display for Word {
         match self {
             Clear => write!(f, "CLEAR"),
             Cont => write!(f, "CONT"),
+            Def => write!(f, "DEF"),
             Dim => write!(f, "DIM"),
             Else => write!(f, "ELSE"),
             End => write!(f, "END"),
@@ -285,7 +288,7 @@ impl std::fmt::Display for Operator {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Ident {
     Plain(String),
     String(String),
