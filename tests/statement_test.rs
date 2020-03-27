@@ -144,3 +144,13 @@ fn test_on_gosub_invalid() {
     r.enter(r#"RUN"#);
     assert_eq!(exec(&mut r), " 30 \n");
 }
+
+#[test]
+fn test_def_fn() {
+    let mut r = Runtime::default();
+    r.enter(r#"10 DEF FN(X)=X*2"#);
+    r.enter(r#"20 DEF FNA(X,Y)=FN(X)/Y"#);
+    r.enter(r#"30 PRINT FNA(1,3)"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), " 0.6666667 \n");
+}

@@ -196,3 +196,16 @@ impl From<&str> for Val {
         }
     }
 }
+
+impl TryFrom<usize> for Val {
+    type Error = Error;
+    fn try_from(num: usize) -> std::result::Result<Self, Self::Error> {
+        match i16::try_from(num) {
+            Ok(len) => Ok(Val::Integer(len)),
+            Err(_) => {
+                debug_assert!(false, "LEN VAL TOO BIG");
+                Err(error!(Overflow))
+            }
+        }
+    }
+}

@@ -418,7 +418,7 @@ impl Expression {
     ) -> Result<Expression> {
         use Operator::*;
         Ok(match op {
-            Caret => Expression::Exponentiation(col, Box::new(lhs), Box::new(rhs)),
+            Caret => Expression::Power(col, Box::new(lhs), Box::new(rhs)),
             Multiply => Expression::Multiply(col, Box::new(lhs), Box::new(rhs)),
             Divide => Expression::Divide(col, Box::new(lhs), Box::new(rhs)),
             DivideInt => Expression::DivideInt(col, Box::new(lhs), Box::new(rhs)),
@@ -563,17 +563,18 @@ impl Statement {
             return Err(error!(SyntaxError, ..&parse.col; "MUST START WITH FN"));
         }
         parse.expect(Token::LParen)?;
-        let ident_list = parse.expect_ident_list()?;
+        let mut ident_list = parse.expect_ident_list()?;
         parse.expect(Token::RParen)?;
         parse.expect(Token::Operator(Operator::Equal))?;
-        let var_map: HashMap<token::Ident, Ident> = ident_list
-            .iter()
-            .map(|i1| {
-                let i2 = Ident::from((&fn_ident, i1));
-                (i1.clone(), i2)
+        let mut var_map: HashMap<token::Ident, Ident> = HashMap::default();
+        let var_ident: Vec<Ident> = ident_list
+            .drain(..)
+            .map(|tok_ident| {
+                let ast_ident = Ident::from((&fn_ident, &tok_ident));
+                var_map.insert(tok_ident, ast_ident.clone());
+                ast_ident
             })
             .collect();
-        let var_ident: Vec<Ident> = var_map.iter().map(|(_, v)| v.clone()).collect();
         let expr = parse.expect_fn_expression(&var_map)?;
         Ok(Statement::Def(column, fn_ident.into(), var_ident, expr))
     }

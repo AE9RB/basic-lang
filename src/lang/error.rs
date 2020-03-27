@@ -117,6 +117,7 @@ pub enum ErrorCode {
     SubscriptOutOfRange = 9,
     RedimensionedArray = 10,
     DivisionByZero = 11,
+    IllegalDirect = 12,
     TypeMismatch = 13,
     OutOfStringSpace = 14,
     StringTooLong = 15,

@@ -49,7 +49,7 @@ pub enum Expression {
     UnaryVar(Column, Ident),
     Function(Column, Ident, Vec<Expression>),
     Negation(Column, Box<Expression>),
-    Exponentiation(Column, Box<Expression>, Box<Expression>),
+    Power(Column, Box<Expression>, Box<Expression>),
     Multiply(Column, Box<Expression>, Box<Expression>),
     Divide(Column, Box<Expression>, Box<Expression>),
     DivideInt(Column, Box<Expression>, Box<Expression>),
@@ -182,7 +182,7 @@ impl AcceptVisitor for Expression {
                 }
             }
             Negation(_, expr) => expr.accept(visitor),
-            Exponentiation(_, expr1, expr2)
+            Power(_, expr1, expr2)
             | Multiply(_, expr1, expr2)
             | Divide(_, expr1, expr2)
             | DivideInt(_, expr1, expr2)

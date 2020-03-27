@@ -119,8 +119,8 @@ impl Compiler {
                 for (_col, ops) in vec_expr {
                     link.append(ops)?
                 }
-                let len_opcode = self.val_int_from_usize(len, col)?;
-                link.push(len_opcode)?;
+                let len = Val::try_from(len)?;
+                link.push(Opcode::Literal(len))?;
                 col
             }
         };
@@ -158,7 +158,7 @@ impl Compiler {
             if let Some((opcode, arity)) = Function::opcode_and_arity(&ident) {
                 if arity.contains(&len) {
                     if arity.start() != arity.end() {
-                        link.push(this.val_int_from_usize(len, &col)?)?;
+                        link.push(Opcode::Literal(Val::try_from(len)?))?;
                     }
                     link.push(opcode)?;
                     return Ok(args_col);
@@ -166,10 +166,11 @@ impl Compiler {
                 return Err(error!(SyntaxError, ..&args_col; "WRONG NUMBER OF ARGUMENTS"));
             }
             if ident.starts_with("FN") {
-                ///
-                return Err(error!(UndefinedUserFunction, ..col));
+                link.push(Opcode::Literal(Val::try_from(len)?))?;
+                link.push(Opcode::Fn(ident))?;
+                return Ok(args_col);
             }
-            link.push(this.val_int_from_usize(len, &col)?)?;
+            link.push(Opcode::Literal(Val::try_from(len)?))?;
             link.push(Opcode::PushArr(ident))?;
             Ok(col.start..args_col.end)
         }
@@ -191,7 +192,7 @@ impl Compiler {
                 link.push(Opcode::Neg)?;
                 Ok(col.start..expr_col.end)
             }
-            Expression::Exponentiation(..) => binary_expression(self, link, Opcode::Exp),
+            Expression::Power(..) => binary_expression(self, link, Opcode::Pow),
             Expression::Multiply(..) => binary_expression(self, link, Opcode::Mul),
             Expression::Divide(..) => binary_expression(self, link, Opcode::Div),
             Expression::DivideInt(..) => binary_expression(self, link, Opcode::DivInt),
@@ -239,13 +240,6 @@ impl Compiler {
         }
     }
 
-    fn val_int_from_usize(&self, num: usize, col: &Column) -> Result<Opcode> {
-        match i16::try_from(num) {
-            Ok(len) => Ok(Opcode::Literal(Val::Integer(len))),
-            Err(_) => Err(error!(Overflow, ..col; "TOO MANY ELEMENTS")),
-        }
-    }
-
     fn expr_pop_line_number(&mut self) -> Result<(Column, LineNumber)> {
         let (sub_col, ops) = self.expr.pop()?;
         match LineNumber::try_from(ops) {
@@ -265,12 +259,12 @@ impl Compiler {
     }
 
     fn r#def(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
-        dbg!(
-            self.ident.drain(..),
-            self.var.drain(..),
-            self.expr.drain(..)
-        );
-        Err(error!(SyntaxError; "TODO!!!!!!"))
+        let arity = self.ident.len() - 1;
+        let vars = self.ident.pop_n(arity)?;
+        let ident = self.ident.pop()?;
+        let (_expr_col, expr_ops) = self.expr.pop()?;
+        link.push_def_fn(col.clone(), ident, vars, expr_ops)?;
+        Ok(col.clone())
     }
 
     fn r#dim(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
@@ -343,16 +337,16 @@ impl Compiler {
             }
             link.push_symbol(finished_sym);
         }
-        Ok(0..0)
+        Ok(col.clone())
     }
 
     fn r#input(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
-        let len = self.val_int_from_usize(self.var.len(), col)?;
+        let len = Val::try_from(self.var.len())?;
         let (_prompt_col, prompt) = self.expr.pop()?;
         let (_caps_col, caps) = self.expr.pop()?;
         link.append(prompt)?;
         link.append(caps)?;
-        link.push(len)?;
+        link.push(Opcode::Literal(len))?;
         for (_var_col, var_name, var_ops) in self.var.drain(..) {
             link.push(Opcode::Input(var_name.clone()))?;
             if var_ops.is_empty() {
@@ -402,13 +396,13 @@ impl Compiler {
     fn r#on(&mut self, link: &mut Link, col: &Column, is_gosub: bool) -> Result<Column> {
         let len = self.expr.len() - 1;
         let line_numbers = self.expr.pop_n(len)?;
-        let len = self.val_int_from_usize(len, col)?;
+        let len = Val::try_from(len)?;
         let (mut sub_col, var_ops) = self.expr.pop()?;
         let ret_symbol = link.next_symbol();
         if is_gosub {
             link.push_return_val(col.clone(), ret_symbol)?;
         }
-        link.push(len)?;
+        link.push(Opcode::Literal(len))?;
         link.append(var_ops)?;
         link.push(Opcode::On)?;
         for (column, ops) in line_numbers {

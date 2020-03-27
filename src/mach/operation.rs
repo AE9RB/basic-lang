@@ -22,7 +22,7 @@ impl Operation {
         }
     }
 
-    pub fn exponentiation(lhs: Val, rhs: Val) -> Result<Val> {
+    pub fn power(lhs: Val, rhs: Val) -> Result<Val> {
         use Val::*;
         match lhs {
             Integer(l) => match rhs {

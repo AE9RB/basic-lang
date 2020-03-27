@@ -3,6 +3,7 @@ use crate::error;
 use crate::lang::{Column, Error, LineNumber, MaxValue};
 use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
+use std::rc::Rc;
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -96,6 +97,27 @@ impl Link {
             Some(number) => Ok(number as Symbol),
             None => Err(error!(InternalError; "NO SYMBOL FOR LINE NUMBER")),
         }
+    }
+
+    pub fn push_def_fn(
+        &mut self,
+        col: Column,
+        ident: Rc<str>,
+        vars: Vec<Rc<str>>,
+        expr_ops: Link,
+    ) -> Result<()> {
+        let len = Val::try_from(vars.len())?;
+        self.push(Opcode::Literal(len))?;
+        self.push(Opcode::Def(ident))?;
+        let skip = self.next_symbol();
+        self.push_jump(col, skip)?;
+        for var in vars {
+            self.push(Opcode::Pop(var))?;
+        }
+        self.append(expr_ops)?;
+        self.push(Opcode::RetVal)?;
+        self.push_symbol(skip);
+        Ok(())
     }
 
     pub fn push_for(&mut self, col: Column) -> Result<()> {

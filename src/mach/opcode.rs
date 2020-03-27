@@ -36,11 +36,15 @@ pub enum Opcode {
     /// Expect Return(Address) on stack or else error: RETURN WITHOUT GOSUB.
     /// Branch to Address.
     Return,
+    /// Returns with preserving the last stack value.
+    RetVal,
 
     // *** Statements
     Clear,
     Cont,
+    Def(Rc<str>),
     End,
+    Fn(Rc<str>),
     Input(Rc<str>),
     List,
     New,
@@ -49,7 +53,7 @@ pub enum Opcode {
 
     // *** Expression operations
     Neg,
-    Exp,
+    Pow,
     Mul,
     Div,
     DivInt,
@@ -73,9 +77,11 @@ pub enum Opcode {
     Abs,
     Chr,
     Cos,
+    Exp,
     Int,
     Rnd,
     Sin,
+    Sqr,
     Tab,
 }
 
@@ -101,10 +107,13 @@ impl std::fmt::Display for Opcode {
             Next(a) => write!(f, "NEXT({})", a),
             On => write!(f, "ON"),
             Return => write!(f, "RETURN"),
+            RetVal => write!(f, "RETVAL"),
 
             Clear => write!(f, "CLEAR"),
             Cont => write!(f, "CONT"),
+            Def(s) => write!(f, "DEF({})", s),
             End => write!(f, "END"),
+            Fn(s) => write!(f, "FN({})", s),
             Input(s) => write!(f, "INPUT({})", s),
             List => write!(f, "LIST"),
             New => write!(f, "NEW"),
@@ -112,7 +121,7 @@ impl std::fmt::Display for Opcode {
             Stop => write!(f, "STOP"),
 
             Neg => write!(f, "NEG"),
-            Exp => write!(f, "EXP"),
+            Pow => write!(f, "POW"),
             Mul => write!(f, "MUL"),
             Div => write!(f, "DIV"),
             DivInt => write!(f, "DIVINT"),
@@ -135,9 +144,11 @@ impl std::fmt::Display for Opcode {
             Abs => write!(f, "ABS"),
             Chr => write!(f, "CHR"),
             Cos => write!(f, "COS"),
+            Exp => write!(f, "EXP"),
             Int => write!(f, "INT"),
             Rnd => write!(f, "RND"),
             Sin => write!(f, "SIN"),
+            Sqr => write!(f, "SQR"),
             Tab => write!(f, "TAB"),
         }
     }

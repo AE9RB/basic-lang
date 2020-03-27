@@ -1,6 +1,7 @@
 use super::{Address, Function, Listing, Opcode, Operation, Program, Stack, Val, Var};
 use crate::error;
 use crate::lang::{Error, Line, LineNumber};
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::ops::Range;
 use std::rc::Rc;
@@ -27,6 +28,7 @@ pub struct Runtime {
     cont_pc: Address,
     print_col: usize,
     rand: (u32, u32, u32),
+    functions: HashMap<Rc<str>, (usize, Address)>,
 }
 
 /// ## Events for the user interface
@@ -69,6 +71,7 @@ impl Default for Runtime {
             cont_pc: 0,
             print_col: 0,
             rand: (1, 1, 1),
+            functions: HashMap::default(),
         }
     }
 }
@@ -380,24 +383,15 @@ impl Runtime {
                         return Ok(Event::Errors(Arc::clone(&self.source.indirect_errors)));
                     }
                 }
-                Opcode::Return => loop {
-                    match self.stack.pop() {
-                        Ok(Val::Return(addr)) => {
-                            self.pc = addr;
-                            break;
-                        }
-                        Ok(_) => continue,
-                        Err(_) => return Err(error!(ReturnWithoutGosub)),
-                    }
-                },
-
                 Opcode::Clear => self.r#clear()?,
                 Opcode::Cont => {
                     if let Some(event) = self.r#cont()? {
                         return Ok(event);
                     }
                 }
+                Opcode::Def(var_name) => self.r#def(var_name)?,
                 Opcode::End => return self.r#end(),
+                Opcode::Fn(var_name) => self.r#fn(var_name)?,
                 Opcode::Input(var_name) => {
                     if let Some(event) = self.r#input(var_name)? {
                         return Ok(event);
@@ -408,10 +402,12 @@ impl Runtime {
                 Opcode::On => self.r#on()?,
                 Opcode::Next(var_name) => self.r#next(var_name)?,
                 Opcode::Print => return self.r#print(),
+                Opcode::Return => self.r#return()?,
+                Opcode::RetVal => self.r#retval()?,
                 Opcode::Stop => return Err(error!(Break)),
 
                 Opcode::Neg => self.stack.pop_1_push(&Operation::negate)?,
-                Opcode::Exp => self.stack.pop_2_push(&Operation::exponentiation)?,
+                Opcode::Pow => self.stack.pop_2_push(&Operation::power)?,
                 Opcode::Mul => self.stack.pop_2_push(&Operation::multiply)?,
                 Opcode::Div => self.stack.pop_2_push(&Operation::divide)?,
                 Opcode::DivInt => self.stack.pop_2_push(&Operation::unimplemented)?,
@@ -434,12 +430,14 @@ impl Runtime {
                 Opcode::Abs => self.stack.pop_1_push(&Function::abs)?,
                 Opcode::Chr => self.stack.pop_1_push(&Function::chr)?,
                 Opcode::Cos => self.stack.pop_1_push(&Function::cos)?,
+                Opcode::Exp => self.stack.pop_1_push(&Function::exp)?,
                 Opcode::Int => self.stack.pop_1_push(&Function::int)?,
                 Opcode::Rnd => {
                     let vec = self.stack.pop_vec()?;
                     self.stack.push(Function::rnd(&mut self.rand, vec)?)?;
                 }
                 Opcode::Sin => self.stack.pop_1_push(&Function::sin)?,
+                Opcode::Sqr => self.stack.pop_1_push(&Function::sqr)?,
                 Opcode::Tab => {
                     let val = self.stack.pop()?;
                     self.stack.push(Function::tab(self.print_col, val)?)?;
@@ -451,6 +449,7 @@ impl Runtime {
 
     fn r#clear(&mut self) -> Result<()> {
         self.vars.clear();
+        self.functions.clear();
         Ok(())
     }
 
@@ -472,6 +471,17 @@ impl Runtime {
         }
     }
 
+    fn r#def(&mut self, fn_name: Rc<str>) -> Result<()> {
+        if self.pc >= self.entry_address {
+            Err(error!(IllegalDirect))
+        } else if let Val::Integer(len) = self.stack.pop()? {
+            self.functions.insert(fn_name, (len as usize, self.pc + 1));
+            Ok(())
+        } else {
+            Err(error!(InternalError))
+        }
+    }
+
     fn r#end(&mut self) -> Result<Event> {
         self.cont = State::Stopped;
         std::mem::swap(&mut self.cont, &mut self.state);
@@ -481,6 +491,24 @@ impl Runtime {
             self.stack.clear();
         }
         Ok(Event::Stopped)
+    }
+
+    fn r#fn(&mut self, fn_name: Rc<str>) -> Result<()> {
+        let mut args = self.stack.pop_vec()?;
+        if let Some((arity, addr)) = self.functions.get(&fn_name) {
+            if *arity == args.len() {
+                self.stack.push(Val::Return(self.pc))?;
+                for arg in args.drain(..).rev() {
+                    self.stack.push(arg)?;
+                }
+                self.pc = *addr;
+                Ok(())
+            } else {
+                Err(error!(IllegalFunctionCall; "WRONG NUMBER OF ARGUMENTS"))
+            }
+        } else {
+            Err(error!(UndefinedUserFunction))
+        }
     }
 
     fn r#input(&mut self, var_name: Rc<str>) -> Result<Option<Event>> {
@@ -535,6 +563,7 @@ impl Runtime {
     fn r#new_(&mut self) -> Result<Event> {
         self.stack.clear();
         self.vars.clear();
+        self.functions.clear();
         self.source.clear();
         self.dirty = true;
         self.state = State::Stopped;
@@ -615,6 +644,25 @@ impl Runtime {
             }
         }
         Ok(Event::Print(s))
+    }
+
+    fn r#return(&mut self) -> Result<()> {
+        loop {
+            match self.stack.pop() {
+                Ok(Val::Return(addr)) => {
+                    self.pc = addr;
+                    return Ok(());
+                }
+                Ok(_) => continue,
+                Err(_) => return Err(error!(ReturnWithoutGosub)),
+            }
+        }
+    }
+
+    fn r#retval(&mut self) -> Result<()> {
+        let val = self.stack.pop()?;
+        self.r#return()?;
+        self.stack.push(val)
     }
 }
 
