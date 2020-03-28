@@ -1,4 +1,5 @@
 use super::{token::*, LineNumber, MaxValue};
+use std::collections::VecDeque;
 
 pub fn lex(s: &str) -> (LineNumber, Vec<Token>) {
     BasicLexer::lex(s)
@@ -16,194 +17,19 @@ fn is_basic_alphabetic(c: char) -> bool {
     c.is_ascii_alphabetic()
 }
 
-trait Tokenizers<'a> {
-    fn chars(&mut self) -> &mut std::iter::Peekable<std::str::Chars<'a>>;
-
-    fn whitespace(&mut self) -> Option<Token> {
-        let mut len = 0;
-        loop {
-            self.chars().next();
-            len += 1;
-            if let Some(pk) = self.chars().peek() {
-                if is_basic_whitespace(*pk) {
-                    continue;
-                }
-            }
-            return Some(Token::Whitespace(len));
-        }
-    }
-
-    fn number(&mut self) -> Option<Token> {
-        let mut s = String::new();
-        let mut digits = 0;
-        let mut decimal = false;
-        let mut exp = false;
-        loop {
-            let mut ch = match self.chars().next() {
-                Some(c) => c,
-                None => {
-                    debug_assert!(false, "Failed to tokenize number.");
-                    return None;
-                }
-            };
-            if ch == 'e' {
-                ch = 'E'
-            }
-            if ch == 'd' {
-                ch = 'D'
-            }
-            s.push(ch);
-            if !exp && is_basic_digit(ch) {
-                digits += 1;
-            }
-            if ch == '.' {
-                decimal = true
-            }
-            if ch == 'D' {
-                digits += 8;
-            }
-            if ch == '!' {
-                return Some(Token::Literal(Literal::Single(s)));
-            }
-            if ch == '#' {
-                return Some(Token::Literal(Literal::Double(s)));
-            }
-            if ch == '%' {
-                return Some(Token::Literal(Literal::Integer(s)));
-            }
-            if let Some(pk) = self.chars().peek() {
-                if ch == 'E' || ch == 'D' {
-                    exp = true;
-                    if *pk == '+' || *pk == '-' {
-                        continue;
-                    }
-                }
-                if is_basic_digit(*pk) {
-                    continue;
-                }
-                if !decimal && *pk == '.' {
-                    continue;
-                }
-                if !exp && *pk == 'E' || *pk == 'e' || *pk == 'D' || *pk == 'd' {
-                    continue;
-                }
-                if *pk == '!' || *pk == '#' || *pk == '%' {
-                    continue;
-                }
-            }
-            break;
-        }
-        if digits > 7 {
-            return Some(Token::Literal(Literal::Double(s)));
-        }
-        if !exp && !decimal && s.parse::<i16>().is_ok() {
-            return Some(Token::Literal(Literal::Integer(s)));
-        }
-        Some(Token::Literal(Literal::Single(s)))
-    }
-
-    fn string(&mut self) -> Option<Token> {
-        let mut s = String::new();
-        self.chars().next();
-        loop {
-            if let Some(ch) = self.chars().next() {
-                if ch != '"' {
-                    s.push(ch);
-                    continue;
-                }
-            }
-            return Some(Token::Literal(Literal::String(s)));
-        }
-    }
-
-    fn alphabetic(&mut self) -> Option<Token> {
-        let mut s = String::new();
-        let mut digit = false;
-        loop {
-            let ch = match self.chars().next() {
-                Some(ch) => ch.to_ascii_uppercase(),
-                None => {
-                    debug_assert!(false, "Failed to tokenize alphabetic.");
-                    return None;
-                }
-            };
-            s.push(ch);
-            if is_basic_digit(ch) {
-                digit = true;
-            }
-            if let Some(token) = Token::from_string(&s) {
-                return Some(token);
-            }
-            if ch == '$' {
-                return Some(Token::Ident(Ident::String(s)));
-            }
-            if ch == '!' {
-                return Some(Token::Ident(Ident::Single(s)));
-            }
-            if ch == '#' {
-                return Some(Token::Ident(Ident::Double(s)));
-            }
-            if ch == '%' {
-                return Some(Token::Ident(Ident::Integer(s)));
-            }
-            if let Some(pk) = self.chars().peek() {
-                if is_basic_alphabetic(*pk) {
-                    if digit {
-                        break;
-                    }
-                    continue;
-                }
-                if is_basic_digit(*pk) || *pk == '$' || *pk == '!' || *pk == '#' || *pk == '%' {
-                    continue;
-                }
-            }
-            break;
-        }
-        Some(Token::Ident(Ident::Plain(s)))
-    }
-
-    fn minutia(&mut self) -> Option<Token> {
-        let mut s = String::new();
-        loop {
-            if let Some(ch) = self.chars().next() {
-                s.push(ch);
-                if let Some(t) = Token::from_string(&s) {
-                    return Some(t);
-                }
-                if let Some(pk) = self.chars().peek() {
-                    if is_basic_alphabetic(*pk) {
-                        break;
-                    }
-                    if is_basic_digit(*pk) {
-                        break;
-                    }
-                    if is_basic_whitespace(*pk) {
-                        break;
-                    }
-                    continue;
-                }
-                break;
-            }
-        }
-        Some(Token::Unknown(s))
-    }
-}
-
 struct BasicLexer<'a> {
     chars: std::iter::Peekable<std::str::Chars<'a>>,
+    pending: VecDeque<Token>,
     remark: bool,
-}
-
-impl<'a> Tokenizers<'a> for BasicLexer<'a> {
-    fn chars(&mut self) -> &mut std::iter::Peekable<std::str::Chars<'a>> {
-        &mut self.chars
-    }
 }
 
 impl<'a> Iterator for BasicLexer<'a> {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if let Some(t) = self.pending.pop_front() {
+            return Some(t);
+        }
         let pk = self.chars.peek()?;
         if self.remark {
             return Some(Token::Unknown(self.chars.by_ref().collect::<String>()));
@@ -264,6 +90,7 @@ impl<'a> BasicLexer<'a> {
         }
         let mut tokens = BasicLexer {
             chars: s.chars().peekable(),
+            pending: VecDeque::default(),
             remark: false,
         }
         .collect();
@@ -368,5 +195,181 @@ impl<'a> BasicLexer<'a> {
                 tokens.push(Token::Unknown(s.trim_end().to_string()));
             }
         }
+    }
+
+    fn whitespace(&mut self) -> Option<Token> {
+        let mut len = 0;
+        loop {
+            self.chars.next();
+            len += 1;
+            if let Some(pk) = self.chars.peek() {
+                if is_basic_whitespace(*pk) {
+                    continue;
+                }
+            }
+            return Some(Token::Whitespace(len));
+        }
+    }
+
+    fn number(&mut self) -> Option<Token> {
+        let mut s = String::new();
+        let mut digits = 0;
+        let mut decimal = false;
+        let mut exp = false;
+        loop {
+            let mut ch = match self.chars.next() {
+                Some(c) => c,
+                None => {
+                    debug_assert!(false, "Failed to tokenize number.");
+                    return None;
+                }
+            };
+            if ch == 'e' {
+                ch = 'E'
+            }
+            if ch == 'd' {
+                ch = 'D'
+            }
+            s.push(ch);
+            if !exp && is_basic_digit(ch) {
+                digits += 1;
+            }
+            if ch == '.' {
+                decimal = true
+            }
+            if ch == 'D' {
+                digits += 8;
+            }
+            if ch == '!' {
+                return Some(Token::Literal(Literal::Single(s)));
+            }
+            if ch == '#' {
+                return Some(Token::Literal(Literal::Double(s)));
+            }
+            if ch == '%' {
+                return Some(Token::Literal(Literal::Integer(s)));
+            }
+            if let Some(pk) = self.chars.peek() {
+                if ch == 'E' || ch == 'D' {
+                    exp = true;
+                    if *pk == '+' || *pk == '-' {
+                        continue;
+                    }
+                }
+                if is_basic_digit(*pk) {
+                    continue;
+                }
+                if !decimal && *pk == '.' {
+                    continue;
+                }
+                if !exp && *pk == 'E' || *pk == 'e' || *pk == 'D' || *pk == 'd' {
+                    continue;
+                }
+                if *pk == '!' || *pk == '#' || *pk == '%' {
+                    continue;
+                }
+            }
+            break;
+        }
+        if digits > 7 {
+            return Some(Token::Literal(Literal::Double(s)));
+        }
+        if !exp && !decimal && s.parse::<i16>().is_ok() {
+            return Some(Token::Literal(Literal::Integer(s)));
+        }
+        Some(Token::Literal(Literal::Single(s)))
+    }
+
+    fn string(&mut self) -> Option<Token> {
+        let mut s = String::new();
+        self.chars.next();
+        loop {
+            if let Some(ch) = self.chars.next() {
+                if ch != '"' {
+                    s.push(ch);
+                    continue;
+                }
+            }
+            return Some(Token::Literal(Literal::String(s)));
+        }
+    }
+
+    fn alphabetic(&mut self) -> Option<Token> {
+        let mut s = String::new();
+        let mut digit = false;
+        loop {
+            let ch = match self.chars.next() {
+                Some(ch) => ch.to_ascii_uppercase(),
+                None => {
+                    debug_assert!(false, "Failed to tokenize alphabetic.");
+                    return None;
+                }
+            };
+            s.push(ch);
+            if is_basic_digit(ch) {
+                digit = true;
+            }
+            if ch == '$' {
+                self.pending.push_back(Token::Ident(Ident::String(s)));
+                break;
+            } else if ch == '!' {
+                self.pending.push_back(Token::Ident(Ident::Single(s)));
+                break;
+            } else if ch == '#' {
+                self.pending.push_back(Token::Ident(Ident::Double(s)));
+                break;
+            } else if ch == '%' {
+                self.pending.push_back(Token::Ident(Ident::Integer(s)));
+                break;
+            }
+            if let Some(pk) = self.chars.peek() {
+                if is_basic_alphabetic(*pk) {
+                    if digit {
+                        self.pending.push_back(Token::Ident(Ident::Plain(s)));
+                        break;
+                    }
+                    continue;
+                }
+                if is_basic_digit(*pk) || *pk == '$' || *pk == '!' || *pk == '#' || *pk == '%' {
+                    s = Token::scan_alphabetic(&mut self.pending, &s);
+                    if s.is_empty() {
+                        break;
+                    }
+                    continue;
+                }
+            }
+            s = Token::scan_alphabetic(&mut self.pending, &s);
+            if !s.is_empty() {
+                self.pending.push_back(Token::Ident(Ident::Plain(s)));
+            }
+            break;
+        }
+        self.pending.pop_front()
+    }
+
+    fn minutia(&mut self) -> Option<Token> {
+        let mut s = String::new();
+        loop {
+            if let Some(ch) = self.chars.next() {
+                s.push(ch);
+                if let Some(t) = Token::scan_minutia(&s) {
+                    return Some(t);
+                }
+                if let Some(pk) = self.chars.peek() {
+                    if is_basic_alphabetic(*pk) {
+                        break;
+                    }
+                    if is_basic_digit(*pk) {
+                        break;
+                    }
+                    if is_basic_whitespace(*pk) {
+                        break;
+                    }
+                    continue;
+                }
+                break;
+            }
+        }
+        Some(Token::Unknown(s))
     }
 }

@@ -128,10 +128,9 @@ fn test_ident_with_word() {
     let (ln, v) = lex("BANDS");
     assert_eq!(ln, None);
     let mut x = v.iter();
-    assert_eq!(
-        x.next(),
-        Some(&Token::Ident(Ident::Plain("BANDS".to_string())))
-    );
+    assert_eq!(x.next(), Some(&Token::Ident(Ident::Plain("B".into()))));
+    assert_eq!(x.next(), Some(&Token::Operator(Operator::And)));
+    assert_eq!(x.next(), Some(&Token::Ident(Ident::Plain("S".into()))));
     assert_eq!(x.next(), None);
 }
 

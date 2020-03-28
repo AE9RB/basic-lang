@@ -1,8 +1,9 @@
 use super::{Error, LineNumber, MaxValue};
 use crate::error;
+use std::collections::VecDeque;
 use std::convert::TryFrom;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     Unknown(String),
     Whitespace(usize),
@@ -18,48 +19,75 @@ pub enum Token {
 }
 
 impl Token {
-    pub fn from_string(s: &str) -> Option<Token> {
+    pub fn scan_alphabetic(v: &mut VecDeque<Token>, mut s: &str) -> String {
+        while let Some((idx, len, token)) = [
+            ("RETURN", Token::Word(Word::Return)),
+            ("CLEAR", Token::Word(Word::Clear)),
+            ("INPUT", Token::Word(Word::Input)),
+            ("PRINT", Token::Word(Word::Print1)),
+            ("GOSUB", Token::Word(Word::Gosub1)),
+            ("CONT", Token::Word(Word::Cont)),
+            ("ELSE", Token::Word(Word::Else)),
+            ("GOTO", Token::Word(Word::Goto1)),
+            ("NEXT", Token::Word(Word::Next)),
+            ("LIST", Token::Word(Word::List)),
+            ("STEP", Token::Word(Word::Step)),
+            ("STOP", Token::Word(Word::Stop)),
+            ("THEN", Token::Word(Word::Then)),
+            ("DEF", Token::Word(Word::Def)),
+            ("DIM", Token::Word(Word::Dim)),
+            ("END", Token::Word(Word::End)),
+            ("FOR", Token::Word(Word::For)),
+            ("XOR", Token::Operator(Operator::Xor)),
+            ("IMP", Token::Operator(Operator::Imp)),
+            ("EQV", Token::Operator(Operator::Eqv)),
+            ("MOD", Token::Operator(Operator::Modulus)),
+            ("NOT", Token::Operator(Operator::Not)),
+            ("AND", Token::Operator(Operator::And)),
+            ("LET", Token::Word(Word::Let)),
+            ("NEW", Token::Word(Word::New)),
+            ("REM", Token::Word(Word::Rem1)),
+            ("RUN", Token::Word(Word::Run)),
+            ("ON", Token::Word(Word::On)),
+            ("TO", Token::Word(Word::To)),
+            ("IF", Token::Word(Word::If)),
+            ("OR", Token::Operator(Operator::Or)),
+        ]
+        .iter()
+        .filter_map(|(ts, tk)| {
+            if let Some(idx) = s.find(ts) {
+                Some((idx, ts.len(), tk.clone()))
+            } else {
+                None
+            }
+        })
+        .min_by_key(|(i, _, _)| *i)
+        {
+            if idx == 0 {
+                v.push_back(token);
+                s = &s[len..];
+            } else {
+                v.push_back(Token::Ident(Ident::Plain(s[..idx].into())));
+                v.push_back(token);
+                s = &s[(idx + len)..];
+            }
+        }
+        s.to_string()
+    }
+
+    pub fn scan_minutia(s: &str) -> Option<Token> {
         match s {
             "(" => Some(Token::LParen),
             ")" => Some(Token::RParen),
             "," => Some(Token::Comma),
             ":" => Some(Token::Colon),
             ";" => Some(Token::Semicolon),
-
-            "CLEAR" => Some(Token::Word(Word::Clear)),
-            "CONT" => Some(Token::Word(Word::Cont)),
-            "DEF" => Some(Token::Word(Word::Def)),
-            "DIM" => Some(Token::Word(Word::Dim)),
-            "END" => Some(Token::Word(Word::End)),
-            "ELSE" => Some(Token::Word(Word::Else)),
-            "FOR" => Some(Token::Word(Word::For)),
-            "GOSUB" => Some(Token::Word(Word::Gosub1)),
-            "GO SUB" => Some(Token::Word(Word::Gosub2)),
-            "GOTO" => Some(Token::Word(Word::Goto1)),
-            "GO TO" => Some(Token::Word(Word::Goto2)),
-            "IF" => Some(Token::Word(Word::If)),
-            "INPUT" => Some(Token::Word(Word::Input)),
-            "LET" => Some(Token::Word(Word::Let)),
-            "LIST" => Some(Token::Word(Word::List)),
-            "NEW" => Some(Token::Word(Word::New)),
-            "NEXT" => Some(Token::Word(Word::Next)),
-            "ON" => Some(Token::Word(Word::On)),
-            "PRINT" => Some(Token::Word(Word::Print1)),
             "?" => Some(Token::Word(Word::Print2)),
-            "REM" => Some(Token::Word(Word::Rem1)),
             "'" => Some(Token::Word(Word::Rem2)),
-            "RETURN" => Some(Token::Word(Word::Return)),
-            "RUN" => Some(Token::Word(Word::Run)),
-            "STEP" => Some(Token::Word(Word::Step)),
-            "STOP" => Some(Token::Word(Word::Stop)),
-            "THEN" => Some(Token::Word(Word::Then)),
-            "TO" => Some(Token::Word(Word::To)),
-
             "^" => Some(Token::Operator(Operator::Caret)),
             "*" => Some(Token::Operator(Operator::Multiply)),
             "/" => Some(Token::Operator(Operator::Divide)),
             "\\" => Some(Token::Operator(Operator::DivideInt)),
-            "MOD" => Some(Token::Operator(Operator::Modulus)),
             "+" => Some(Token::Operator(Operator::Plus)),
             "-" => Some(Token::Operator(Operator::Minus)),
             "=" => Some(Token::Operator(Operator::Equal)),
@@ -70,13 +98,6 @@ impl Token {
             ">" => Some(Token::Operator(Operator::Greater)),
             ">=" => Some(Token::Operator(Operator::GreaterEqual)),
             "=>" => Some(Token::Operator(Operator::EqualGreater)),
-            "NOT" => Some(Token::Operator(Operator::Not)),
-            "AND" => Some(Token::Operator(Operator::And)),
-            "OR" => Some(Token::Operator(Operator::Or)),
-            "XOR" => Some(Token::Operator(Operator::Xor)),
-            "IMP" => Some(Token::Operator(Operator::Imp)),
-            "EQV" => Some(Token::Operator(Operator::Eqv)),
-
             _ => None,
         }
     }
@@ -135,7 +156,7 @@ impl TryFrom<&Token> for LineNumber {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Literal {
     Single(String),
     Double(String),
@@ -155,7 +176,7 @@ impl std::fmt::Display for Literal {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Word {
     Clear,
     Cont,
@@ -223,7 +244,7 @@ impl std::fmt::Display for Word {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Operator {
     Caret,
     Multiply,
