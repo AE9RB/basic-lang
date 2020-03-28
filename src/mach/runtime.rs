@@ -446,6 +446,7 @@ impl Runtime {
                 }
                 Opcode::Sin => self.stack.pop_1_push(&Function::sin)?,
                 Opcode::Sqr => self.stack.pop_1_push(&Function::sqr)?,
+                Opcode::Str => self.stack.pop_1_push(&Function::str)?,
                 Opcode::Tab => {
                     let val = self.stack.pop()?;
                     self.stack.push(Function::tab(self.print_col, val)?)?;

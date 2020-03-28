@@ -24,6 +24,7 @@ impl Function {
             "RND" => Some((Opcode::Rnd, 0..=1)),
             "SIN" => Some((Opcode::Sin, 1..=1)),
             "SQR" => Some((Opcode::Sqr, 1..=1)),
+            "STR$" => Some((Opcode::Str, 1..=1)),
             "TAB" => Some((Opcode::Tab, 1..=1)),
             _ => None,
         }
@@ -181,6 +182,14 @@ impl Function {
             Integer(n) => Ok(Single((n as f32).sqrt())),
             Single(n) => Ok(Single(n.sqrt())),
             Double(n) => Ok(Double(n.sqrt())),
+            String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
+        }
+    }
+
+    pub fn str(val: Val) -> Result<Val> {
+        use Val::*;
+        match val {
+            Integer(_) | Single(_) | Double(_) => Ok(String(format!("{}", val).into())),
             String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
         }
     }

@@ -87,6 +87,7 @@ pub enum Opcode {
     Rnd,
     Sin,
     Sqr,
+    Str,
     Tab,
 }
 
@@ -159,6 +160,7 @@ impl std::fmt::Display for Opcode {
             Rnd => write!(f, "RND"),
             Sin => write!(f, "SIN"),
             Sqr => write!(f, "SQR"),
+            Str => write!(f, "STR"),
             Tab => write!(f, "TAB"),
         }
     }

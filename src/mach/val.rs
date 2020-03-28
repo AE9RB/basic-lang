@@ -19,34 +19,36 @@ pub enum Val {
 impl std::fmt::Display for Val {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         use Val::*;
-        match self {
-            String(s) => write!(f, "{}", s),
-            Integer(n) => {
-                if *n < 0 {
-                    write!(f, "{}", n)
-                } else {
-                    write!(f, " {}", n)
-                }
-            }
+        let mut s = match self {
+            String(s) => return write!(f, "{}", s),
+            Integer(n) => format!("{}", n),
             Single(n) => {
-                if *n < 0.0 {
-                    write!(f, "{}", n)
+                let s = format!("{}", n);
+                let x = s.chars().filter(char::is_ascii_digit).count();
+                if x > 9 {
+                    format!("{:E}", n)
                 } else {
-                    write!(f, " {}", n)
+                    format!("{}", n)
                 }
             }
             Double(n) => {
-                if *n < 0.0 {
-                    write!(f, "{}", n)
+                let s = format!("{}", n);
+                let x = s.chars().filter(char::is_ascii_digit).count();
+                if x > 17 {
+                    format!("{:E}", n)
                 } else {
-                    write!(f, " {}", n)
+                    format!("{}", n)
                 }
             }
             Return(..) | Next(..) => {
                 debug_assert!(false);
-                write!(f, "")
+                return write!(f, "");
             }
+        };
+        if !s.starts_with('-') {
+            s.insert(0, ' ');
         }
+        write!(f, "{}", s)
     }
 }
 
