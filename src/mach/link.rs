@@ -103,7 +103,7 @@ impl Link {
         &mut self,
         col: Column,
         ident: Rc<str>,
-        vars: Vec<Rc<str>>,
+        vars: Stack<Rc<str>>,
         expr_ops: Link,
     ) -> Result<()> {
         let len = Val::try_from(vars.len())?;

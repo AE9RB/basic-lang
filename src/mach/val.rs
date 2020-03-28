@@ -156,6 +156,36 @@ impl TryFrom<Val> for u32 {
     }
 }
 
+impl TryFrom<Val> for usize {
+    type Error = Error;
+    fn try_from(val: Val) -> std::result::Result<Self, Self::Error> {
+        match val {
+            Val::Integer(i) => {
+                if i >= 0 {
+                    Ok(i as usize)
+                } else {
+                    Err(error!(Overflow))
+                }
+            }
+            Val::Single(f) => {
+                if f >= 0.0 && f <= usize::max_value() as f32 {
+                    Ok(f as usize)
+                } else {
+                    Err(error!(Overflow))
+                }
+            }
+            Val::Double(d) => {
+                if d >= 0.0 && d <= usize::max_value() as f64 {
+                    Ok(d as usize)
+                } else {
+                    Err(error!(Overflow))
+                }
+            }
+            Val::String(_) | Val::Return(_) | Val::Next(..) => Err(error!(TypeMismatch)),
+        }
+    }
+}
+
 impl TryFrom<Val> for f32 {
     type Error = Error;
     fn try_from(val: Val) -> std::result::Result<Self, Self::Error> {
@@ -176,6 +206,16 @@ impl TryFrom<Val> for f64 {
             Val::Single(f) => Ok(f as f64),
             Val::Double(d) => Ok(d),
             Val::String(_) | Val::Return(_) | Val::Next(..) => Err(error!(TypeMismatch)),
+        }
+    }
+}
+
+impl TryFrom<Val> for Rc<str> {
+    type Error = Error;
+    fn try_from(val: Val) -> std::result::Result<Self, Self::Error> {
+        match val {
+            Val::String(s) => Ok(s),
+            _ => Err(error!(TypeMismatch)),
         }
     }
 }

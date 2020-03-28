@@ -428,10 +428,18 @@ impl Runtime {
                 Opcode::Eqv => self.stack.pop_2_push(&Operation::unimplemented)?,
 
                 Opcode::Abs => self.stack.pop_1_push(&Function::abs)?,
+                Opcode::Asc => self.stack.pop_1_push(&Function::asc)?,
                 Opcode::Chr => self.stack.pop_1_push(&Function::chr)?,
                 Opcode::Cos => self.stack.pop_1_push(&Function::cos)?,
                 Opcode::Exp => self.stack.pop_1_push(&Function::exp)?,
                 Opcode::Int => self.stack.pop_1_push(&Function::int)?,
+                Opcode::Left => self.stack.pop_2_push(&Function::left)?,
+                Opcode::Len => self.stack.pop_1_push(&Function::len)?,
+                Opcode::Mid => {
+                    let vec = self.stack.pop_vec()?;
+                    self.stack.push(Function::mid(vec)?)?;
+                }
+                Opcode::Right => self.stack.pop_2_push(&Function::right)?,
                 Opcode::Rnd => {
                     let vec = self.stack.pop_vec()?;
                     self.stack.push(Function::rnd(&mut self.rand, vec)?)?;
@@ -671,7 +679,7 @@ type RuntimeStack = Stack<Val>;
 trait RuntimeStackTrait<T> {
     fn pop_1_push<F: Fn(Val) -> Result<Val>>(&mut self, func: &F) -> Result<()>;
     fn pop_2_push<F: Fn(Val, Val) -> Result<Val>>(&mut self, func: &F) -> Result<()>;
-    fn pop_vec(&mut self) -> Result<Vec<Val>>;
+    fn pop_vec(&mut self) -> Result<Stack<Val>>;
 }
 
 impl RuntimeStackTrait<Val> for RuntimeStack {
@@ -685,7 +693,7 @@ impl RuntimeStackTrait<Val> for RuntimeStack {
         self.push(func(val1, val2)?)?;
         Ok(())
     }
-    fn pop_vec(&mut self) -> Result<Vec<Val>> {
+    fn pop_vec(&mut self) -> Result<Stack<Val>> {
         if let Val::Integer(n) = self.pop()? {
             self.pop_n(n as usize)
         } else {

@@ -83,12 +83,25 @@ impl<T> Stack<T> {
         let one = self.pop()?;
         Ok((one, two))
     }
-    pub fn pop_n(&mut self, len: usize) -> Result<Vec<T>> {
+    pub fn pop_n(&mut self, len: usize) -> Result<Stack<T>> {
         if len > self.vec.len() {
             Err(self.underflow_error())
         } else {
             let range = (self.vec.len() - len as usize)..;
-            Ok(self.vec.drain(range).collect())
+            let mut st: Stack<T> = Stack::new(self.overflow_message);
+            for item in self.drain(range) {
+                st.push(item)?;
+            }
+            Ok(st)
         }
+    }
+}
+
+impl<T> IntoIterator for Stack<T> {
+    type Item = T;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.vec.into_iter()
     }
 }

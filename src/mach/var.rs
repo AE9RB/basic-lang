@@ -1,4 +1,4 @@
-use super::Val;
+use super::{Stack, Val};
 use crate::error;
 use crate::lang::Error;
 use std::collections::HashMap;
@@ -44,17 +44,17 @@ impl Var {
         }
     }
 
-    pub fn store_array(&mut self, var_name: &Rc<str>, arr: Vec<Val>, value: Val) -> Result<()> {
+    pub fn store_array(&mut self, var_name: &Rc<str>, arr: Stack<Val>, value: Val) -> Result<()> {
         let key = self.build_array_key(var_name, arr)?;
         self.store(&key, value)
     }
 
-    pub fn fetch_array(&mut self, var_name: &Rc<str>, arr: Vec<Val>) -> Result<Val> {
+    pub fn fetch_array(&mut self, var_name: &Rc<str>, arr: Stack<Val>) -> Result<Val> {
         let key = self.build_array_key(var_name, arr)?;
         Ok(self.fetch(&key))
     }
 
-    pub fn dimension_array(&mut self, var_name: &Rc<str>, arr: Vec<Val>) -> Result<()> {
+    pub fn dimension_array(&mut self, var_name: &Rc<str>, arr: Stack<Val>) -> Result<()> {
         if self.dims.contains_key(var_name) {
             return Err(error!(RedimensionedArray));
         }
@@ -63,7 +63,7 @@ impl Var {
         Ok(())
     }
 
-    fn build_array_key(&mut self, var_name: &Rc<str>, arr: Vec<Val>) -> Result<Rc<str>> {
+    fn build_array_key(&mut self, var_name: &Rc<str>, arr: Stack<Val>) -> Result<Rc<str>> {
         let requested = self.vec_val_to_vec_i16(arr)?;
         let dimensioned = match self.dims.get(var_name) {
             Some(v) => v,
@@ -85,7 +85,7 @@ impl Var {
         Ok(s.into())
     }
 
-    fn vec_val_to_vec_i16(&self, mut arr: Vec<Val>) -> Result<Vec<i16>> {
+    fn vec_val_to_vec_i16(&self, mut arr: Stack<Val>) -> Result<Vec<i16>> {
         let mut vec_i16: Vec<i16> = vec![];
         for v in arr.drain(..) {
             match i16::try_from(v) {

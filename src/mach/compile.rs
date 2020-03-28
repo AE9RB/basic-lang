@@ -163,7 +163,7 @@ impl Compiler {
                     link.push(opcode)?;
                     return Ok(args_col);
                 }
-                return Err(error!(SyntaxError, ..&args_col; "WRONG NUMBER OF ARGUMENTS"));
+                return Err(error!(IllegalFunctionCall, ..&args_col; "WRONG NUMBER OF ARGUMENTS"));
             }
             if ident.starts_with("FN") {
                 link.push(Opcode::Literal(Val::try_from(len)?))?;
@@ -219,20 +219,20 @@ impl Compiler {
         match statement {
             Statement::Clear(col, ..) => self.r#clear(link, col),
             Statement::Cont(col, ..) => self.r#cont(link, col),
-            Statement::Def(col, ..) => self.r#def(link, col),
+            Statement::Def(col, _, v, _) => self.r#def(link, col, v.len()),
             Statement::Dim(col, ..) => self.r#dim(link, col),
             Statement::End(col, ..) => self.r#end(link, col),
             Statement::For(col, ..) => self.r#for(link, col),
             Statement::Gosub(col, ..) => self.r#gosub(link, col),
             Statement::Goto(col, ..) => self.r#goto(link, col),
             Statement::If(col, _, th, el) => self.r#if(link, col, th.len(), el.len()),
-            Statement::Input(col, ..) => self.r#input(link, col),
+            Statement::Input(col, _, _, v) => self.r#input(link, col, v.len()),
             Statement::Let(col, ..) => self.r#let(link, col),
             Statement::List(col, ..) => self.r#list(link, col),
             Statement::New(col, ..) => self.r#new_(link, col),
             Statement::Next(col, ..) => self.r#next(link, col),
-            Statement::OnGoto(col, ..) => self.r#on(link, col, false),
-            Statement::OnGosub(col, ..) => self.r#on(link, col, true),
+            Statement::OnGoto(col, _, v) => self.r#on(link, col, v.len(), false),
+            Statement::OnGosub(col, _, v) => self.r#on(link, col, v.len(), true),
             Statement::Print(col, ..) => self.r#print(link, col),
             Statement::Return(col, ..) => self.r#return(link, col),
             Statement::Run(col, ..) => self.r#run(link, col),
@@ -258,8 +258,7 @@ impl Compiler {
         Ok(col.clone())
     }
 
-    fn r#def(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
-        let arity = self.ident.len() - 1;
+    fn r#def(&mut self, link: &mut Link, col: &Column, arity: usize) -> Result<Column> {
         let vars = self.ident.pop_n(arity)?;
         let ident = self.ident.pop()?;
         let (_expr_col, expr_ops) = self.expr.pop()?;
@@ -340,8 +339,8 @@ impl Compiler {
         Ok(col.clone())
     }
 
-    fn r#input(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
-        let len = Val::try_from(self.var.len())?;
+    fn r#input(&mut self, link: &mut Link, col: &Column, len: usize) -> Result<Column> {
+        let len = Val::try_from(len)?;
         let (_prompt_col, prompt) = self.expr.pop()?;
         let (_caps_col, caps) = self.expr.pop()?;
         link.append(prompt)?;
@@ -393,8 +392,13 @@ impl Compiler {
         Ok(col.clone())
     }
 
-    fn r#on(&mut self, link: &mut Link, col: &Column, is_gosub: bool) -> Result<Column> {
-        let len = self.expr.len() - 1;
+    fn r#on(
+        &mut self,
+        link: &mut Link,
+        col: &Column,
+        len: usize,
+        is_gosub: bool,
+    ) -> Result<Column> {
         let line_numbers = self.expr.pop_n(len)?;
         let len = Val::try_from(len)?;
         let (mut sub_col, var_ops) = self.expr.pop()?;
@@ -409,7 +413,7 @@ impl Compiler {
             sub_col.end = column.end;
             let ln = match LineNumber::try_from(ops) {
                 Ok(ln) => ln,
-                Err(e) => return Err(e),
+                Err(e) => return Err(e.in_column(&column)),
             };
             link.push_goto(column, ln)?;
         }
