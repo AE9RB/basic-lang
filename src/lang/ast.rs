@@ -5,10 +5,10 @@ use std::rc::Rc;
 pub enum Statement {
     Clear(Column),
     Cont(Column),
-    Def(Column, Ident, Vec<Ident>, Expression),
+    Def(Column, Variable, Vec<Variable>, Expression),
     Dim(Column, Variable),
     End(Column),
-    For(Column, Ident, Expression, Expression, Expression),
+    For(Column, Variable, Expression, Expression, Expression),
     Gosub(Column, Expression),
     Goto(Column, Expression),
     If(Column, Expression, Vec<Statement>, Vec<Statement>),
@@ -16,7 +16,7 @@ pub enum Statement {
     Let(Column, Variable, Expression),
     List(Column, Expression, Expression),
     New(Column),
-    Next(Column, Ident),
+    Next(Column, Variable),
     OnGoto(Column, Expression, Vec<Expression>),
     OnGosub(Column, Expression, Vec<Expression>),
     Print(Column, Expression),
@@ -26,28 +26,18 @@ pub enum Statement {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Ident {
-    Plain(Rc<str>),
-    String(Rc<str>),
-    Single(Rc<str>),
-    Double(Rc<str>),
-    Integer(Rc<str>),
-}
-
-#[derive(Debug, PartialEq)]
 pub enum Variable {
     Unary(Column, Ident),
     Array(Column, Ident, Vec<Expression>),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
+    Variable(Variable),
     Single(Column, f32),
     Double(Column, f64),
     Integer(Column, i16),
     String(Column, Rc<str>),
-    UnaryVar(Column, Ident),
-    Function(Column, Ident, Vec<Expression>),
     Negation(Column, Box<Expression>),
     Power(Column, Box<Expression>, Box<Expression>),
     Multiply(Column, Box<Expression>, Box<Expression>),
@@ -70,10 +60,18 @@ pub enum Expression {
     Eqv(Column, Box<Expression>, Box<Expression>),
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub enum Ident {
+    Plain(Rc<str>),
+    String(Rc<str>),
+    Single(Rc<str>),
+    Double(Rc<str>),
+    Integer(Rc<str>),
+}
+
 pub trait Visitor {
     fn visit_statement(&mut self, _: &Statement) {}
     fn visit_variable(&mut self, _: &Variable) {}
-    fn visit_ident(&mut self, _: &Ident) {}
     fn visit_expression(&mut self, _: &Expression) {}
 }
 
@@ -81,21 +79,12 @@ pub trait AcceptVisitor {
     fn accept<V: Visitor>(&self, visitor: &mut V);
 }
 
-impl AcceptVisitor for Ident {
-    fn accept<V: Visitor>(&self, visitor: &mut V) {
-        visitor.visit_ident(self)
-    }
-}
-
 impl AcceptVisitor for Variable {
     fn accept<V: Visitor>(&self, visitor: &mut V) {
         use Variable::*;
         match self {
-            Unary(_, ident) => {
-                ident.accept(visitor);
-            }
-            Array(_, ident, vec_expr) => {
-                ident.accept(visitor);
+            Unary(..) => {}
+            Array(_, _, vec_expr) => {
                 for expr in vec_expr {
                     expr.accept(visitor);
                 }
@@ -110,9 +99,9 @@ impl AcceptVisitor for Statement {
         use Statement::*;
         match self {
             Clear(_) | Cont(_) | End(_) | New(_) | Stop(_) | Return(_) => {}
-            Def(_, ident, vec_ident, expr) => {
-                ident.accept(visitor);
-                for v in vec_ident {
+            Def(_, var, vec_var, expr) => {
+                var.accept(visitor);
+                for v in vec_var {
                     v.accept(visitor);
                 }
                 expr.accept(visitor);
@@ -172,14 +161,8 @@ impl AcceptVisitor for Expression {
         use Expression::*;
         match self {
             Single(..) | Double(..) | Integer(..) | String(..) => {}
-            UnaryVar(_, ident) => {
-                ident.accept(visitor);
-            }
-            Function(_, ident, vec_expr) => {
-                ident.accept(visitor);
-                for expr in vec_expr {
-                    expr.accept(visitor);
-                }
+            Variable(var) => {
+                var.accept(visitor);
             }
             Negation(_, expr) => expr.accept(visitor),
             Power(_, expr1, expr2)

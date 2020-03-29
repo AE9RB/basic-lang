@@ -31,7 +31,6 @@ impl<'a> Visitor<'a> {
                 break;
             }
         }
-        debug_assert_eq!(0, this.comp.ident.len());
         debug_assert_eq!(0, this.comp.var.len());
         debug_assert_eq!(0, this.comp.expr.len());
         debug_assert_eq!(0, this.comp.stmt.len());
@@ -52,28 +51,17 @@ impl<'a> ast::Visitor for Visitor<'a> {
             self.link.error(error.in_column(&col))
         }
     }
-    fn visit_ident(&mut self, ident: &ast::Ident) {
-        let s = match ident {
-            ast::Ident::Plain(s) => s,
-            ast::Ident::String(s) => s,
-            ast::Ident::Single(s) => s,
-            ast::Ident::Double(s) => s,
-            ast::Ident::Integer(s) => s,
-        };
-        if let Some(error) = self.comp.ident.push(s.clone()).err() {
-            self.link.error(error)
-        }
-    }
     fn visit_variable(&mut self, var: &ast::Variable) {
         let mut link = Link::default();
-        let (col, name) = match self.comp.variable(&mut link, var) {
-            Ok((col, name)) => (col, name),
+        let (col, name, len) = match self.comp.variable(&mut link, var) {
+            Ok((col, name, len)) => (col, name, len),
             Err(e) => {
                 self.link.error(e);
-                (0..0, "".into())
+                (0..0, "".into(), 0)
             }
         };
-        if let Some(error) = self.comp.var.push((col.clone(), name, link)).err() {
+        let vi = VarItem::new(col.clone(), name, link, len);
+        if let Some(error) = self.comp.var.push(vi).err() {
             self.link.error(error.in_column(&col))
         }
     }
@@ -92,9 +80,82 @@ impl<'a> ast::Visitor for Visitor<'a> {
     }
 }
 
+struct VarItem {
+    col: Column,
+    name: Rc<str>,
+    link: Link,
+    len: usize,
+}
+
+impl VarItem {
+    fn new(col: Column, name: Rc<str>, link: Link, len: usize) -> VarItem {
+        VarItem {
+            col,
+            name,
+            link,
+            len,
+        }
+    }
+
+    fn dim(self, link: &mut Link) -> Result<Column> {
+        if self.len == 0 {
+            Err(error!(SyntaxError, ..&self.col; "NOT AN ARRAY"))
+        } else {
+            link.append(self.link)?;
+            link.push(Opcode::Literal(Val::try_from(self.len)?))?;
+            link.push(Opcode::DimArr(self.name))?;
+            Ok(self.col.clone())
+        }
+    }
+
+    fn unary(self, link: &mut Link) -> Result<Column> {
+        debug_assert!(self.len == 0);
+        debug_assert!(self.link.is_empty());
+        link.push(Opcode::Pop(self.name))?;
+        Ok(self.col.clone())
+    }
+
+    fn assignment(self, link: &mut Link) -> Result<Column> {
+        if self.len == 0 {
+            debug_assert!(self.link.is_empty());
+            link.push(Opcode::Pop(self.name))?
+        } else {
+            link.append(self.link)?;
+            link.push(Opcode::Literal(Val::try_from(self.len)?))?;
+            link.push(Opcode::PopArr(self.name))?
+        }
+        Ok(self.col.clone())
+    }
+
+    fn expression(self, link: &mut Link) -> Result<Column> {
+        link.append(self.link)?;
+
+        if let Some((opcode, arity)) = Function::opcode_and_arity(&self.name) {
+            if arity.contains(&self.len) {
+                if arity.start() != arity.end() {
+                    link.push(Opcode::Literal(Val::try_from(self.len)?))?;
+                }
+                link.push(opcode)?;
+                return Ok(self.col.clone());
+            }
+            return Err(error!(IllegalFunctionCall, ..&self.col; "WRONG NUMBER OF ARGUMENTS"));
+        }
+
+        if self.len == 0 {
+            link.push(Opcode::Push(self.name))?;
+        } else if self.name.starts_with("FN") {
+            link.push(Opcode::Literal(Val::try_from(self.len)?))?;
+            link.push(Opcode::Fn(self.name))?;
+        } else {
+            link.push(Opcode::Literal(Val::try_from(self.len)?))?;
+            link.push(Opcode::PushArr(self.name))?;
+        }
+        Ok(self.col.clone())
+    }
+}
+
 struct Compiler {
-    ident: Stack<Rc<str>>,
-    var: Stack<(Column, Rc<str>, Link)>,
+    var: Stack<VarItem>,
     expr: Stack<(Column, Link)>,
     stmt: Stack<(Column, Link)>,
 }
@@ -102,29 +163,37 @@ struct Compiler {
 impl Compiler {
     fn new() -> Compiler {
         Compiler {
-            ident: Stack::new("COMPILER IDENT OVERFLOW"),
             var: Stack::new("COMPILER VARIABLE OVERFLOW"),
             expr: Stack::new("COMPILER EXPRESSION OVERFLOW"),
             stmt: Stack::new("COMPILER STATEMENT OVERFLOW"),
         }
     }
 
-    fn variable(&mut self, link: &mut Link, var: &ast::Variable) -> Result<(Column, Rc<str>)> {
+    fn variable(
+        &mut self,
+        link: &mut Link,
+        var: &ast::Variable,
+    ) -> Result<(Column, Rc<str>, usize)> {
         use ast::Variable;
-        let col = match var {
-            Variable::Unary(col, _ident) => col,
-            Variable::Array(col, _ident, vec_expr) => {
+        let (col, ident, len) = match var {
+            Variable::Unary(col, ident) => (col, ident, 0),
+            Variable::Array(col, ident, vec_expr) => {
                 let len = vec_expr.len();
                 let vec_expr = self.expr.pop_n(len)?;
                 for (_col, ops) in vec_expr {
                     link.append(ops)?
                 }
-                let len = Val::try_from(len)?;
-                link.push(Opcode::Literal(len))?;
-                col
+                (col, ident, len)
             }
         };
-        Ok((col.clone(), self.ident.pop()?))
+        let s = match ident {
+            ast::Ident::Plain(s) => s,
+            ast::Ident::String(s) => s,
+            ast::Ident::Single(s) => s,
+            ast::Ident::Double(s) => s,
+            ast::Ident::Integer(s) => s,
+        };
+        Ok((col.clone(), s.clone(), len))
     }
 
     fn expression(&mut self, link: &mut Link, expr: &ast::Expression) -> Result<Column> {
@@ -140,52 +209,13 @@ impl Compiler {
             link.push(Opcode::Literal(val))?;
             Ok(col.clone())
         }
-        fn function(
-            this: &mut Compiler,
-            link: &mut Link,
-            col: &Column,
-            len: usize,
-        ) -> Result<Column> {
-            let mut args_col: std::ops::Range<usize> = 0..0;
-            for (col, opcodes) in this.expr.drain(this.expr.len() - len..) {
-                if args_col.start == 0 {
-                    args_col.start = col.start
-                }
-                args_col.end = col.end;
-                link.append(opcodes)?;
-            }
-            let ident = this.ident.pop()?;
-            if let Some((opcode, arity)) = Function::opcode_and_arity(&ident) {
-                if arity.contains(&len) {
-                    if arity.start() != arity.end() {
-                        link.push(Opcode::Literal(Val::try_from(len)?))?;
-                    }
-                    link.push(opcode)?;
-                    return Ok(args_col);
-                }
-                return Err(error!(IllegalFunctionCall, ..&args_col; "WRONG NUMBER OF ARGUMENTS"));
-            }
-            if ident.starts_with("FN") {
-                link.push(Opcode::Literal(Val::try_from(len)?))?;
-                link.push(Opcode::Fn(ident))?;
-                return Ok(args_col);
-            }
-            link.push(Opcode::Literal(Val::try_from(len)?))?;
-            link.push(Opcode::PushArr(ident))?;
-            Ok(col.start..args_col.end)
-        }
         use ast::Expression;
         match expr {
             Expression::Single(col, val) => literal(link, col, Val::Single(*val)),
             Expression::Double(col, val) => literal(link, col, Val::Double(*val)),
             Expression::Integer(col, val) => literal(link, col, Val::Integer(*val)),
             Expression::String(col, val) => literal(link, col, Val::String(val.clone())),
-            Expression::UnaryVar(col, _) => {
-                let ident = self.ident.pop()?;
-                link.push(Opcode::Push(ident))?;
-                Ok(col.clone())
-            }
-            Expression::Function(col, _, vec_exp) => function(self, link, col, vec_exp.len()),
+            Expression::Variable(_) => self.var.pop()?.expression(link),
             Expression::Negation(col, ..) => {
                 let (expr_col, ops) = self.expr.pop()?;
                 link.append(ops)?;
@@ -258,22 +288,19 @@ impl Compiler {
         Ok(col.clone())
     }
 
-    fn r#def(&mut self, link: &mut Link, col: &Column, arity: usize) -> Result<Column> {
-        let vars = self.ident.pop_n(arity)?;
-        let ident = self.ident.pop()?;
+    fn r#def(&mut self, link: &mut Link, col: &Column, len: usize) -> Result<Column> {
+        let mut vars = self.var.pop_n(len)?;
+        let name = self.var.pop()?;
+        debug_assert_eq!(0, name.len);
         let (_expr_col, expr_ops) = self.expr.pop()?;
-        link.push_def_fn(col.clone(), ident, vars, expr_ops)?;
+        let vars: Vec<Rc<str>> = vars.drain(..).map(|v| v.name).collect();
+        link.push_def_fn(col.clone(), name.name, vars, expr_ops)?;
         Ok(col.clone())
     }
 
     fn r#dim(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
-        let (var_col, name, ops) = self.var.pop()?;
-        if ops.is_empty() {
-            return Err(error!(SyntaxError, ..&var_col; "NOT AN ARRAY"));
-        } else {
-            link.append(ops)?;
-            link.push(Opcode::DimArr(name))?;
-        }
+        let var = self.var.pop()?;
+        var.dim(link)?;
         Ok(col.clone())
     }
 
@@ -286,9 +313,10 @@ impl Compiler {
         let (step_col, step_ops) = self.expr.pop()?;
         let (_to_col, to_ops) = self.expr.pop()?;
         let (_from_col, from_ops) = self.expr.pop()?;
-        let var_name = self.ident.pop()?;
+        let var = self.var.pop()?;
+        let var_name = var.name.clone();
         link.append(from_ops)?;
-        link.push(Opcode::Pop(var_name.clone()))?;
+        var.unary(link)?;
         link.append(to_ops)?;
         link.append(step_ops)?;
         link.push(Opcode::Literal(Val::String(var_name)))?;
@@ -346,14 +374,9 @@ impl Compiler {
         link.append(prompt)?;
         link.append(caps)?;
         link.push(Opcode::Literal(len))?;
-        for (_var_col, var_name, var_ops) in self.var.drain(..) {
-            link.push(Opcode::Input(var_name.clone()))?;
-            if var_ops.is_empty() {
-                link.push(Opcode::Pop(var_name))?
-            } else {
-                link.append(var_ops)?;
-                link.push(Opcode::PopArr(var_name))?
-            }
+        for var in self.var.drain(..) {
+            link.push(Opcode::Input(var.name.clone()))?;
+            var.assignment(link)?;
         }
         link.push(Opcode::Input("".into()))?;
         Ok(col.clone())
@@ -362,13 +385,7 @@ impl Compiler {
     fn r#let(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
         let (expr_col, expr_ops) = self.expr.pop()?;
         link.append(expr_ops)?;
-        let (_var_col, var_name, var_ops) = self.var.pop()?;
-        if var_ops.is_empty() {
-            link.push(Opcode::Pop(var_name))?
-        } else {
-            link.append(var_ops)?;
-            link.push(Opcode::PopArr(var_name))?
-        }
+        self.var.pop()?.assignment(link)?;
         Ok(col.start..expr_col.end)
     }
 
@@ -387,8 +404,7 @@ impl Compiler {
     }
 
     fn r#next(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
-        let ident = self.ident.pop()?;
-        link.push(Opcode::Next(ident))?;
+        link.push(Opcode::Next(self.var.pop()?.name))?;
         Ok(col.clone())
     }
 

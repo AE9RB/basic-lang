@@ -101,7 +101,7 @@ impl std::fmt::Display for Opcode {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         use Opcode::*;
         match self {
-            Literal(v) => write!(f, "{}", format!("{:?}", v).to_ascii_uppercase()),
+            Literal(v) => write!(f, "PUSH({})", format!("{:?}", v).to_ascii_uppercase()),
             Push(s) => write!(f, "PUSH({})", s),
             Pop(s) => write!(f, "POP({})", s),
             PushArr(s) => write!(f, "PUSHARR({})", s),

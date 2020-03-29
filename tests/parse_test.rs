@@ -13,13 +13,13 @@ fn test_let_foo_eq_bar() {
     let answer = Statement::Let(
         0..3,
         Variable::Unary(3..6, Ident::Plain("TER".into())),
-        Expression::UnaryVar(7..10, Ident::Plain("BAR".into())),
+        Expression::Variable(Variable::Unary(7..10, Ident::Plain("BAR".into()))),
     );
     assert_eq!(parse_str("letter=bar:"), Some(answer));
     let answer = Statement::Let(
         0..3,
         Variable::Unary(0..3, Ident::Plain("TER".into())),
-        Expression::UnaryVar(4..7, Ident::Plain("BAR".into())),
+        Expression::Variable(Variable::Unary(4..7, Ident::Plain("BAR".into()))),
     );
     assert_eq!(parse_str("ter=bar:"), Some(answer));
 }
@@ -83,11 +83,11 @@ fn test_functions() {
     let answer = Statement::Let(
         0..1,
         Variable::Unary(0..1, Ident::Plain("A".into())),
-        Expression::Function(
+        Expression::Variable(Variable::Array(
             2..11,
             Ident::Plain("COS".into()),
             vec![Expression::Single(6..10, 3.11)],
-        ),
+        )),
     );
     assert_eq!(parse_str("A=cos(3.11)"), Some(answer));
 }
@@ -105,11 +105,11 @@ fn test_precedence_and_paren() {
                 Box::new(Expression::Add(
                     11..12,
                     Box::new(Expression::Integer(10..11, 3)),
-                    Box::new(Expression::Function(
+                    Box::new(Expression::Variable(Variable::Array(
                         12..21,
                         Ident::Plain("COS".into()),
                         vec![Expression::Single(16..20, 3.11)],
-                    )),
+                    ))),
                 )),
                 Box::new(Expression::Integer(23..24, 4)),
             )),
@@ -128,11 +128,11 @@ fn test_printer_list() {
             Statement::Print(0..1, Expression::Integer(4..5, 2)),
             Statement::Print(
                 0..1,
-                Expression::Function(
+                Expression::Variable(Variable::Array(
                     5..6,
                     Ident::String("TAB".into()),
                     vec![Expression::Integer(5..6, -14)]
-                )
+                ))
             ),
             Statement::Print(0..1, Expression::Integer(6..7, 3)),
             Statement::Print(9..10, Expression::Single(10..13, 0.0)),

@@ -105,14 +105,14 @@ impl<'a> BasicParser<'a> {
 
     fn expect_fn_expression(
         &mut self,
-        var_map: &HashMap<token::Ident, Ident>,
+        var_map: &HashMap<token::Ident, Variable>,
     ) -> Result<Expression> {
         Expression::expect(self, var_map)
     }
 
     fn expect_fn_expression_list(
         &mut self,
-        var_map: &HashMap<token::Ident, Ident>,
+        var_map: &HashMap<token::Ident, Variable>,
     ) -> Result<Vec<Expression>> {
         self.expect(Token::LParen)?;
         let mut expressions: Vec<Expression> = vec![];
@@ -154,11 +154,11 @@ impl<'a> BasicParser<'a> {
                 Some(Token::Comma) => {
                     linefeed = false;
                     self.next();
-                    expressions.push(Expression::Function(
+                    expressions.push(Expression::Variable(Variable::Array(
                         self.col.clone(),
                         Ident::String("TAB".into()),
                         vec![Expression::Integer(self.col.clone(), -14)],
-                    ));
+                    )));
                 }
                 _ => {
                     linefeed = true;
@@ -168,7 +168,7 @@ impl<'a> BasicParser<'a> {
         }
     }
 
-    fn expect_ident(&mut self) -> Result<token::Ident> {
+    fn expect_ident(&mut self) -> Result<(Column, token::Ident)> {
         let ident = if let Some(Token::Ident(ident)) = self.next() {
             ident.clone()
         } else {
@@ -181,11 +181,11 @@ impl<'a> BasicParser<'a> {
         if let Some(Token::LParen) = self.peek() {
             return Err(error!(SyntaxError, ..&(col); ARRAY_NOT_ALLOWED));
         }
-        Ok(ident)
+        Ok((col, ident))
     }
 
-    fn expect_ident_list(&mut self) -> Result<Vec<token::Ident>> {
-        let mut vars: Vec<token::Ident> = vec![];
+    fn expect_ident_list(&mut self) -> Result<Vec<(Column, token::Ident)>> {
+        let mut vars: Vec<(Column, token::Ident)> = vec![];
         let mut expecting = false;
         loop {
             match self.peek() {
@@ -348,11 +348,11 @@ impl<'a> BasicParser<'a> {
 impl Expression {
     fn expect(
         parse: &mut BasicParser,
-        var_map: &HashMap<token::Ident, Ident>,
+        var_map: &HashMap<token::Ident, Variable>,
     ) -> Result<Expression> {
         fn descend(
             parse: &mut BasicParser,
-            var_map: &HashMap<token::Ident, Ident>,
+            var_map: &HashMap<token::Ident, Variable>,
             precedence: usize,
         ) -> Result<Expression> {
             let mut lhs = match parse.next() {
@@ -368,15 +368,15 @@ impl Expression {
                         Some(&&Token::LParen) => {
                             let vec_expr = parse.expect_fn_expression_list(var_map)?;
                             let col = col.start..parse.col.end;
-                            Expression::Function(col, ident.into(), vec_expr)
+                            Expression::Variable(Variable::Array(col, ident.into(), vec_expr))
                         }
                         _ => {
                             if ident.is_user_function() {
                                 return Err(error!(SyntaxError, ..&col; FN_RESERVED));
                             }
                             match var_map.get(&ident) {
-                                Some(x) => Expression::UnaryVar(col, x.clone()),
-                                None => Expression::UnaryVar(col, ident.into()),
+                                Some(x) => Expression::Variable(x.clone()),
+                                None => Expression::Variable(Variable::Unary(col, ident.into())),
                             }
                         }
                     }
@@ -562,21 +562,26 @@ impl Statement {
         if !fn_ident.is_user_function() {
             return Err(error!(SyntaxError, ..&parse.col; "MUST START WITH FN"));
         }
+        let fn_ident_col = parse.col.clone();
         parse.expect(Token::LParen)?;
         let mut ident_list = parse.expect_ident_list()?;
         parse.expect(Token::RParen)?;
         parse.expect(Token::Operator(Operator::Equal))?;
-        let mut var_map: HashMap<token::Ident, Ident> = HashMap::default();
-        let var_ident: Vec<Ident> = ident_list
+        let mut var_map: HashMap<token::Ident, Variable> = HashMap::default();
+        let var_ident: Vec<Variable> = ident_list
             .drain(..)
-            .map(|tok_ident| {
+            .map(|(tok_col, tok_ident)| {
                 let ast_ident = Ident::from((&fn_ident, &tok_ident));
-                var_map.insert(tok_ident, ast_ident.clone());
-                ast_ident
+                var_map.insert(
+                    tok_ident,
+                    Variable::Unary(tok_col.clone(), ast_ident.clone()),
+                );
+                Variable::Unary(tok_col, ast_ident)
             })
             .collect();
         let expr = parse.expect_fn_expression(&var_map)?;
-        Ok(Statement::Def(column, fn_ident.into(), var_ident, expr))
+        let var = Variable::Unary(fn_ident_col, fn_ident.into());
+        Ok(Statement::Def(column, var, var_ident, expr))
     }
 
     fn r#dim(parse: &mut BasicParser) -> Result<Vec<Statement>> {
@@ -598,7 +603,8 @@ impl Statement {
 
     fn r#for(parse: &mut BasicParser) -> Result<Statement> {
         let column = parse.col.clone();
-        let ident: Ident = parse.expect_ident()?.into();
+        let (ident_col, ident) = parse.expect_ident()?;
+        let var = Variable::Unary(ident_col, ident.into());
         parse.expect(Token::Operator(Operator::Equal))?;
         let expr_from = parse.expect_expression()?;
         parse.expect(Token::Word(Word::To))?;
@@ -607,7 +613,7 @@ impl Statement {
         if parse.maybe(Token::Word(Word::Step)) {
             expr_step = parse.expect_expression()?
         }
-        Ok(Statement::For(column, ident, expr_from, expr_to, expr_step))
+        Ok(Statement::For(column, var, expr_from, expr_to, expr_step))
     }
 
     fn r#gosub(parse: &mut BasicParser) -> Result<Statement> {
@@ -713,11 +719,14 @@ impl Statement {
         let column = parse.col.clone();
         let mut idents = parse.expect_ident_list()?;
         if idents.is_empty() {
-            return Ok(vec![Statement::Next(column, Ident::Plain("".into()))]);
+            return Ok(vec![Statement::Next(
+                column,
+                Variable::Unary(0..0, Ident::Plain("".into())),
+            )]);
         }
         Ok(idents
             .drain(..)
-            .map(|i| Statement::Next(column.clone(), i.into()))
+            .map(|(col, i)| Statement::Next(column.clone(), Variable::Unary(col, i.into())))
             .collect::<Vec<Statement>>())
     }
 
