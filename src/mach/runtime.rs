@@ -87,7 +87,7 @@ impl Runtime {
         }
         debug_assert!(matches!(self.state, State::Stopped | State::Intro));
         if string.len() > MAX_LINE_LEN {
-            self.state = State::RuntimeError(error!(OutOfMemory));
+            self.state = State::RuntimeError(error!(LineBufferOverflow));
             return false;
         }
         let line = Line::new(string);
@@ -134,44 +134,44 @@ impl Runtime {
             self.state = State::InputRedo;
             return;
         }
-        if self.do_input(string).is_err() {
-            self.state = State::Stopped;
-            self.cont = State::Stopped;
+        if let Err(error) = self.do_input(string) {
+            self.clear();
+            self.state = State::RuntimeError(error);
             debug_assert!(false, "BAD INPUT STACK");
         }
     }
 
     fn do_input(&mut self, string: &str) -> Result<()> {
         let len = match self.stack.last() {
-            Some(Val::Integer(n)) => *n,
+            Some(Val::Integer(n)) => *n as usize,
             _ => return Err(error!(InternalError)),
         };
-        let mut vv: Vec<Val> = vec![];
+        let mut vec_val: Vec<Val> = vec![];
         if len <= 1 {
-            vv.push(Val::String(string.into()));
+            vec_val.push(Val::String(string.into()));
         } else {
             let mut start: usize = 0;
             let mut in_quote = false;
-            for (i, ch) in string.char_indices() {
+            for (index, ch) in string.char_indices() {
                 match ch {
                     '"' => {
                         in_quote = !in_quote;
                     }
                     ',' if !in_quote => {
-                        vv.push(Val::String(string[start..i].into()));
-                        start = i + 1;
+                        vec_val.push(Val::String(string[start..index].into()));
+                        start = index + 1;
                     }
                     _ => {}
                 }
             }
-            vv.push(Val::String(string[start..].into()));
-            if len as usize != vv.len() {
+            vec_val.push(Val::String(string[start..].into()));
+            if len as usize != vec_val.len() {
                 self.state = State::InputRedo;
                 return Ok(());
             }
         }
         self.stack.push(Val::Return(self.pc))?;
-        while let Some(v) = vv.pop() {
+        while let Some(v) = vec_val.pop() {
             self.stack.push(v)?;
         }
         self.state = State::InputRunning;
@@ -249,8 +249,10 @@ impl Runtime {
                 }
             }
             State::Input => match self.execute_input() {
-                Ok(r) => return r,
-                Err(e) => self.state = State::RuntimeError(e.in_line_number(line_number(&self))),
+                Ok(event) => return event,
+                Err(error) => {
+                    self.state = State::RuntimeError(error.in_line_number(line_number(&self)))
+                }
             },
             State::InputRedo => {
                 self.state = State::Input;
@@ -271,20 +273,18 @@ impl Runtime {
             }
             let mut state = State::Stopped;
             std::mem::swap(&mut self.state, &mut state);
-            if let State::RuntimeError(e) = state {
-                return Event::Errors(Arc::new(vec![e]));
+            if let State::RuntimeError(error) = state {
+                return Event::Errors(Arc::new(vec![error]));
             }
         }
         debug_assert!(matches!(self.state, State::Running | State::InputRunning));
         match self.execute_loop(iterations) {
             Ok(event) => {
                 if let State::Stopped = self.state {
-                    match event {
-                        Event::Stopped => match self.ready_prompt() {
-                            Some(e) => e,
-                            None => event,
-                        },
-                        _ => event,
+                    if let Some(event) = self.ready_prompt() {
+                        event
+                    } else {
+                        event
                     }
                 } else {
                     event
@@ -382,7 +382,7 @@ impl Runtime {
                         return Ok(Event::Errors(Arc::clone(&self.source.indirect_errors)));
                     }
                 }
-                Opcode::Clear => self.r#clear()?,
+                Opcode::Clear => self.r#clear(),
                 Opcode::Cont => {
                     if let Some(event) = self.r#cont()? {
                         return Ok(event);
@@ -402,7 +402,6 @@ impl Runtime {
                 Opcode::Next(var_name) => self.r#next(var_name)?,
                 Opcode::Print => return self.r#print(),
                 Opcode::Return => self.r#return()?,
-                Opcode::RetVal => self.r#retval()?,
                 Opcode::Stop => return Err(error!(Break)),
 
                 Opcode::Neg => self.stack.pop_1_push(&Operation::negate)?,
@@ -455,12 +454,11 @@ impl Runtime {
         Ok(Event::Running)
     }
 
-    fn r#clear(&mut self) -> Result<()> {
+    fn r#clear(&mut self) {
         self.stack.clear();
         self.vars.clear();
         self.functions.clear();
         self.cont = State::Stopped;
-        Ok(())
     }
 
     fn r#cont(&mut self) -> Result<Option<Event>> {
@@ -525,7 +523,7 @@ impl Runtime {
         if let State::Running = self.state {
             self.state = State::Input;
             self.pc -= 1;
-            Ok(Some(Event::Running))
+            return Ok(Some(Event::Running));
         } else if let State::InputRunning = self.state {
             if var_name.is_empty() {
                 self.state = State::Running;
@@ -533,30 +531,24 @@ impl Runtime {
                 self.stack.pop()?;
                 self.stack.pop()?;
                 self.stack.pop()?;
-            } else {
-                let mut pop = self.stack.pop()?;
-                if let Val::String(v) = pop {
-                    let mut v = v.trim();
-                    if var_name.ends_with('$') {
-                        if v.len() >= 2 && v.starts_with('"') && v.ends_with('"') {
-                            v = &v[1..v.len() - 1];
-                        }
-                        pop = Val::String(v.into());
-                    } else if v.is_empty() {
-                        pop = Val::Integer(0);
-                    } else {
-                        pop = Val::from(v);
+                return Ok(None);
+            } else if let Val::String(field) = self.stack.pop()? {
+                let mut field = field.trim();
+                if var_name.ends_with('$') {
+                    if field.len() >= 2 && field.starts_with('"') && field.ends_with('"') {
+                        field = &field[1..field.len() - 1];
                     }
-                    self.stack.push(pop)?;
+                    self.stack.push(Val::String(field.into()))?;
+                } else if field.is_empty() {
+                    self.stack.push(Val::Integer(0))?;
                 } else {
-                    self.stack.push(pop)?;
-                    debug_assert!(false, "input stack corrupt");
+                    self.stack.push(Val::from(field))?;
                 }
+                return Ok(None);
             }
-            Ok(None)
-        } else {
-            Err(error!(InternalError))
         }
+        debug_assert!(false, "input stack corrupt");
+        Err(error!(InternalError))
     }
 
     fn r#list(&mut self) -> Result<Event> {
@@ -632,39 +624,47 @@ impl Runtime {
     }
 
     fn r#print(&mut self) -> Result<Event> {
-        let mut s = String::new();
         let item = self.stack.pop()?;
         let val_str = match item {
             Val::String(s) => s,
             _ => format!("{} ", item).into(),
         };
         for ch in val_str.chars() {
-            s.push(ch);
             match ch {
                 '\n' => self.print_col = 0,
                 _ => self.print_col += 1,
             }
         }
-        Ok(Event::Print(s))
+        Ok(Event::Print(val_str.to_string()))
     }
 
     fn r#return(&mut self) -> Result<()> {
+        let mut ret_val: Option<Val> = None;
+        let mut first = true;
         loop {
             match self.stack.pop() {
                 Ok(Val::Return(addr)) => {
+                    if let Some(val) = ret_val {
+                        self.stack.push(val)?;
+                    }
                     self.pc = addr;
                     return Ok(());
                 }
-                Ok(_) => continue,
+                Ok(val) => {
+                    if first
+                        && matches!(
+                            val,
+                            Val::String(..) | Val::Single(..) | Val::Double(..) | Val::Integer(..)
+                        )
+                    {
+                        ret_val = Some(val);
+                    }
+                    first = false;
+                    continue;
+                }
                 Err(_) => return Err(error!(ReturnWithoutGosub)),
             }
         }
-    }
-
-    fn r#retval(&mut self) -> Result<()> {
-        let val = self.stack.pop()?;
-        self.r#return()?;
-        self.stack.push(val)
     }
 }
 

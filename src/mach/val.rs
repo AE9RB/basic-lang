@@ -21,23 +21,21 @@ impl std::fmt::Display for Val {
         use Val::*;
         let mut s = match self {
             String(s) => return write!(f, "{}", s),
-            Integer(n) => format!("{}", n),
-            Single(n) => {
-                let s = format!("{}", n);
-                let x = s.chars().filter(char::is_ascii_digit).count();
-                if x > 9 {
-                    format!("{:E}", n)
+            Integer(num) => format!("{}", num),
+            Single(num) => {
+                let s = format!("{}", num);
+                if s.chars().filter(char::is_ascii_digit).count() > 9 {
+                    format!("{:E}", num)
                 } else {
-                    format!("{}", n)
+                    format!("{}", num)
                 }
             }
-            Double(n) => {
-                let s = format!("{}", n);
-                let x = s.chars().filter(char::is_ascii_digit).count();
-                if x > 17 {
-                    format!("{:E}", n)
+            Double(num) => {
+                let s = format!("{}", num);
+                if s.chars().filter(char::is_ascii_digit).count() > 17 {
+                    format!("{:E}", num)
                 } else {
-                    format!("{}", n)
+                    format!("{}", num)
                 }
             }
             Return(..) | Next(..) => {
@@ -56,7 +54,7 @@ impl TryFrom<LineNumber> for Val {
     type Error = Error;
     fn try_from(line_number: LineNumber) -> std::result::Result<Self, Self::Error> {
         match line_number {
-            Some(number) => Ok(Val::Single(number as f32)),
+            Some(num) => Ok(Val::Single(num as f32)),
             None => Err(error!(UndefinedLine)),
         }
     }
@@ -78,23 +76,23 @@ impl TryFrom<Val> for u16 {
     type Error = Error;
     fn try_from(val: Val) -> std::result::Result<Self, Self::Error> {
         match val {
-            Val::Integer(i) => {
-                if i >= 0 {
-                    Ok(i as u16)
+            Val::Integer(num) => {
+                if num >= 0 {
+                    Ok(num as u16)
                 } else {
                     Err(error!(Overflow))
                 }
             }
-            Val::Single(f) => {
-                if f >= 0.0 && f <= u16::max_value() as f32 {
-                    Ok(f as u16)
+            Val::Single(num) => {
+                if num >= 0.0 && num <= u16::max_value() as f32 {
+                    Ok(num as u16)
                 } else {
                     Err(error!(Overflow))
                 }
             }
-            Val::Double(d) => {
-                if d >= 0.0 && d <= u16::max_value() as f64 {
-                    Ok(d as u16)
+            Val::Double(num) => {
+                if num >= 0.0 && num <= u16::max_value() as f64 {
+                    Ok(num as u16)
                 } else {
                     Err(error!(Overflow))
                 }
@@ -108,17 +106,17 @@ impl TryFrom<Val> for i16 {
     type Error = Error;
     fn try_from(val: Val) -> std::result::Result<Self, Self::Error> {
         match val {
-            Val::Integer(i) => Ok(i),
-            Val::Single(f) => {
-                if f >= i16::min_value() as f32 && f <= i16::max_value() as f32 {
-                    Ok(f as i16)
+            Val::Integer(num) => Ok(num),
+            Val::Single(num) => {
+                if num >= i16::min_value() as f32 && num <= i16::max_value() as f32 {
+                    Ok(num as i16)
                 } else {
                     Err(error!(Overflow))
                 }
             }
-            Val::Double(d) => {
-                if d >= i16::min_value() as f64 && d <= i16::max_value() as f64 {
-                    Ok(d as i16)
+            Val::Double(num) => {
+                if num >= i16::min_value() as f64 && num <= i16::max_value() as f64 {
+                    Ok(num as i16)
                 } else {
                     Err(error!(Overflow))
                 }
@@ -132,23 +130,23 @@ impl TryFrom<Val> for u32 {
     type Error = Error;
     fn try_from(val: Val) -> std::result::Result<Self, Self::Error> {
         match val {
-            Val::Integer(i) => {
-                if i >= 0 {
-                    Ok(i as u32)
+            Val::Integer(num) => {
+                if num >= 0 {
+                    Ok(num as u32)
                 } else {
                     Err(error!(Overflow))
                 }
             }
-            Val::Single(f) => {
-                if f >= 0.0 && f <= u32::max_value() as f32 {
-                    Ok(f as u32)
+            Val::Single(num) => {
+                if num >= 0.0 && num <= u32::max_value() as f32 {
+                    Ok(num as u32)
                 } else {
                     Err(error!(Overflow))
                 }
             }
-            Val::Double(d) => {
-                if d >= 0.0 && d <= u32::max_value() as f64 {
-                    Ok(d as u32)
+            Val::Double(num) => {
+                if num >= 0.0 && num <= u32::max_value() as f64 {
+                    Ok(num as u32)
                 } else {
                     Err(error!(Overflow))
                 }
@@ -162,23 +160,23 @@ impl TryFrom<Val> for usize {
     type Error = Error;
     fn try_from(val: Val) -> std::result::Result<Self, Self::Error> {
         match val {
-            Val::Integer(i) => {
-                if i >= 0 {
-                    Ok(i as usize)
+            Val::Integer(num) => {
+                if num >= 0 {
+                    Ok(num as usize)
                 } else {
                     Err(error!(Overflow))
                 }
             }
-            Val::Single(f) => {
-                if f >= 0.0 && f <= usize::max_value() as f32 {
-                    Ok(f as usize)
+            Val::Single(num) => {
+                if num >= 0.0 && num <= usize::max_value() as f32 {
+                    Ok(num as usize)
                 } else {
                     Err(error!(Overflow))
                 }
             }
-            Val::Double(d) => {
-                if d >= 0.0 && d <= usize::max_value() as f64 {
-                    Ok(d as usize)
+            Val::Double(num) => {
+                if num >= 0.0 && num <= usize::max_value() as f64 {
+                    Ok(num as usize)
                 } else {
                     Err(error!(Overflow))
                 }
@@ -192,9 +190,9 @@ impl TryFrom<Val> for f32 {
     type Error = Error;
     fn try_from(val: Val) -> std::result::Result<Self, Self::Error> {
         match val {
-            Val::Integer(i) => Ok(i as f32),
-            Val::Single(f) => Ok(f),
-            Val::Double(d) => Ok(d as f32),
+            Val::Integer(num) => Ok(num as f32),
+            Val::Single(num) => Ok(num),
+            Val::Double(num) => Ok(num as f32),
             Val::String(_) | Val::Return(_) | Val::Next(..) => Err(error!(TypeMismatch)),
         }
     }
@@ -204,9 +202,9 @@ impl TryFrom<Val> for f64 {
     type Error = Error;
     fn try_from(val: Val) -> std::result::Result<Self, Self::Error> {
         match val {
-            Val::Integer(i) => Ok(i as f64),
-            Val::Single(f) => Ok(f as f64),
-            Val::Double(d) => Ok(d),
+            Val::Integer(num) => Ok(num as f64),
+            Val::Single(num) => Ok(num as f64),
+            Val::Double(num) => Ok(num),
             Val::String(_) | Val::Return(_) | Val::Next(..) => Err(error!(TypeMismatch)),
         }
     }
@@ -232,7 +230,14 @@ impl From<&str> for Val {
             _ => {}
         };
         if let Ok(num) = s.parse::<f64>() {
-            Val::Double(num)
+            if num.fract() < std::f64::EPSILON
+                && num <= i16::max_value() as f64
+                && num >= i16::min_value() as f64
+            {
+                Val::Integer(num as i16)
+            } else {
+                Val::Double(num)
+            }
         } else {
             Val::String(string.into())
         }

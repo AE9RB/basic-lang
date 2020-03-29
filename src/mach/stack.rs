@@ -61,8 +61,8 @@ impl<T> Stack<T> {
     pub fn last(&self) -> Option<&T> {
         self.vec.last()
     }
-    pub fn get(&self, idx: usize) -> Option<&T> {
-        self.vec.get(idx)
+    pub fn get(&self, index: usize) -> Option<&T> {
+        self.vec.get(index)
     }
     pub fn append(&mut self, other: &mut Stack<T>) -> Result<()> {
         self.vec.append(&mut other.vec);

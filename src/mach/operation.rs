@@ -185,20 +185,20 @@ impl Operation {
         match lhs {
             Integer(l) => match rhs {
                 Integer(r) => Ok(l == r),
-                Single(r) => Ok((l as f32 - r).abs() < std::f32::EPSILON),
-                Double(r) => Ok((l as f64 - r).abs() < std::f64::EPSILON),
+                Single(r) => Ok((l as f32 - r).abs() <= std::f32::EPSILON),
+                Double(r) => Ok((l as f64 - r).abs() <= std::f64::EPSILON),
                 _ => Err(error!(TypeMismatch)),
             },
             Single(l) => match rhs {
-                Integer(r) => Ok((l - r as f32).abs() < std::f32::EPSILON),
-                Single(r) => Ok((l - r).abs() < std::f32::EPSILON),
-                Double(r) => Ok((l as f64 - r).abs() < std::f64::EPSILON),
+                Integer(r) => Ok((l - r as f32).abs() <= std::f32::EPSILON),
+                Single(r) => Ok((l - r).abs() <= std::f32::EPSILON),
+                Double(r) => Ok((l as f64 - r).abs() <= std::f64::EPSILON),
                 _ => Err(error!(TypeMismatch)),
             },
             Double(l) => match rhs {
-                Integer(r) => Ok((l - r as f64).abs() < std::f64::EPSILON),
-                Single(r) => Ok((l - r as f64).abs() < std::f64::EPSILON),
-                Double(r) => Ok((l - r).abs() < std::f64::EPSILON),
+                Integer(r) => Ok((l - r as f64).abs() <= std::f64::EPSILON),
+                Single(r) => Ok((l - r as f64).abs() <= std::f64::EPSILON),
+                Double(r) => Ok((l - r).abs() <= std::f64::EPSILON),
                 _ => Err(error!(TypeMismatch)),
             },
             String(l) => match rhs {

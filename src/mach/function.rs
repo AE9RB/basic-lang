@@ -59,7 +59,7 @@ impl Function {
 
     pub fn chr(val: Val) -> Result<Val> {
         match char::try_from(u32::try_from(val)?) {
-            Ok(n) => Ok(Val::String(n.to_string().into())),
+            Ok(ch) => Ok(Val::String(ch.to_string().into())),
             Err(_) => Err(error!(Overflow)),
         }
     }

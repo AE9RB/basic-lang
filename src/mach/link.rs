@@ -115,7 +115,7 @@ impl Link {
             self.push(Opcode::Pop(var))?;
         }
         self.append(expr_ops)?;
-        self.push(Opcode::RetVal)?;
+        self.push(Opcode::Return)?;
         self.push_symbol(skip);
         Ok(())
     }
@@ -173,8 +173,6 @@ impl Link {
             debug_assert!(false, "Symbol already exists.");
         }
     }
-
-    // ***
 
     pub fn set_start_of_direct(&mut self, op_addr: Address) {
         self.symbols

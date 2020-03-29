@@ -1,5 +1,4 @@
 use super::{compile::compile, Address, Link, Opcode, Symbol};
-use crate::error;
 use crate::lang::{Error, Line, LineNumber};
 use std::sync::Arc;
 
@@ -57,10 +56,6 @@ impl Program {
     }
 
     pub fn compile<'b, T: IntoIterator<Item = &'b Line>>(&mut self, lines: T) {
-        let is_out_of_mem = |this: &Self| this.link.len() > Address::max_value() as usize;
-        if is_out_of_mem(self) {
-            return;
-        }
         let mut direct_seen = false;
         for line in lines {
             if let Some(line_number) = line.number() {
@@ -91,15 +86,6 @@ impl Program {
                 }
             };
             compile(self, &ast);
-            if self.line_number.is_none() {
-                if let Err(e) = self.link.push(Opcode::End) {
-                    Arc::make_mut(&mut self.errors).push(e);
-                }
-            }
-            if is_out_of_mem(self) {
-                Arc::make_mut(&mut self.errors).push(error!(OutOfMemory));
-                return;
-            }
         }
     }
 

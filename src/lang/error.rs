@@ -124,6 +124,7 @@ pub enum ErrorCode {
     CantContinue = 17,
     UndefinedUserFunction = 18,
     RedoFromStart = 21,
+    LineBufferOverflow = 23,
     ForWithoutNext = 26,
     InternalError = 51,
 }

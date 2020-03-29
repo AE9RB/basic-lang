@@ -66,7 +66,7 @@ impl Var {
     fn build_array_key(&mut self, var_name: &Rc<str>, arr: Stack<Val>) -> Result<Rc<str>> {
         let requested = self.vec_val_to_vec_i16(arr)?;
         let dimensioned = match self.dims.get(var_name) {
-            Some(v) => v,
+            Some(vec_num) => vec_num,
             None => self
                 .dims
                 .entry(var_name.clone())
@@ -87,13 +87,13 @@ impl Var {
 
     fn vec_val_to_vec_i16(&self, mut arr: Stack<Val>) -> Result<Vec<i16>> {
         let mut vec_i16: Vec<i16> = vec![];
-        for v in arr.drain(..) {
-            match i16::try_from(v) {
-                Ok(i) => {
-                    if i < 0 {
+        for val in arr.drain(..) {
+            match i16::try_from(val) {
+                Ok(num) => {
+                    if num < 0 {
                         return Err(error!(SubscriptOutOfRange));
                     }
-                    vec_i16.push(i)
+                    vec_i16.push(num)
                 }
                 Err(e) => return Err(e),
             }

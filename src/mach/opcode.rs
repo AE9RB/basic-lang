@@ -34,10 +34,9 @@ pub enum Opcode {
     /// ON x GOTO/GOSUB lines
     On,
     /// Expect Return(Address) on stack or else error: RETURN WITHOUT GOSUB.
+    /// A single assignable value before the Return(Address) will be restored to the stack.
     /// Branch to Address.
     Return,
-    /// Returns with preserving the last stack value.
-    RetVal,
 
     // *** Statements
     Clear,
@@ -113,7 +112,6 @@ impl std::fmt::Display for Opcode {
             Next(a) => write!(f, "NEXT({})", a),
             On => write!(f, "ON"),
             Return => write!(f, "RETURN"),
-            RetVal => write!(f, "RETVAL"),
 
             Clear => write!(f, "CLEAR"),
             Cont => write!(f, "CONT"),
