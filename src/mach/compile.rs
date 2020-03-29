@@ -247,6 +247,7 @@ impl Compiler {
         match statement {
             Statement::Clear(col, ..) => self.r#clear(link, col),
             Statement::Cont(col, ..) => self.r#cont(link, col),
+            Statement::Data(col, v) => self.r#data(link, col, v.len()),
             Statement::Def(col, _, v, _) => self.r#def(link, col, v.len()),
             Statement::Dim(col, ..) => self.r#dim(link, col),
             Statement::End(col, ..) => self.r#end(link, col),
@@ -283,6 +284,20 @@ impl Compiler {
 
     fn r#cont(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
         link.push(Opcode::Cont)?;
+        Ok(col.clone())
+    }
+
+    fn r#data(&mut self, link: &mut Link, col: &Column, len: usize) -> Result<Column> {
+        let exprs = self.expr.pop_n(len)?;
+        for (expr_col, mut expr_link) in exprs {
+            if expr_link.len() == 1 {
+                if let Some(Opcode::Literal(val)) = expr_link.drain(..).last() {
+                    link.push_data(val.clone())?;
+                    continue;
+                }
+            }
+            return Err(error!(SyntaxError, ..&expr_col; "EXPECTED LITERAL"));
+        }
         Ok(col.clone())
     }
 

@@ -281,14 +281,13 @@ impl Runtime {
         match self.execute_loop(iterations) {
             Ok(event) => {
                 if let State::Stopped = self.state {
-                    if let Some(event) = self.ready_prompt() {
-                        event
-                    } else {
-                        event
+                    if let Event::Stopped = event {
+                        if let Some(event) = self.ready_prompt() {
+                            return event;
+                        }
                     }
-                } else {
-                    event
                 }
+                event
             }
             Err(error) => {
                 if let State::InputRunning = self.state {
@@ -379,6 +378,7 @@ impl Runtime {
                     self.pc = addr;
                     if has_indirect_errors && self.pc < self.entry_address {
                         self.state = State::Stopped;
+                        self.cont = State::Stopped;
                         return Ok(Event::Errors(Arc::clone(&self.source.indirect_errors)));
                     }
                 }

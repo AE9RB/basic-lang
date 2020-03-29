@@ -7,14 +7,14 @@ use std::rc::Rc;
 
 type Result<T> = std::result::Result<T, Error>;
 
-const OVERFLOW_MESSAGE: &str = "PROGRAM TOO LARGE";
-
 /// ## Linkable object
 
 #[derive(Debug)]
 pub struct Link {
     current_symbol: Symbol,
     ops: Stack<Opcode>,
+    data: Stack<Val>,
+    direct_set: bool,
     symbols: BTreeMap<Symbol, Address>,
     unlinked: HashMap<Address, (Column, Symbol)>,
 }
@@ -23,7 +23,9 @@ impl Default for Link {
     fn default() -> Self {
         Link {
             current_symbol: 0,
-            ops: Stack::new(OVERFLOW_MESSAGE),
+            ops: Stack::new("PROGRAM SIZE LIMIT EXCEEDED"),
+            data: Stack::new("DATA SIZE LIMIT EXCEEDED"),
+            direct_set: false,
             symbols: BTreeMap::default(),
             unlinked: HashMap::default(),
         }
@@ -32,6 +34,9 @@ impl Default for Link {
 
 impl Link {
     pub fn append(&mut self, mut link: Link) -> Result<()> {
+        if self.direct_set && !link.data.is_empty() {
+            return Err(error!(IllegalDirect));
+        }
         let addr_offset = self.ops.len();
         let sym_offset = self.current_symbol;
         for (symbol, address) in link.symbols.iter() {
@@ -50,11 +55,16 @@ impl Link {
                 .insert(*address + addr_offset, (col.clone(), symbol));
         }
         self.current_symbol += link.current_symbol;
-        self.ops.append(&mut link.ops)
+        self.ops.append(&mut link.ops)?;
+        self.data.append(&mut link.data)
     }
 
     pub fn push(&mut self, op: Opcode) -> Result<()> {
         self.ops.push(op)
+    }
+
+    pub fn push_data(&mut self, val: Val) -> Result<()> {
+        self.data.push(val)
     }
 
     pub fn get(&self, addr: Address) -> Option<&Opcode> {
@@ -175,6 +185,7 @@ impl Link {
     }
 
     pub fn set_start_of_direct(&mut self, op_addr: Address) {
+        self.direct_set = true;
         self.symbols
             .insert(LineNumber::max_value() as isize + 1 as Symbol, op_addr);
     }

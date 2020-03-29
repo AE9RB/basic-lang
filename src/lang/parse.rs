@@ -114,23 +114,13 @@ impl<'a> BasicParser<'a> {
         &mut self,
         var_map: &HashMap<token::Ident, Variable>,
     ) -> Result<Vec<Expression>> {
-        self.expect(Token::LParen)?;
         let mut expressions: Vec<Expression> = vec![];
-        if let Some(Token::RParen) = self.peek() {
-            self.next();
-            return Ok(expressions);
-        }
         loop {
             expressions.push(self.expect_fn_expression(var_map)?);
-            match self.next() {
-                Some(Token::RParen) => return Ok(expressions),
-                Some(Token::Comma) => continue,
-                _ => {
-                    return Err(
-                        error!(SyntaxError, ..&self.col; "EXPECTED RIGHT PARENTHESIS OR COMMA"),
-                    )
-                }
+            if self.maybe(Token::Comma) {
+                continue;
             }
+            return Ok(expressions);
         }
     }
 
@@ -213,7 +203,9 @@ impl<'a> BasicParser<'a> {
         }
         match self.peek() {
             Some(Token::LParen) => {
+                self.expect(Token::LParen)?;
                 let vec_expr = self.expect_expression_list()?;
+                self.expect(Token::RParen)?;
                 Ok(Variable::Array(
                     col.start..self.col.end,
                     ident.into(),
@@ -366,7 +358,12 @@ impl Expression {
                     let col = parse.col.clone();
                     match parse.peek() {
                         Some(&&Token::LParen) => {
-                            let vec_expr = parse.expect_fn_expression_list(var_map)?;
+                            parse.expect(Token::LParen)?;
+                            let mut vec_expr = vec![];
+                            if !parse.maybe(Token::RParen) {
+                                vec_expr = parse.expect_fn_expression_list(var_map)?;
+                                parse.expect(Token::RParen)?;
+                            }
                             let col = col.start..parse.col.end;
                             Expression::Variable(Variable::Array(col, ident.into(), vec_expr))
                         }
@@ -512,6 +509,7 @@ impl Statement {
                 match word {
                     Clear => return Ok(vec![Self::r#clear(parse)?]),
                     Cont => return Ok(vec![Self::r#cont(parse)?]),
+                    Data => return Ok(vec![Self::r#data(parse)?]),
                     Def => return Ok(vec![Self::r#def(parse)?]),
                     Dim => return Self::r#dim(parse),
                     End => return Ok(vec![Self::r#end(parse)?]),
@@ -550,6 +548,11 @@ impl Statement {
 
     fn r#cont(parse: &mut BasicParser) -> Result<Statement> {
         Ok(Statement::Cont(parse.col.clone()))
+    }
+
+    fn r#data(parse: &mut BasicParser) -> Result<Statement> {
+        let vec_expr = parse.expect_expression_list()?;
+        Ok(Statement::Data(parse.col.clone(), vec_expr))
     }
 
     fn r#def(parse: &mut BasicParser) -> Result<Statement> {

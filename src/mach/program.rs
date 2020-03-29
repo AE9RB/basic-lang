@@ -86,6 +86,11 @@ impl Program {
                 }
             };
             compile(self, &ast);
+            if self.line_number.is_none() {
+                if let Err(e) = self.link.push(Opcode::End) {
+                    Arc::make_mut(&mut self.errors).push(e);
+                }
+            }
         }
     }
 
