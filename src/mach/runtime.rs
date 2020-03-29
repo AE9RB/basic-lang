@@ -121,7 +121,6 @@ impl Runtime {
 
     fn enter_indirect(&mut self, line: Line) {
         self.cont = State::Stopped;
-        self.stack.clear();
         if line.is_empty() {
             self.dirty = self.source.remove(line.number()).is_some();
         } else {
@@ -457,8 +456,10 @@ impl Runtime {
     }
 
     fn r#clear(&mut self) -> Result<()> {
+        self.stack.clear();
         self.vars.clear();
         self.functions.clear();
+        self.cont = State::Stopped;
         Ok(())
     }
 
@@ -582,23 +583,15 @@ impl Runtime {
 
     fn r#next(&mut self, next_name: Rc<str>) -> Result<()> {
         loop {
-            let next;
-            loop {
-                match self.stack.pop() {
-                    Ok(Val::Next(addr)) => {
-                        next = addr;
-                        break;
-                    }
-                    Ok(_) => continue,
-                    Err(_) => return Err(error!(NextWithoutFor)),
-                }
-            }
+            let next = match self.stack.pop() {
+                Ok(Val::Next(addr)) => addr,
+                Ok(_) | Err(_) => return Err(error!(NextWithoutFor)),
+            };
             let var_name_val = self.stack.pop()?;
             let step_val = self.stack.pop()?;
             let to_val = self.stack.pop()?;
             if let Val::String(var_name) = var_name_val {
                 if !next_name.is_empty() && var_name != next_name {
-                    //self.stack.push(Val::String(next_name))?;
                     continue;
                 }
                 let mut current = self.vars.fetch(&var_name);

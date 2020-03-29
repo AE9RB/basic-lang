@@ -75,7 +75,7 @@ impl Token {
         s.to_string()
     }
 
-    pub fn scan_minutia(s: &str) -> Option<Token> {
+    pub fn match_minutia(s: &str) -> Option<Token> {
         match s {
             "(" => Some(Token::LParen),
             ")" => Some(Token::RParen),

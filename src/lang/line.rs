@@ -1,4 +1,4 @@
-use super::*;
+use super::{ast, lex, parse, token, Error, LineNumber};
 
 #[derive(Debug)]
 pub struct Line {
@@ -7,12 +7,9 @@ pub struct Line {
 }
 
 impl Line {
-    pub fn new(s: &str) -> Line {
-        let (line_number, tokens) = lex(&s);
-        Line {
-            number: line_number,
-            tokens,
-        }
+    pub fn new(source_line: &str) -> Line {
+        let (number, tokens) = lex(&source_line);
+        Line { number, tokens }
     }
 
     pub fn number(&self) -> LineNumber {

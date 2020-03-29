@@ -185,12 +185,12 @@ impl<'a> BasicParser<'a> {
     }
 
     fn expect_ident_list(&mut self) -> Result<Vec<(Column, token::Ident)>> {
-        let mut vars: Vec<(Column, token::Ident)> = vec![];
+        let mut idents: Vec<(Column, token::Ident)> = vec![];
         let mut expecting = false;
         loop {
             match self.peek() {
                 None | Some(Token::Colon) | Some(Token::Word(Word::Else)) if !expecting => break,
-                _ => vars.push(self.expect_ident()?),
+                _ => idents.push(self.expect_ident()?),
             };
             if self.maybe(Token::Comma) {
                 expecting = true;
@@ -198,7 +198,7 @@ impl<'a> BasicParser<'a> {
                 break;
             }
         }
-        Ok(vars)
+        Ok(idents)
     }
 
     fn expect_var(&mut self) -> Result<Variable> {
@@ -225,12 +225,12 @@ impl<'a> BasicParser<'a> {
     }
 
     fn expect_var_list(&mut self) -> Result<Vec<Variable>> {
-        let mut vars: Vec<Variable> = vec![];
+        let mut vec_var: Vec<Variable> = vec![];
         let mut expecting = false;
         loop {
             match self.peek() {
                 None | Some(Token::Colon) | Some(Token::Word(Word::Else)) if !expecting => break,
-                _ => vars.push(self.expect_var()?),
+                _ => vec_var.push(self.expect_var()?),
             };
             if self.maybe(Token::Comma) {
                 expecting = true;
@@ -238,7 +238,7 @@ impl<'a> BasicParser<'a> {
                 break;
             }
         }
-        Ok(vars)
+        Ok(vec_var)
     }
 
     fn maybe_line_number(&mut self) -> Result<LineNumber> {
@@ -328,7 +328,7 @@ impl<'a> BasicParser<'a> {
         }
         Err(error!(SyntaxError, ..&self.col;
             match token {
-                Token::Unknown(_) | Token::Whitespace(_) => {"PANIC"}
+                Token::Unknown(_) | Token::Whitespace(_) => {"EXPECTED IMPOSSIBLE"}
                 Token::Literal(_) => {"EXPECTED LITERAL"}
                 Token::Word(Word::To) => {"EXPECTED TO"}
                 Token::Word(_) => {"EXPECTED STATEMENT WORD"}
@@ -375,42 +375,42 @@ impl Expression {
                                 return Err(error!(SyntaxError, ..&col; FN_RESERVED));
                             }
                             match var_map.get(&ident) {
-                                Some(x) => Expression::Variable(x.clone()),
+                                Some(var) => Expression::Variable(var.clone()),
                                 None => Expression::Variable(Variable::Unary(col, ident.into())),
                             }
                         }
                     }
                 }
                 Some(Token::Operator(Operator::Plus)) => {
-                    let op_prec = Expression::unary_op_prec(&Operator::Plus);
+                    let op_prec = Expression::unary_op_precedence(&Operator::Plus);
                     descend(parse, var_map, op_prec)?
                 }
                 Some(Token::Operator(Operator::Minus)) => {
                     let col = parse.col.clone();
-                    let op_prec = Expression::unary_op_prec(&Operator::Minus);
+                    let op_prec = Expression::unary_op_precedence(&Operator::Minus);
                     let expr = descend(parse, var_map, op_prec)?;
                     Expression::Negation(col, Box::new(expr))
                 }
-                Some(Token::Literal(lit)) => Expression::for_literal(parse.col.clone(), lit)?,
+                Some(Token::Literal(lit)) => Expression::literal(parse.col.clone(), lit)?,
                 _ => return Err(error!(SyntaxError, ..&parse.col; "EXPECTED EXPRESSION")),
             };
             let mut rhs;
             while let Some(Token::Operator(op)) = parse.peek() {
-                let op_prec = Expression::binary_op_prec(op);
+                let op_prec = Expression::binary_op_precedence(op);
                 if op_prec <= precedence {
                     break;
                 }
                 parse.next();
                 let column = parse.col.clone();
                 rhs = descend(parse, var_map, op_prec)?;
-                lhs = Expression::for_binary_op(column, op, lhs, rhs)?;
+                lhs = Expression::binary_op(column, op, lhs, rhs)?;
             }
             Ok(lhs)
         };
         descend(parse, var_map, 0)
     }
 
-    fn for_binary_op(
+    fn binary_op(
         col: Column,
         op: &Operator,
         lhs: Expression,
@@ -442,7 +442,7 @@ impl Expression {
         })
     }
 
-    fn unary_op_prec(op: &Operator) -> usize {
+    fn unary_op_precedence(op: &Operator) -> usize {
         use Operator::*;
         match op {
             Plus | Minus => 12,
@@ -453,7 +453,7 @@ impl Expression {
         }
     }
 
-    fn binary_op_prec(op: &Operator) -> usize {
+    fn binary_op_precedence(op: &Operator) -> usize {
         use Operator::*;
         match op {
             Caret => 13,
@@ -473,7 +473,7 @@ impl Expression {
         }
     }
 
-    fn for_literal(col: Column, lit: &Literal) -> Result<Expression> {
+    fn literal(col: Column, lit: &Literal) -> Result<Expression> {
         fn parse<T: std::str::FromStr>(col: Column, s: &str) -> Result<T> {
             let mut s = String::from(s).replace("D", "E");
             match s.chars().last() {
@@ -586,15 +586,15 @@ impl Statement {
 
     fn r#dim(parse: &mut BasicParser) -> Result<Vec<Statement>> {
         let column = parse.col.clone();
-        let mut v: Vec<Statement> = vec![];
+        let mut vec_stmt: Vec<Statement> = vec![];
         let var_list = parse.expect_var_list()?;
         if var_list.is_empty() {
             return Err(error!(SyntaxError, ..&column; "EXPECTED ARRAY DIMENSIONS"));
         }
         for var in var_list {
-            v.push(Statement::Dim(column.clone(), var));
+            vec_stmt.push(Statement::Dim(column.clone(), var));
         }
-        Ok(v)
+        Ok(vec_stmt)
     }
 
     fn r#end(parse: &mut BasicParser) -> Result<Statement> {
@@ -609,10 +609,11 @@ impl Statement {
         let expr_from = parse.expect_expression()?;
         parse.expect(Token::Word(Word::To))?;
         let expr_to = parse.expect_expression()?;
-        let mut expr_step = Expression::Integer(parse.col.end..parse.col.end, 1);
-        if parse.maybe(Token::Word(Word::Step)) {
-            expr_step = parse.expect_expression()?
-        }
+        let expr_step = if parse.maybe(Token::Word(Word::Step)) {
+            parse.expect_expression()?
+        } else {
+            Expression::Integer(parse.col.end..parse.col.end, 1)
+        };
         Ok(Statement::For(column, var, expr_from, expr_to, expr_step))
     }
 
@@ -831,7 +832,7 @@ impl From<(&token::Ident, &token::Ident)> for Ident {
 }
 
 impl token::Ident {
-    pub fn is_user_function(&self) -> bool {
+    fn is_user_function(&self) -> bool {
         use token::Ident::*;
         match self {
             Plain(s) => s,

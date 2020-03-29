@@ -109,8 +109,8 @@ impl AcceptVisitor for Statement {
             Dim(_, var) => {
                 var.accept(visitor);
             }
-            For(_, ident, expr1, expr2, expr3) => {
-                ident.accept(visitor);
+            For(_, var, expr1, expr2, expr3) => {
+                var.accept(visitor);
                 expr1.accept(visitor);
                 expr2.accept(visitor);
                 expr3.accept(visitor);
@@ -118,12 +118,12 @@ impl AcceptVisitor for Statement {
             Gosub(_, expr) | Goto(_, expr) | Print(_, expr) | Run(_, expr) => {
                 expr.accept(visitor);
             }
-            If(_, predicate, vec_stmt1, vec_stmt2) => {
+            If(_, predicate, then_stmt, else_stmt) => {
                 predicate.accept(visitor);
-                for stmt in vec_stmt1 {
+                for stmt in then_stmt {
                     stmt.accept(visitor);
                 }
-                for stmt in vec_stmt2 {
+                for stmt in else_stmt {
                     stmt.accept(visitor);
                 }
             }
@@ -135,18 +135,18 @@ impl AcceptVisitor for Statement {
                 expr1.accept(visitor);
                 expr2.accept(visitor);
             }
-            Input(_, expr1, expr2, vec_ident) => {
+            Input(_, expr1, expr2, vec_var) => {
                 expr1.accept(visitor);
                 expr2.accept(visitor);
-                for var in vec_ident {
+                for var in vec_var {
                     var.accept(visitor);
                 }
             }
-            Next(_, ident) => {
-                ident.accept(visitor);
-            }
-            OnGoto(_, var, vec_expr) | OnGosub(_, var, vec_expr) => {
+            Next(_, var) => {
                 var.accept(visitor);
+            }
+            OnGoto(_, expr, vec_expr) | OnGosub(_, expr, vec_expr) => {
+                expr.accept(visitor);
                 for expr in vec_expr {
                     expr.accept(visitor);
                 }
@@ -161,9 +161,7 @@ impl AcceptVisitor for Expression {
         use Expression::*;
         match self {
             Single(..) | Double(..) | Integer(..) | String(..) => {}
-            Variable(var) => {
-                var.accept(visitor);
-            }
+            Variable(var) => var.accept(visitor),
             Negation(_, expr) => expr.accept(visitor),
             Power(_, expr1, expr2)
             | Multiply(_, expr1, expr2)

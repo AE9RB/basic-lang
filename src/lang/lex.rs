@@ -1,8 +1,8 @@
 use super::{token::*, LineNumber, MaxValue};
 use std::collections::VecDeque;
 
-pub fn lex(s: &str) -> (LineNumber, Vec<Token>) {
-    BasicLexer::lex(s)
+pub fn lex(source_line: &str) -> (LineNumber, Vec<Token>) {
+    BasicLexer::lex(source_line)
 }
 
 fn is_basic_whitespace(c: char) -> bool {
@@ -41,17 +41,17 @@ impl<'a> Iterator for BasicLexer<'a> {
             return self.number();
         }
         if is_basic_alphabetic(*pk) {
-            let r = self.alphabetic();
-            if let Some(Token::Word(Word::Rem1)) = r {
+            let token = self.alphabetic();
+            if matches!(token, Some(Token::Word(Word::Rem1))) {
                 self.remark = true;
             }
-            return r;
+            return token;
         }
         if *pk == '"' {
             return self.string();
         }
         let minutia = self.minutia();
-        if let Some(Token::Word(Word::Rem2)) = minutia {
+        if matches!(minutia, Some(Token::Word(Word::Rem2))) {
             self.remark = true;
         }
         minutia
@@ -59,13 +59,12 @@ impl<'a> Iterator for BasicLexer<'a> {
 }
 
 impl<'a> BasicLexer<'a> {
-    fn lex(s: &str) -> (LineNumber, Vec<Token>) {
+    fn lex(mut source_line: &str) -> (LineNumber, Vec<Token>) {
         let mut line_number = None;
-        let mut s = s;
-        let mut ln: usize = 0;
+        let mut line_str_pos: usize = 0;
         let mut seen_digit = false;
-        while let Some(n) = s.get(ln..) {
-            if let Some(ch) = n.chars().next() {
+        while let Some(s) = source_line.get(line_str_pos..) {
+            if let Some(ch) = s.chars().next() {
                 if seen_digit && is_basic_whitespace(ch) {
                     break;
                 }
@@ -74,29 +73,29 @@ impl<'a> BasicLexer<'a> {
                 } else if !is_basic_whitespace(ch) {
                     break;
                 }
-                ln += 1;
+                line_str_pos += 1;
             } else {
                 break;
             }
         }
-        if let Ok(n) = s[0..ln].trim_start().parse::<u16>() {
-            if n <= LineNumber::max_value() {
-                line_number = Some(n);
-                if let Some(' ') = s[ln..].chars().next() {
-                    ln += 1;
+        if let Ok(num) = source_line[0..line_str_pos].trim_start().parse::<u16>() {
+            if num <= LineNumber::max_value() {
+                line_number = Some(num);
+                if let Some(' ') = source_line[line_str_pos..].chars().next() {
+                    line_str_pos += 1;
                 }
-                s = &s[ln..];
+                source_line = &source_line[line_str_pos..];
             }
         }
         let mut tokens = BasicLexer {
-            chars: s.chars().peekable(),
+            chars: source_line.chars().peekable(),
             pending: VecDeque::default(),
             remark: false,
         }
         .collect();
         BasicLexer::trim_end(&mut tokens);
         BasicLexer::collapse_go(&mut tokens);
-        BasicLexer::collapse_lt_gt_equal(&mut tokens);
+        BasicLexer::collapse_operators(&mut tokens);
         if line_number.is_some() {
             BasicLexer::separate_words(&mut tokens);
             BasicLexer::upgrade_tokens(&mut tokens);
@@ -104,7 +103,7 @@ impl<'a> BasicLexer<'a> {
         (line_number, tokens)
     }
 
-    fn collapse_lt_gt_equal(tokens: &mut Vec<Token>) {
+    fn collapse_operators(tokens: &mut Vec<Token>) {
         let mut locs: Vec<(usize, Token)> = vec![];
         let mut tokens_iter = tokens.windows(2).enumerate();
         while let Some((index, tt)) = tokens_iter.next() {
@@ -175,13 +174,13 @@ impl<'a> BasicLexer<'a> {
     }
 
     fn separate_words(tokens: &mut Vec<Token>) {
-        let mut ins: Vec<usize> = vec![];
+        let mut locs: Vec<usize> = vec![];
         for (index, tt) in tokens.windows(2).enumerate() {
-            if tt.iter().all(|y| y.is_word()) {
-                ins.push(index);
+            if tt.iter().all(Token::is_word) {
+                locs.push(index);
             }
         }
-        while let Some(index) = ins.pop() {
+        while let Some(index) = locs.pop() {
             tokens.insert(index + 1, Token::Whitespace(1));
         }
     }
@@ -192,7 +191,7 @@ impl<'a> BasicLexer<'a> {
         }
         if let Some(Token::Unknown(_)) = tokens.last() {
             if let Some(Token::Unknown(s)) = tokens.pop() {
-                tokens.push(Token::Unknown(s.trim_end().to_string()));
+                tokens.push(Token::Unknown(s.trim_end().into()));
             }
         }
     }
@@ -216,14 +215,7 @@ impl<'a> BasicLexer<'a> {
         let mut digits = 0;
         let mut decimal = false;
         let mut exp = false;
-        loop {
-            let mut ch = match self.chars.next() {
-                Some(c) => c,
-                None => {
-                    debug_assert!(false, "Failed to tokenize number.");
-                    return None;
-                }
-            };
+        while let Some(mut ch) = self.chars.next() {
             if ch == 'e' {
                 ch = 'E'
             }
@@ -283,28 +275,20 @@ impl<'a> BasicLexer<'a> {
     fn string(&mut self) -> Option<Token> {
         let mut s = String::new();
         self.chars.next();
-        loop {
-            if let Some(ch) = self.chars.next() {
-                if ch != '"' {
-                    s.push(ch);
-                    continue;
-                }
+        while let Some(ch) = self.chars.next() {
+            if ch == '"' {
+                break;
             }
-            return Some(Token::Literal(Literal::String(s)));
+            s.push(ch);
         }
+        Some(Token::Literal(Literal::String(s)))
     }
 
     fn alphabetic(&mut self) -> Option<Token> {
         let mut s = String::new();
         let mut digit = false;
-        loop {
-            let ch = match self.chars.next() {
-                Some(ch) => ch.to_ascii_uppercase(),
-                None => {
-                    debug_assert!(false, "Failed to tokenize alphabetic.");
-                    return None;
-                }
-            };
+        while let Some(ch) = self.chars.next() {
+            let ch = ch.to_ascii_uppercase();
             s.push(ch);
             if is_basic_digit(ch) {
                 digit = true;
@@ -349,26 +333,24 @@ impl<'a> BasicLexer<'a> {
 
     fn minutia(&mut self) -> Option<Token> {
         let mut s = String::new();
-        loop {
-            if let Some(ch) = self.chars.next() {
-                s.push(ch);
-                if let Some(t) = Token::scan_minutia(&s) {
-                    return Some(t);
-                }
-                if let Some(pk) = self.chars.peek() {
-                    if is_basic_alphabetic(*pk) {
-                        break;
-                    }
-                    if is_basic_digit(*pk) {
-                        break;
-                    }
-                    if is_basic_whitespace(*pk) {
-                        break;
-                    }
-                    continue;
-                }
-                break;
+        while let Some(ch) = self.chars.next() {
+            s.push(ch);
+            if let Some(token) = Token::match_minutia(&s) {
+                return Some(token);
             }
+            if let Some(pk) = self.chars.peek() {
+                if is_basic_alphabetic(*pk) {
+                    break;
+                }
+                if is_basic_digit(*pk) {
+                    break;
+                }
+                if is_basic_whitespace(*pk) {
+                    break;
+                }
+                continue;
+            }
+            break;
         }
         Some(Token::Unknown(s))
     }
