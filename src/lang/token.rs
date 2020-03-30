@@ -21,6 +21,7 @@ pub enum Token {
 impl Token {
     pub fn scan_alphabetic(v: &mut VecDeque<Token>, mut s: &str) -> String {
         while let Some((idx, len, token)) = [
+            ("RESTORE", Token::Word(Word::Restore)),
             ("RETURN", Token::Word(Word::Return)),
             ("CLEAR", Token::Word(Word::Clear)),
             ("GOSUB", Token::Word(Word::Gosub1)),
@@ -32,6 +33,7 @@ impl Token {
             ("GOTO", Token::Word(Word::Goto1)),
             ("NEXT", Token::Word(Word::Next)),
             ("LIST", Token::Word(Word::List)),
+            ("READ", Token::Word(Word::Read)),
             ("STEP", Token::Word(Word::Step)),
             ("STOP", Token::Word(Word::Stop)),
             ("THEN", Token::Word(Word::Then)),
@@ -200,8 +202,10 @@ pub enum Word {
     On,
     Print1,
     Print2,
+    Read,
     Rem1,
     Rem2,
+    Restore,
     Return,
     Step,
     Stop,
@@ -235,8 +239,10 @@ impl std::fmt::Display for Word {
             On => write!(f, "ON"),
             Print1 => write!(f, "PRINT"),
             Print2 => write!(f, "?"),
+            Read => write!(f, "READ"),
             Rem1 => write!(f, "REM"),
             Rem2 => write!(f, "'"),
+            Restore => write!(f, "RESTORE"),
             Return => write!(f, "RETURN"),
             Run => write!(f, "RUN"),
             Step => write!(f, "STEP"),

@@ -1,4 +1,4 @@
-use super::{Function, Link, Opcode, Program, Stack, Val};
+use super::{Function, Link, Opcode, Operation, Program, Stack, Val};
 use crate::error;
 use crate::lang::ast::{self, AcceptVisitor};
 use crate::lang::{Column, Error, LineNumber};
@@ -263,6 +263,8 @@ impl Compiler {
             Statement::OnGoto(col, _, v) => self.r#on(link, col, v.len(), false),
             Statement::OnGosub(col, _, v) => self.r#on(link, col, v.len(), true),
             Statement::Print(col, ..) => self.r#print(link, col),
+            Statement::Read(col, v) => self.r#read(link, col, v.len()),
+            Statement::Restore(col, ..) => self.r#restore(link, col),
             Statement::Return(col, ..) => self.r#return(link, col),
             Statement::Run(col, ..) => self.r#run(link, col),
             Statement::Stop(col, ..) => self.r#stop(link, col),
@@ -291,9 +293,18 @@ impl Compiler {
         let exprs = self.expr.pop_n(len)?;
         for (expr_col, mut expr_link) in exprs {
             if expr_link.len() == 1 {
-                if let Some(Opcode::Literal(val)) = expr_link.drain(..).last() {
+                if let Some(Opcode::Literal(val)) = expr_link.drain(..).next() {
                     link.push_data(val.clone())?;
                     continue;
+                }
+            }
+            if expr_link.len() == 2 {
+                let mut expr_link = expr_link.drain(..);
+                if let Some(Opcode::Literal(val)) = expr_link.next() {
+                    if let Some(Opcode::Neg) = expr_link.next() {
+                        link.push_data(Operation::negate(val)?)?;
+                        continue;
+                    }
                 }
             }
             return Err(error!(SyntaxError, ..&expr_col; "EXPECTED LITERAL"));
@@ -387,13 +398,12 @@ impl Compiler {
     }
 
     fn r#input(&mut self, link: &mut Link, col: &Column, len: usize) -> Result<Column> {
-        let len = Val::try_from(len)?;
         let (_prompt_col, prompt) = self.expr.pop()?;
         let (_caps_col, caps) = self.expr.pop()?;
         link.append(prompt)?;
         link.append(caps)?;
-        link.push(Opcode::Literal(len))?;
-        for var in self.var.drain(..) {
+        link.push(Opcode::Literal(Val::try_from(len)?))?;
+        for var in self.var.pop_n(len)? {
             link.push(Opcode::Input(var.name.clone()))?;
             var.push_as_pop(link)?;
         }
@@ -462,6 +472,24 @@ impl Compiler {
         let (_expr_col, expr) = self.expr.pop()?;
         link.append(expr)?;
         link.push(Opcode::Print)?;
+        Ok(col.clone())
+    }
+
+    fn r#read(&mut self, link: &mut Link, col: &Column, len: usize) -> Result<Column> {
+        for var in self.var.pop_n(len)? {
+            link.push(Opcode::Read)?;
+            var.push_as_pop(link)?;
+        }
+        Ok(col.clone())
+    }
+
+    fn r#restore(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
+        let mut line_number: LineNumber = None;
+        let (sub_col, ops) = self.expr.pop()?;
+        if let Ok(ln) = LineNumber::try_from(ops) {
+            line_number = ln;
+        }
+        link.push_restore(sub_col, line_number)?;
         Ok(col.clone())
     }
 

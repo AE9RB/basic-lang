@@ -331,7 +331,7 @@ impl Runtime {
         };
         self.stack.push(caps)?;
         self.stack.push(len)?;
-        self.print_col += prompt.len();
+        self.print_col = 0;
         Ok(Event::Input(prompt, is_caps))
     }
 
@@ -401,6 +401,8 @@ impl Runtime {
                 Opcode::On => self.r#on()?,
                 Opcode::Next(var_name) => self.r#next(var_name)?,
                 Opcode::Print => return self.r#print(),
+                Opcode::Read => self.r#read()?,
+                Opcode::Restore(addr) => self.r#restore(addr)?,
                 Opcode::Return => self.r#return()?,
                 Opcode::Stop => return Err(error!(Break)),
 
@@ -442,6 +444,7 @@ impl Runtime {
                     let vec = self.stack.pop_vec()?;
                     self.stack.push(Function::rnd(&mut self.rand, vec)?)?;
                 }
+                Opcode::Sgn => self.stack.pop_1_push(&Function::sgn)?,
                 Opcode::Sin => self.stack.pop_1_push(&Function::sin)?,
                 Opcode::Sqr => self.stack.pop_1_push(&Function::sqr)?,
                 Opcode::Str => self.stack.pop_1_push(&Function::str)?,
@@ -449,12 +452,14 @@ impl Runtime {
                     let val = self.stack.pop()?;
                     self.stack.push(Function::tab(self.print_col, val)?)?;
                 }
+                Opcode::Val => self.stack.pop_1_push(&Function::val)?,
             }
         }
         Ok(Event::Running)
     }
 
     fn r#clear(&mut self) {
+        self.program.restore_data(0);
         self.stack.clear();
         self.vars.clear();
         self.functions.clear();
@@ -563,6 +568,7 @@ impl Runtime {
     }
 
     fn r#new_(&mut self) -> Result<Event> {
+        self.program.restore_data(0);
         self.stack.clear();
         self.vars.clear();
         self.functions.clear();
@@ -636,6 +642,16 @@ impl Runtime {
             }
         }
         Ok(Event::Print(val_str.to_string()))
+    }
+
+    fn r#read(&mut self) -> Result<()> {
+        let val = self.program.read_data()?;
+        self.stack.push(val)
+    }
+
+    fn r#restore(&mut self, addr: Address) -> Result<()> {
+        self.program.restore_data(addr);
+        Ok(())
     }
 
     fn r#return(&mut self) -> Result<()> {

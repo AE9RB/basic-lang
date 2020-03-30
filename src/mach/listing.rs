@@ -47,8 +47,8 @@ impl Listing {
                     range.start = Some(num + 1);
                 }
             } else {
-                range.start = Some(0);
-                range.end = Some(0);
+                range.start = Some(LineNumber::max_value() + 1);
+                range.end = Some(LineNumber::max_value() + 1);
             }
             let columns: Vec<Column> = self
                 .indirect_errors

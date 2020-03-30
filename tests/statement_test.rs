@@ -154,3 +154,35 @@ fn test_def_fn() {
     r.enter(r#"RUN"#);
     assert_eq!(exec(&mut r), " 0.6666667 \n");
 }
+
+#[test]
+fn test_indirect_error() {
+    let mut r = Runtime::default();
+    r.enter(r#"10 GOTO 100"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), "?UNDEFINED LINE IN 10:9\n");
+}
+
+#[test]
+fn test_read_data() {
+    let mut r = Runtime::default();
+    r.enter(r#"10 READ A, A$"#);
+    r.enter(r#"20 PRINT A; A$"#);
+    r.enter(r#"30 DATA 99, "Red Balloons"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), " 99 Red Balloons\n");
+}
+
+#[test]
+fn test_restore_data() {
+    let mut r = Runtime::default();
+    r.enter(r#"10 DATA 10"#);
+    r.enter(r#"20 DATA 20"#);
+    r.enter(r#"30 DATA 30"#);
+    r.enter(r#"READ A,B,C:PRINT A;B;C"#);
+    assert_eq!(exec(&mut r), " 10  20  30 \n");
+    r.enter(r#"RESTORE:READ A,B,C:PRINT A;B;C"#);
+    assert_eq!(exec(&mut r), " 10  20  30 \n");
+    r.enter(r#"RESTORE 30:READ A:PRINT A"#);
+    assert_eq!(exec(&mut r), " 30 \n");
+}

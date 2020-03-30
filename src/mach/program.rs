@@ -1,4 +1,4 @@
-use super::{compile::compile, Address, Link, Opcode, Symbol};
+use super::{compile::compile, Address, Link, Opcode, Symbol, Val};
 use crate::lang::{Error, Line, LineNumber};
 use std::sync::Arc;
 
@@ -41,6 +41,14 @@ impl Program {
             Some(o) => Some(o.clone()),
             None => None,
         }
+    }
+
+    pub fn read_data(&mut self) -> Result<Val> {
+        self.link.read_data()
+    }
+
+    pub fn restore_data(&mut self, addr: Address) {
+        self.link.restore_data(addr)
     }
 
     pub fn line_number_for(&self, op_addr: Address) -> LineNumber {

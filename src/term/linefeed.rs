@@ -59,6 +59,9 @@ fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
                     }
                     ReadResult::Signal(Signal::Interrupt) => {
                         input.set_buffer("")?;
+                        // We need the cancel_read_line because ?"Why";:INPUTY
+                        // doesn't print the "Why" after you interrupt input.
+                        input.lock_reader().cancel_read_line()?;
                         runtime.interrupt();
                     }
                     ReadResult::Signal(_) | ReadResult::Eof => break,

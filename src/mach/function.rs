@@ -22,10 +22,12 @@ impl Function {
             "MID$" => Some((Opcode::Mid, 2..=3)),
             "RIGHT$" => Some((Opcode::Right, 2..=2)),
             "RND" => Some((Opcode::Rnd, 0..=1)),
+            "SGN" => Some((Opcode::Sgn, 1..=1)),
             "SIN" => Some((Opcode::Sin, 1..=1)),
             "SQR" => Some((Opcode::Sqr, 1..=1)),
             "STR$" => Some((Opcode::Str, 1..=1)),
             "TAB" => Some((Opcode::Tab, 1..=1)),
+            "VAL" => Some((Opcode::Val, 1..=1)),
             _ => None,
         }
     }
@@ -166,6 +168,34 @@ impl Function {
         ))
     }
 
+    pub fn sgn(val: Val) -> Result<Val> {
+        use Val::*;
+        match val {
+            Integer(n) => Ok(Integer(if n == 0 {
+                0
+            } else if n.is_negative() {
+                -1
+            } else {
+                1
+            })),
+            Single(n) => Ok(Integer(if n == 0.0 {
+                0
+            } else if n.is_sign_negative() {
+                -1
+            } else {
+                1
+            })),
+            Double(n) => Ok(Integer(if n == 0.0 {
+                0
+            } else if n.is_sign_negative() {
+                -1
+            } else {
+                1
+            })),
+            String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
+        }
+    }
+
     pub fn sin(val: Val) -> Result<Val> {
         use Val::*;
         match val {
@@ -209,5 +239,18 @@ impl Function {
             s.push_str(&" ".repeat(len));
         }
         Ok(Val::String(s.into()))
+    }
+
+    pub fn val(val: Val) -> Result<Val> {
+        if let Val::String(s) = val {
+            let v = Val::from(s.trim());
+            if !matches!(v, Val::String(_)) {
+                Ok(v)
+            } else {
+                Ok(Val::Integer(0))
+            }
+        } else {
+            Err(error!(TypeMismatch))
+        }
     }
 }

@@ -48,6 +48,8 @@ pub enum Opcode {
     List,
     New,
     Print,
+    Read,
+    Restore(Address),
     Stop,
 
     // *** Expression operations
@@ -84,10 +86,12 @@ pub enum Opcode {
     Mid,
     Right,
     Rnd,
+    Sgn,
     Sin,
     Sqr,
     Str,
     Tab,
+    Val,
 }
 
 impl std::fmt::Debug for Opcode {
@@ -122,6 +126,8 @@ impl std::fmt::Display for Opcode {
             List => write!(f, "LIST"),
             New => write!(f, "NEW"),
             Print => write!(f, "PRINT"),
+            Read => write!(f, "READ"),
+            Restore(s) => write!(f, "RESTORE({})", s),
             Stop => write!(f, "STOP"),
 
             Neg => write!(f, "NEG"),
@@ -156,10 +162,12 @@ impl std::fmt::Display for Opcode {
             Mid => write!(f, "MID$"),
             Right => write!(f, "RIGHT$"),
             Rnd => write!(f, "RND"),
+            Sgn => write!(f, "SGN"),
             Sin => write!(f, "SIN"),
             Sqr => write!(f, "SQR"),
             Str => write!(f, "STR"),
             Tab => write!(f, "TAB"),
+            Val => write!(f, "VAL"),
         }
     }
 }

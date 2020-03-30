@@ -218,17 +218,12 @@ impl<'a> BasicParser<'a> {
 
     fn expect_var_list(&mut self) -> Result<Vec<Variable>> {
         let mut vec_var: Vec<Variable> = vec![];
-        let mut expecting = false;
         loop {
-            match self.peek() {
-                None | Some(Token::Colon) | Some(Token::Word(Word::Else)) if !expecting => break,
-                _ => vec_var.push(self.expect_var()?),
-            };
+            vec_var.push(self.expect_var()?);
             if self.maybe(Token::Comma) {
-                expecting = true;
-            } else {
-                break;
+                continue;
             }
+            break;
         }
         Ok(vec_var)
     }
@@ -524,6 +519,8 @@ impl Statement {
                     Next => return Self::r#next(parse),
                     On => return Ok(vec![Self::r#on(parse)?]),
                     Print1 | Print2 => return Self::r#print(parse),
+                    Read => return Ok(vec![Self::r#read(parse)?]),
+                    Restore => return Ok(vec![Self::r#restore(parse)?]),
                     Return => return Ok(vec![Self::r#return(parse)?]),
                     Run => return Ok(vec![Self::r#run(parse)?]),
                     Stop => return Ok(vec![Self::r#stop(parse)?]),
@@ -591,9 +588,6 @@ impl Statement {
         let column = parse.col.clone();
         let mut vec_stmt: Vec<Statement> = vec![];
         let var_list = parse.expect_var_list()?;
-        if var_list.is_empty() {
-            return Err(error!(SyntaxError, ..&column; "EXPECTED ARRAY DIMENSIONS"));
-        }
         for var in var_list {
             vec_stmt.push(Statement::Dim(column.clone(), var));
         }
@@ -689,15 +683,12 @@ impl Statement {
             }
             _ => String::new(),
         };
-        let idents = parse.expect_var_list()?;
-        if idents.is_empty() {
-            return Err(error!(SyntaxError, ..&parse.col.clone(); "MISSING VARIABLE LIST"));
-        }
+        let var_list = parse.expect_var_list()?;
         Ok(Statement::Input(
             column,
             caps,
             Expression::String(prompt_col, prompt.into()),
-            idents,
+            var_list,
         ))
     }
 
@@ -759,6 +750,22 @@ impl Statement {
             .drain(..)
             .map(|e| Statement::Print(column.clone(), e))
             .collect())
+    }
+
+    fn r#read(parse: &mut BasicParser) -> Result<Statement> {
+        Ok(Statement::Read(parse.col.clone(), parse.expect_var_list()?))
+    }
+
+    fn r#restore(parse: &mut BasicParser) -> Result<Statement> {
+        let num = if let Some(num) = parse.maybe_line_number()? {
+            num as f32
+        } else {
+            -1.0
+        };
+        Ok(Statement::Restore(
+            parse.col.clone(),
+            Expression::Single(parse.col.clone(), num as f32),
+        ))
     }
 
     fn r#return(parse: &mut BasicParser) -> Result<Statement> {

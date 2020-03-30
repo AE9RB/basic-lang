@@ -14,8 +14,9 @@ pub struct Link {
     current_symbol: Symbol,
     ops: Stack<Opcode>,
     data: Stack<Val>,
+    data_pos: Address,
     direct_set: bool,
-    symbols: BTreeMap<Symbol, Address>,
+    symbols: BTreeMap<Symbol, (Address, Address)>,
     unlinked: HashMap<Address, (Column, Symbol)>,
 }
 
@@ -25,6 +26,7 @@ impl Default for Link {
             current_symbol: 0,
             ops: Stack::new("PROGRAM SIZE LIMIT EXCEEDED"),
             data: Stack::new("DATA SIZE LIMIT EXCEEDED"),
+            data_pos: 0,
             direct_set: false,
             symbols: BTreeMap::default(),
             unlinked: HashMap::default(),
@@ -37,14 +39,18 @@ impl Link {
         if self.direct_set && !link.data.is_empty() {
             return Err(error!(IllegalDirect));
         }
-        let addr_offset = self.ops.len();
+        let ops_addr_offset = self.ops.len();
+        let data_addr_offset = self.data.len();
         let sym_offset = self.current_symbol;
-        for (symbol, address) in link.symbols.iter() {
+        for (symbol, (ops_addr, data_addr)) in link.symbols.iter() {
             let mut symbol = *symbol;
             if symbol < 0 {
                 symbol += sym_offset
             }
-            self.symbols.insert(symbol, *address + addr_offset);
+            self.symbols.insert(
+                symbol,
+                (*ops_addr + ops_addr_offset, *data_addr + data_addr_offset),
+            );
         }
         for (address, (col, symbol)) in link.unlinked.iter() {
             let mut symbol = *symbol;
@@ -52,7 +58,7 @@ impl Link {
                 symbol += sym_offset
             }
             self.unlinked
-                .insert(*address + addr_offset, (col.clone(), symbol));
+                .insert(*address + ops_addr_offset, (col.clone(), symbol));
         }
         self.current_symbol += link.current_symbol;
         self.ops.append(&mut link.ops)?;
@@ -65,6 +71,19 @@ impl Link {
 
     pub fn push_data(&mut self, val: Val) -> Result<()> {
         self.data.push(val)
+    }
+
+    pub fn read_data(&mut self) -> Result<Val> {
+        if let Some(val) = self.data.get(self.data_pos) {
+            self.data_pos += 1;
+            Ok(val.clone())
+        } else {
+            Err(error!(OutOfData))
+        }
+    }
+
+    pub fn restore_data(&mut self, addr: Address) {
+        self.data_pos = addr;
     }
 
     pub fn get(&self, addr: Address) -> Option<&Opcode> {
@@ -92,7 +111,9 @@ impl Link {
 
     pub fn clear(&mut self) {
         self.current_symbol = 0;
+        self.direct_set = false;
         self.ops.clear();
+        self.data.clear();
         self.symbols.clear();
         self.unlinked.clear();
     }
@@ -169,6 +190,14 @@ impl Link {
         self.push(Opcode::Jump(0))
     }
 
+    pub fn push_restore(&mut self, col: Column, line_number: LineNumber) -> Result<()> {
+        if line_number.is_some() {
+            let sym = self.symbol_for_line_number(line_number)?;
+            self.unlinked.insert(self.ops.len(), (col, sym));
+        }
+        self.ops.push(Opcode::Restore(0))
+    }
+
     pub fn push_run(&mut self, col: Column, line_number: LineNumber) -> Result<()> {
         self.ops.push(Opcode::Clear)?;
         if line_number.is_some() {
@@ -179,19 +208,25 @@ impl Link {
     }
 
     pub fn push_symbol(&mut self, sym: Symbol) {
-        if self.symbols.insert(sym, self.ops.len()).is_some() {
+        if self
+            .symbols
+            .insert(sym, (self.ops.len(), self.data.len()))
+            .is_some()
+        {
             debug_assert!(false, "Symbol already exists.");
         }
     }
 
     pub fn set_start_of_direct(&mut self, op_addr: Address) {
         self.direct_set = true;
-        self.symbols
-            .insert(LineNumber::max_value() as isize + 1 as Symbol, op_addr);
+        self.symbols.insert(
+            LineNumber::max_value() as isize + 1 as Symbol,
+            (op_addr, self.data.len()),
+        );
     }
 
     pub fn line_number_for(&self, op_addr: Address) -> LineNumber {
-        for (line_number, symbol_addr) in self.symbols.range(0..).rev() {
+        for (line_number, (symbol_addr, _)) in self.symbols.range(0..).rev() {
             if op_addr >= *symbol_addr {
                 if *line_number <= LineNumber::max_value() as isize {
                     return Some(*line_number as u16);
@@ -214,17 +249,18 @@ impl Link {
                         continue;
                     }
                 }
-                Some(dest) => {
+                Some((op_dest, data_dest)) => {
                     if let Some(op) = self.ops.get_mut(op_addr) {
                         if let Some(new_op) = match op {
-                            Opcode::IfNot(_) => Some(Opcode::IfNot(*dest)),
-                            Opcode::Jump(_) => Some(Opcode::Jump(*dest)),
+                            Opcode::IfNot(_) => Some(Opcode::IfNot(*op_dest)),
+                            Opcode::Jump(_) => Some(Opcode::Jump(*op_dest)),
                             Opcode::Literal(Val::Return(_)) => {
-                                Some(Opcode::Literal(Val::Return(*dest)))
+                                Some(Opcode::Literal(Val::Return(*op_dest)))
                             }
                             Opcode::Literal(Val::Next(_)) => {
-                                Some(Opcode::Literal(Val::Next(*dest)))
+                                Some(Opcode::Literal(Val::Next(*op_dest)))
                             }
+                            Opcode::Restore(_) => Some(Opcode::Restore(*data_dest)),
                             _ => None,
                         } {
                             *op = new_op;
