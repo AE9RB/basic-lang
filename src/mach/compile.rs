@@ -1,4 +1,4 @@
-use super::{Function, Link, Opcode, Operation, Program, Stack, Val};
+use super::{Function, Link, Opcode, Program, Stack, Val};
 use crate::error;
 use crate::lang::ast::{self, AcceptVisitor};
 use crate::lang::{Column, Error, LineNumber};
@@ -292,22 +292,8 @@ impl Compiler {
     fn r#data(&mut self, link: &mut Link, col: &Column, len: usize) -> Result<Column> {
         let exprs = self.expr.pop_n(len)?;
         for (expr_col, mut expr_link) in exprs {
-            if expr_link.len() == 1 {
-                if let Some(Opcode::Literal(val)) = expr_link.drain(..).next() {
-                    link.push_data(val.clone())?;
-                    continue;
-                }
-            }
-            if expr_link.len() == 2 {
-                let mut expr_link = expr_link.drain(..);
-                if let Some(Opcode::Literal(val)) = expr_link.next() {
-                    if let Some(Opcode::Neg) = expr_link.next() {
-                        link.push_data(Operation::negate(val)?)?;
-                        continue;
-                    }
-                }
-            }
-            return Err(error!(SyntaxError, ..&expr_col; "EXPECTED LITERAL"));
+            expr_link.transform_to_data(&expr_col)?;
+            link.append(expr_link)?;
         }
         Ok(col.clone())
     }

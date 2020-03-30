@@ -1,4 +1,4 @@
-use super::{Address, Opcode, Stack, Symbol, Val};
+use super::{Address, Opcode, Operation, Stack, Symbol, Val};
 use crate::error;
 use crate::lang::{Column, Error, LineNumber, MaxValue};
 use std::collections::{BTreeMap, HashMap};
@@ -69,8 +69,22 @@ impl Link {
         self.ops.push(op)
     }
 
-    pub fn push_data(&mut self, val: Val) -> Result<()> {
-        self.data.push(val)
+    pub fn transform_to_data(&mut self, col: &Column) -> Result<()> {
+        if self.ops.len() == 1 {
+            if let Some(Opcode::Literal(val)) = self.ops.drain(..).next() {
+                self.data.push(val)?;
+                return Ok(());
+            }
+        } else if self.ops.len() == 2 {
+            let mut expr_link = self.ops.drain(..);
+            if let Some(Opcode::Literal(val)) = expr_link.next() {
+                if let Some(Opcode::Neg) = expr_link.next() {
+                    self.data.push(Operation::negate(val)?)?;
+                    return Ok(());
+                }
+            }
+        }
+        Err(error!(SyntaxError, ..col; "EXPECTED LITERAL"))
     }
 
     pub fn read_data(&mut self) -> Result<Val> {
