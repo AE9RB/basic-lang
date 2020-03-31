@@ -5,6 +5,8 @@ This Rust module is a compiler and virtual machine for BASIC.
 
 */
 
+const MAX_LINE_LEN: usize = 1024;
+
 pub type Address = usize;
 pub type Symbol = isize;
 

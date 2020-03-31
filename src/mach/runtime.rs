@@ -1,4 +1,4 @@
-use super::{Address, Function, Listing, Opcode, Operation, Program, Stack, Val, Var};
+use super::*;
 use crate::error;
 use crate::lang::{Error, Line, LineNumber};
 use std::collections::HashMap;
@@ -11,7 +11,6 @@ type Result<T> = std::result::Result<T, Error>;
 
 const INTRO: &str = "64K BASIC";
 const PROMPT: &str = "READY.";
-const MAX_LINE_LEN: usize = 1024;
 
 /// ## Virtual machine
 
@@ -41,6 +40,8 @@ pub enum Event {
     List((String, Vec<Range<usize>>)),
     Running,
     Stopped,
+    Load(String),
+    Save(String),
 }
 
 #[derive(Debug)]
@@ -193,9 +194,15 @@ impl Runtime {
         None
     }
 
-    /// Obtain a thread-safe Listing useful for line completion.
+    /// Obtain a thread-safe Listing for saving and line completion.
     pub fn get_listing(&self) -> Listing {
         self.source.clone()
+    }
+
+    /// Set a new listing. Used to load a program.
+    pub fn set_listing(&mut self, listing: Listing) {
+        self.r#new_();
+        self.source = listing;
     }
 
     /// Interrupt the program. Displays `BREAK` error.
@@ -389,7 +396,7 @@ impl Runtime {
                     }
                 }
                 Opcode::Def(var_name) => self.r#def(var_name)?,
-                Opcode::End => return self.r#end(),
+                Opcode::End => return Ok(self.r#end()),
                 Opcode::Fn(var_name) => self.r#fn(var_name)?,
                 Opcode::Input(var_name) => {
                     if let Some(event) = self.r#input(var_name)? {
@@ -397,13 +404,15 @@ impl Runtime {
                     }
                 }
                 Opcode::List => return self.r#list(),
-                Opcode::New => return self.r#new_(),
+                Opcode::Load => return self.r#load(),
+                Opcode::New => return Ok(self.r#new_()),
                 Opcode::On => self.r#on()?,
                 Opcode::Next(var_name) => self.r#next(var_name)?,
                 Opcode::Print => return self.r#print(),
                 Opcode::Read => self.r#read()?,
                 Opcode::Restore(addr) => self.r#restore(addr)?,
                 Opcode::Return => self.r#return()?,
+                Opcode::Save => return self.r#save(),
                 Opcode::Stop => return Err(error!(Break)),
 
                 Opcode::Neg => self.stack.pop_1_push(&Operation::negate)?,
@@ -495,7 +504,7 @@ impl Runtime {
         }
     }
 
-    fn r#end(&mut self) -> Result<Event> {
+    fn r#end(&mut self) -> Event {
         self.cont = State::Stopped;
         std::mem::swap(&mut self.cont, &mut self.state);
         self.cont_pc = self.pc;
@@ -503,7 +512,7 @@ impl Runtime {
             self.cont = State::Stopped;
             self.stack.clear();
         }
-        Ok(Event::Stopped)
+        Event::Stopped
     }
 
     fn r#fn(&mut self, fn_name: Rc<str>) -> Result<()> {
@@ -567,7 +576,21 @@ impl Runtime {
         Ok(Event::Running)
     }
 
-    fn r#new_(&mut self) -> Result<Event> {
+    fn r#load(&mut self) -> Result<Event> {
+        match self.stack.pop()? {
+            Val::String(s) => {
+                self.r#end();
+                if self.pc < self.entry_address {
+                    Err(error!(IllegalDirect))
+                } else {
+                    Ok(Event::Load(s.to_string()))
+                }
+            }
+            _ => Err(error!(TypeMismatch)),
+        }
+    }
+
+    fn r#new_(&mut self) -> Event {
         self.program.restore_data(0);
         self.stack.clear();
         self.vars.clear();
@@ -576,7 +599,7 @@ impl Runtime {
         self.dirty = true;
         self.state = State::Stopped;
         self.cont = State::Stopped;
-        Ok(Event::Stopped)
+        Event::Stopped
     }
 
     fn r#next(&mut self, next_name: Rc<str>) -> Result<()> {
@@ -680,6 +703,20 @@ impl Runtime {
                 }
                 Err(_) => return Err(error!(ReturnWithoutGosub)),
             }
+        }
+    }
+
+    fn r#save(&mut self) -> Result<Event> {
+        match self.stack.pop()? {
+            Val::String(s) => {
+                self.r#end();
+                if self.pc < self.entry_address {
+                    Err(error!(IllegalDirect))
+                } else {
+                    Ok(Event::Save(s.to_string()))
+                }
+            }
+            _ => Err(error!(TypeMismatch)),
         }
     }
 }

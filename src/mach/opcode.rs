@@ -46,10 +46,12 @@ pub enum Opcode {
     Fn(Rc<str>),
     Input(Rc<str>),
     List,
+    Load,
     New,
     Print,
     Read,
     Restore(Address),
+    Save,
     Stop,
 
     // *** Expression operations
@@ -125,9 +127,11 @@ impl std::fmt::Display for Opcode {
             Input(s) => write!(f, "INPUT({})", s),
             List => write!(f, "LIST"),
             New => write!(f, "NEW"),
+            Load => write!(f, "LOAD"),
             Print => write!(f, "PRINT"),
             Read => write!(f, "READ"),
             Restore(s) => write!(f, "RESTORE({})", s),
+            Save => write!(f, "SAVE"),
             Stop => write!(f, "STOP"),
 
             Neg => write!(f, "NEG"),

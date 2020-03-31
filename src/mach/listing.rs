@@ -1,3 +1,5 @@
+use super::MAX_LINE_LEN;
+use crate::error;
 use crate::lang::{Column, Error, Line, LineNumber, MaxValue};
 use std::collections::{btree_map::Values, BTreeMap};
 use std::ops::Range;
@@ -11,10 +13,6 @@ pub struct Listing {
 }
 
 impl Listing {
-    pub fn lines(&self) -> Values<'_, LineNumber, Line> {
-        self.source.values()
-    }
-
     pub fn clear(&mut self) {
         self.source = Arc::default();
         self.indirect_errors = Arc::default();
@@ -37,6 +35,27 @@ impl Listing {
         }
         let mut range = Some(num as u16)..Some(num as u16);
         self.list_line(&mut range)
+    }
+
+    pub fn lines(&self) -> Values<'_, LineNumber, Line> {
+        self.source.values()
+    }
+
+    pub fn load_str(&mut self, line: &str) -> Result<(), Error> {
+        if line.len() > MAX_LINE_LEN {
+            return Err(error!(LineBufferOverflow));
+        }
+        let line = Line::new(line);
+        let line_number = line.number();
+        if line.is_empty() {
+            return Ok(());
+        }
+        if line.is_direct() {
+            Err(error!(IllegalDirect, line_number))
+        } else {
+            self.insert(line);
+            Ok(())
+        }
     }
 
     pub fn list_line(&self, range: &mut Range<LineNumber>) -> Option<(String, Vec<Range<usize>>)> {

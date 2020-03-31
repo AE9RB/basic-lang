@@ -16,6 +16,7 @@ pub enum Statement {
     Input(Column, Expression, Expression, Vec<Variable>),
     Let(Column, Variable, Expression),
     List(Column, Expression, Expression),
+    Load(Column, Expression),
     New(Column),
     Next(Column, Variable),
     OnGoto(Column, Expression, Vec<Expression>),
@@ -25,6 +26,7 @@ pub enum Statement {
     Restore(Column, Expression),
     Return(Column),
     Run(Column, Expression),
+    Save(Column, Expression),
     Stop(Column),
 }
 
@@ -123,7 +125,13 @@ impl AcceptVisitor for Statement {
                 expr2.accept(visitor);
                 expr3.accept(visitor);
             }
-            Gosub(_, expr) | Goto(_, expr) | Print(_, expr) | Restore(_, expr) | Run(_, expr) => {
+            Gosub(_, expr)
+            | Goto(_, expr)
+            | Load(_, expr)
+            | Print(_, expr)
+            | Restore(_, expr)
+            | Run(_, expr)
+            | Save(_, expr) => {
                 expr.accept(visitor);
             }
             If(_, predicate, then_stmt, else_stmt) => {

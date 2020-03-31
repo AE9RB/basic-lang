@@ -258,6 +258,7 @@ impl Compiler {
             Statement::Input(col, _, _, v) => self.r#input(link, col, v.len()),
             Statement::Let(col, ..) => self.r#let(link, col),
             Statement::List(col, ..) => self.r#list(link, col),
+            Statement::Load(col, ..) => self.r#load(link, col),
             Statement::New(col, ..) => self.r#new_(link, col),
             Statement::Next(col, ..) => self.r#next(link, col),
             Statement::OnGoto(col, _, v) => self.r#on(link, col, v.len(), false),
@@ -267,6 +268,7 @@ impl Compiler {
             Statement::Restore(col, ..) => self.r#restore(link, col),
             Statement::Return(col, ..) => self.r#return(link, col),
             Statement::Run(col, ..) => self.r#run(link, col),
+            Statement::Save(col, ..) => self.r#save(link, col),
             Statement::Stop(col, ..) => self.r#stop(link, col),
         }
     }
@@ -413,6 +415,13 @@ impl Compiler {
         Ok(col.start..col_to.end)
     }
 
+    fn r#load(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
+        let (sub_col, expr) = self.expr.pop()?;
+        link.append(expr)?;
+        link.push(Opcode::Load)?;
+        Ok(col.start..sub_col.end)
+    }
+
     fn r#new_(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
         link.push(Opcode::New)?;
         Ok(col.clone())
@@ -493,6 +502,13 @@ impl Compiler {
         let full_col = col.start..sub_col.end;
         link.push_run(sub_col, line_number)?;
         Ok(full_col)
+    }
+
+    fn r#save(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
+        let (sub_col, expr) = self.expr.pop()?;
+        link.append(expr)?;
+        link.push(Opcode::Save)?;
+        Ok(col.start..sub_col.end)
     }
 
     fn r#stop(&mut self, link: &mut Link, col: &Column) -> Result<Column> {

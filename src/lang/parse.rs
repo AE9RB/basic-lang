@@ -515,6 +515,7 @@ impl Statement {
                     Input => return Ok(vec![Self::r#input(parse)?]),
                     Let => return Ok(vec![Self::r#let(parse)?]),
                     List => return Ok(vec![Self::r#list(parse)?]),
+                    Load => return Ok(vec![Self::r#load(parse)?]),
                     New => return Ok(vec![Self::r#new(parse)?]),
                     Next => return Self::r#next(parse),
                     On => return Ok(vec![Self::r#on(parse)?]),
@@ -523,6 +524,7 @@ impl Statement {
                     Restore => return Ok(vec![Self::r#restore(parse)?]),
                     Return => return Ok(vec![Self::r#return(parse)?]),
                     Run => return Ok(vec![Self::r#run(parse)?]),
+                    Save => return Ok(vec![Self::r#save(parse)?]),
                     Stop => return Ok(vec![Self::r#stop(parse)?]),
                     Else | Rem1 | Rem2 | Step | Then | To => {}
                 }
@@ -706,6 +708,13 @@ impl Statement {
         Ok(Statement::List(column, from, to))
     }
 
+    fn r#load(parse: &mut BasicParser) -> Result<Statement> {
+        Ok(Statement::Load(
+            parse.col.clone(),
+            parse.expect_expression()?,
+        ))
+    }
+
     fn r#new(parse: &mut BasicParser) -> Result<Statement> {
         Ok(Statement::New(parse.col.clone()))
     }
@@ -785,6 +794,13 @@ impl Statement {
                 Ok(Statement::Run(column, Expression::Single(empty, -1.0)))
             }
         }
+    }
+
+    fn r#save(parse: &mut BasicParser) -> Result<Statement> {
+        Ok(Statement::Save(
+            parse.col.clone(),
+            parse.expect_expression()?,
+        ))
     }
 
     fn r#stop(parse: &mut BasicParser) -> Result<Statement> {
