@@ -15,6 +15,7 @@ const PROMPT: &str = "READY.";
 /// ## Virtual machine
 
 pub struct Runtime {
+    prompt: String,
     source: Listing,
     dirty: bool,
     program: Program,
@@ -60,6 +61,7 @@ enum State {
 impl Default for Runtime {
     fn default() -> Self {
         Runtime {
+            prompt: PROMPT.into(),
             source: Listing::default(),
             dirty: false,
             program: Program::default(),
@@ -187,8 +189,10 @@ impl Runtime {
                 s.push('\n');
                 self.print_col = 0;
             }
-            s.push_str(PROMPT);
-            s.push('\n');
+            if !self.prompt.is_empty() {
+                s.push_str(&self.prompt);
+                s.push('\n');
+            }
             return Some(Event::Print(s));
         };
         None
@@ -203,6 +207,11 @@ impl Runtime {
     pub fn set_listing(&mut self, listing: Listing) {
         self.r#new_();
         self.source = listing;
+    }
+
+    /// Set a prompt instead of the default "READY."
+    pub fn set_prompt(&mut self, prompt: &str) {
+        self.prompt = prompt.into();
     }
 
     /// Interrupt the program. Displays `BREAK` error.

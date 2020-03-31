@@ -13,18 +13,28 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 pub fn main() {
+    if std::env::args().count() > 2 {
+        println!("Usage: basic [FILENAME]");
+        return;
+    }
+    let mut args = std::env::args();
+    let _executable = args.next();
+    let filename = match args.next() {
+        Some(f) => f,
+        _ => "".into(),
+    };
     let interrupted = Arc::new(AtomicBool::new(false));
     let int_moved = interrupted.clone();
     ctrlc::set_handler(move || {
         int_moved.store(true, Ordering::SeqCst);
     })
     .expect("Error setting Ctrl-C handler");
-    if let Err(error) = main_loop(interrupted) {
+    if let Err(error) = main_loop(interrupted, filename) {
         eprintln!("{}", error);
     }
 }
 
-fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
+fn main_loop(interrupted: Arc<AtomicBool>, filename: String) -> std::io::Result<()> {
     let mut runtime = Runtime::default();
     let command = Interface::new("BASIC")?;
     let input_full = Interface::new("Input")?;
@@ -33,6 +43,23 @@ fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
     input_caps.set_report_signal(Signal::Interrupt, true);
     CapsFunction::install(&input_caps);
 
+    if !filename.is_empty() {
+        match load(&filename) {
+            Ok(listing) => {
+                runtime.set_listing(listing);
+                runtime.enter("RUN");
+                runtime.set_prompt("");
+            }
+            Err(error) => {
+                command.write_fmt(format_args!(
+                    "{}\n",
+                    Style::new().bold().paint(error.to_string())
+                ))?;
+                return Ok(());
+            }
+        }
+    }
+
     loop {
         if interrupted.load(Ordering::SeqCst) {
             runtime.interrupt();
@@ -40,6 +67,9 @@ fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
         };
         match runtime.execute(5000) {
             Event::Stopped => {
+                if !filename.is_empty() {
+                    return Ok(());
+                }
                 let saved_completer = command.completer();
                 command.set_completer(Arc::new(LineCompleter::new(runtime.get_listing())));
                 let string = match command.read_line()? {
