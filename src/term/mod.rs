@@ -2,10 +2,13 @@ extern crate ansi_term;
 extern crate ctrlc;
 extern crate linefeed;
 use crate::mach::{Event, Listing, Runtime};
+use crate::{error, lang::Error};
 use ansi_term::Style;
 use linefeed::{
     Command, Completer, Completion, Function, Interface, Prompter, ReadResult, Signal, Terminal,
 };
+use std::fs::File;
+use std::io::{BufRead, BufReader, ErrorKind, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -69,8 +72,10 @@ fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
             }
             Event::Errors(errors) => {
                 for error in errors.iter() {
-                    let error = format!("{}", error);
-                    command.write_fmt(format_args!("{}\n", Style::new().bold().paint(error)))?;
+                    command.write_fmt(format_args!(
+                        "{}\n",
+                        Style::new().bold().paint(error.to_string())
+                    ))?;
                 }
             }
             Event::Running => {}
@@ -80,12 +85,20 @@ fn main_loop(interrupted: Arc<AtomicBool>) -> std::io::Result<()> {
             Event::List((s, columns)) => {
                 command.write_fmt(format_args!("{}\n", decorate_list(&s, &columns)))?;
             }
-            Event::Load(s) => {
-                command.write_fmt(format_args!("Loading \"{}\"... (TODO)\n", s))?;
-            }
-            Event::Save(s) => {
-                command.write_fmt(format_args!("Saving \"{}\"... (TODO)\n", s))?;
-            }
+            Event::Load(s) => match load(&s) {
+                Ok(listing) => runtime.set_listing(listing),
+                Err(error) => command.write_fmt(format_args!(
+                    "{}\n",
+                    Style::new().bold().paint(error.to_string())
+                ))?,
+            },
+            Event::Save(s) => match save(runtime.get_listing(), &s) {
+                Ok(_) => {}
+                Err(error) => command.write_fmt(format_args!(
+                    "{}\n",
+                    Style::new().bold().paint(error.to_string())
+                ))?,
+            },
         }
     }
     Ok(())
@@ -171,4 +184,48 @@ fn decorate_list(ins: &str, columns: &[std::ops::Range<usize>]) -> String {
         out.push_str(&suffix);
     }
     out
+}
+
+fn load(filename: &str) -> Result<Listing, Error> {
+    let mut listing = Listing::default();
+    let reader = match File::open(filename) {
+        Ok(file) => BufReader::new(file),
+        Err(error) => {
+            let msg = error.to_string();
+            match error.kind() {
+                ErrorKind::NotFound => return Err(error!(FileNotFound; msg.as_str())),
+                _ => return Err(error!(InternalError; msg.as_str())),
+            }
+        }
+    };
+    for (index, line) in reader.lines().enumerate() {
+        match line {
+            Err(error) => return Err(error!(InternalError; error.to_string().as_str())),
+            Ok(line) => {
+                if let Err(error) = listing.load_str(&line) {
+                    return Err(error.message(&format!(
+                        "In line {} of the file. (Not BASIC line number)",
+                        index + 1
+                    )));
+                }
+            }
+        }
+    }
+    Ok(listing)
+}
+
+fn save(listing: Listing, filename: &str) -> Result<(), Error> {
+    if listing.is_empty() {
+        return Err(error!(InternalError; "NOTHING TO SAVE"));
+    }
+    let mut file = match File::create(filename) {
+        Ok(file) => file,
+        Err(error) => return Err(error!(InternalError;  error.to_string().as_str())),
+    };
+    for line in listing.lines() {
+        if let Err(error) = writeln!(file, "{}", line) {
+            return Err(error!(InternalError; error.to_string().as_str()));
+        }
+    }
+    Ok(())
 }

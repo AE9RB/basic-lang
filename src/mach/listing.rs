@@ -19,6 +19,10 @@ impl Listing {
         self.direct_errors = Arc::default();
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.source.is_empty()
+    }
+
     pub fn insert(&mut self, line: Line) -> Option<Line> {
         Arc::get_mut(&mut self.source)
             .unwrap()
@@ -41,17 +45,16 @@ impl Listing {
         self.source.values()
     }
 
+    /// Used for loading a new Listing from a file.
     pub fn load_str(&mut self, line: &str) -> Result<(), Error> {
         if line.len() > MAX_LINE_LEN {
             return Err(error!(LineBufferOverflow));
         }
         let line = Line::new(line);
-        let line_number = line.number();
         if line.is_empty() {
-            return Ok(());
-        }
-        if line.is_direct() {
-            Err(error!(IllegalDirect, line_number))
+            Ok(())
+        } else if line.is_direct() {
+            Err(error!(DirectStatementInFile))
         } else {
             self.insert(line);
             Ok(())

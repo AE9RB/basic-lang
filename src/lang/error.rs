@@ -1,11 +1,12 @@
 use super::{Column, LineNumber};
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct Error {
     code: u16,
     line_number: LineNumber,
     column: Column,
-    message: &'static str,
+    message: Arc<str>,
 }
 
 #[doc(hidden)]
@@ -52,7 +53,7 @@ impl Error {
             code: code as u16,
             line_number: None,
             column: 0..0,
-            message: "",
+            message: "".into(),
         }
     }
 
@@ -70,7 +71,7 @@ impl Error {
             code: self.code,
             line_number: line,
             column: self.column.clone(),
-            message: self.message,
+            message: self.message.clone(),
         }
     }
 
@@ -90,17 +91,17 @@ impl Error {
             code: self.code,
             line_number: self.line_number,
             column: column.clone(),
-            message: self.message,
+            message: self.message.clone(),
         }
     }
 
-    pub fn message(&self, message: &'static str) -> Error {
+    pub fn message(&self, message: &str) -> Error {
         debug_assert_eq!(self.message.len(), 0);
         Error {
             code: self.code,
             line_number: self.line_number,
             column: self.column.clone(),
-            message,
+            message: message.into(),
         }
     }
 }
@@ -128,6 +129,8 @@ pub enum ErrorCode {
     LineBufferOverflow = 23,
     ForWithoutNext = 26,
     InternalError = 51,
+    FileNotFound = 53,
+    DirectStatementInFile = 66,
 }
 
 impl std::fmt::Debug for Error {
