@@ -1,6 +1,6 @@
 [package]
 name = "basic-lang"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["David Turnbull"]
 license = "Apache-2.0 OR MIT"
 readme = "README.md"
@@ -12,6 +12,9 @@ edition = "2018"
 
 [profile.release]
 panic = "abort"
+opt-level = 'z'
+lto = true
+codegen-units = 1
 
 [dependencies]
 ansi_term = "0.12"
