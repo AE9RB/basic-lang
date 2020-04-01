@@ -11,7 +11,7 @@
 //! Begin by opening a terminal and running the executable. Double clicking
 //! the executable from a GUI desktop often works as well. If you get the
 //! following, you have achieved success.
-//! ```
+//! ```text
 //! 64K BASIC
 //! READY.
 //! █
