@@ -57,7 +57,7 @@ pub enum Expression {
     LessEqual(Column, Box<Expression>, Box<Expression>),
     Greater(Column, Box<Expression>, Box<Expression>),
     GreaterEqual(Column, Box<Expression>, Box<Expression>),
-    Not(Column, Box<Expression>, Box<Expression>),
+    Not(Column, Box<Expression>),
     And(Column, Box<Expression>, Box<Expression>),
     Or(Column, Box<Expression>, Box<Expression>),
     Xor(Column, Box<Expression>, Box<Expression>),
@@ -183,7 +183,7 @@ impl AcceptVisitor for Expression {
         match self {
             Single(..) | Double(..) | Integer(..) | String(..) => {}
             Variable(var) => var.accept(visitor),
-            Negation(_, expr) => expr.accept(visitor),
+            Negation(_, expr) | Not(_, expr) => expr.accept(visitor),
             Power(_, expr1, expr2)
             | Multiply(_, expr1, expr2)
             | Divide(_, expr1, expr2)
@@ -197,7 +197,6 @@ impl AcceptVisitor for Expression {
             | LessEqual(_, expr1, expr2)
             | Greater(_, expr1, expr2)
             | GreaterEqual(_, expr1, expr2)
-            | Not(_, expr1, expr2)
             | And(_, expr1, expr2)
             | Or(_, expr1, expr2)
             | Xor(_, expr1, expr2)

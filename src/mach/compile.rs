@@ -195,6 +195,17 @@ impl Compiler {
     }
 
     fn expression(&mut self, link: &mut Link, expr: &ast::Expression) -> Result<Column> {
+        fn unary_expression(
+            this: &mut Compiler,
+            link: &mut Link,
+            op: Opcode,
+            col: &Column,
+        ) -> Result<Column> {
+            let (expr_col, ops) = this.expr.pop()?;
+            link.append(ops)?;
+            link.push(op)?;
+            Ok(col.start..expr_col.end)
+        }
         fn binary_expression(this: &mut Compiler, link: &mut Link, op: Opcode) -> Result<Column> {
             let (col_rhs, rhs) = this.expr.pop()?;
             let (col_lhs, lhs) = this.expr.pop()?;
@@ -214,12 +225,7 @@ impl Compiler {
             Expression::Integer(col, val) => literal(link, col, Val::Integer(*val)),
             Expression::String(col, val) => literal(link, col, Val::String(val.clone())),
             Expression::Variable(_) => self.var.pop()?.push_as_expression(link),
-            Expression::Negation(col, ..) => {
-                let (expr_col, ops) = self.expr.pop()?;
-                link.append(ops)?;
-                link.push(Opcode::Neg)?;
-                Ok(col.start..expr_col.end)
-            }
+            Expression::Negation(col, ..) => unary_expression(self, link, Opcode::Neg, col),
             Expression::Power(..) => binary_expression(self, link, Opcode::Pow),
             Expression::Multiply(..) => binary_expression(self, link, Opcode::Mul),
             Expression::Divide(..) => binary_expression(self, link, Opcode::Div),
@@ -233,7 +239,7 @@ impl Compiler {
             Expression::LessEqual(..) => binary_expression(self, link, Opcode::LtEq),
             Expression::Greater(..) => binary_expression(self, link, Opcode::Gt),
             Expression::GreaterEqual(..) => binary_expression(self, link, Opcode::GtEq),
-            Expression::Not(..) => binary_expression(self, link, Opcode::Not),
+            Expression::Not(col, ..) => unary_expression(self, link, Opcode::Not, col),
             Expression::And(..) => binary_expression(self, link, Opcode::And),
             Expression::Or(..) => binary_expression(self, link, Opcode::Or),
             Expression::Xor(..) => binary_expression(self, link, Opcode::Xor),

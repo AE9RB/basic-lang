@@ -374,21 +374,27 @@ impl Expression {
                     }
                 }
                 Some(Token::Operator(Operator::Plus)) => {
-                    let op_prec = Expression::unary_op_precedence(&Operator::Plus);
+                    let op_prec = Expression::unary_op_precedence(&Operator::Plus)?;
                     descend(parse, var_map, op_prec)?
                 }
                 Some(Token::Operator(Operator::Minus)) => {
                     let col = parse.col.clone();
-                    let op_prec = Expression::unary_op_precedence(&Operator::Minus);
+                    let op_prec = Expression::unary_op_precedence(&Operator::Minus)?;
                     let expr = descend(parse, var_map, op_prec)?;
                     Expression::Negation(col, Box::new(expr))
+                }
+                Some(Token::Operator(Operator::Not)) => {
+                    let col = parse.col.clone();
+                    let op_prec = Expression::unary_op_precedence(&Operator::Not)?;
+                    let expr = descend(parse, var_map, op_prec)?;
+                    Expression::Not(col, Box::new(expr))
                 }
                 Some(Token::Literal(lit)) => Expression::literal(parse.col.clone(), lit)?,
                 _ => return Err(error!(SyntaxError, ..&parse.col; "EXPECTED EXPRESSION")),
             };
             let mut rhs;
             while let Some(Token::Operator(op)) = parse.peek() {
-                let op_prec = Expression::binary_op_precedence(op);
+                let op_prec = Expression::binary_op_precedence(op)?;
                 if op_prec <= precedence {
                     break;
                 }
@@ -425,7 +431,7 @@ impl Expression {
             Greater => Expression::Greater(col, Box::new(lhs), Box::new(rhs)),
             GreaterEqual => Expression::GreaterEqual(col, Box::new(lhs), Box::new(rhs)),
             EqualGreater => Expression::GreaterEqual(col, Box::new(lhs), Box::new(rhs)),
-            Not => Expression::Not(col, Box::new(lhs), Box::new(rhs)),
+            Not => return Err(error!(InternalError)),
             And => Expression::And(col, Box::new(lhs), Box::new(rhs)),
             Or => Expression::Or(col, Box::new(lhs), Box::new(rhs)),
             Xor => Expression::Xor(col, Box::new(lhs), Box::new(rhs)),
@@ -434,20 +440,18 @@ impl Expression {
         })
     }
 
-    fn unary_op_precedence(op: &Operator) -> usize {
+    fn unary_op_precedence(op: &Operator) -> Result<usize> {
         use Operator::*;
-        match op {
+        Ok(match op {
             Plus | Minus => 12,
-            _ => {
-                debug_assert!(false, "NOT A UNARY OP");
-                0
-            }
-        }
+            Not => 6,
+            _ => 0,
+        })
     }
 
-    fn binary_op_precedence(op: &Operator) -> usize {
+    fn binary_op_precedence(op: &Operator) -> Result<usize> {
         use Operator::*;
-        match op {
+        Ok(match op {
             Caret => 13,
             // Unary identity and negation => 12
             Multiply | Divide => 11,
@@ -456,13 +460,14 @@ impl Expression {
             Plus | Minus => 8,
             Equal | NotEqual | Less | LessEqual | EqualLess | Greater | GreaterEqual
             | EqualGreater => 7,
-            Not => 6,
+            // Unary not => 6
             And => 5,
             Or => 4,
             Xor => 3,
             Imp => 2,
             Eqv => 1,
-        }
+            _ => 0,
+        })
     }
 
     fn literal(col: Column, lit: &Literal) -> Result<Expression> {

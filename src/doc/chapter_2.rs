@@ -6,6 +6,10 @@
 #[allow(non_snake_case)]
 pub mod CLEAR;
 
+#[path = "statements/cont.rs"]
+#[allow(non_snake_case)]
+pub mod CONT;
+
 #[path = "statements/dim.rs"]
 #[allow(non_snake_case)]
 pub mod DIM;
@@ -57,6 +61,10 @@ pub mod ON;
 #[path = "statements/print.rs"]
 #[allow(non_snake_case)]
 pub mod PRINT;
+
+#[path = "statements/return.rs"]
+#[allow(non_snake_case)]
+pub mod RETURN;
 
 #[path = "statements/run.rs"]
 #[allow(non_snake_case)]

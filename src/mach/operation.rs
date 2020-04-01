@@ -8,10 +8,6 @@ type Result<T> = std::result::Result<T, Error>;
 pub struct Operation {}
 
 impl Operation {
-    pub fn unimplemented(_lhs: Val, _rhs: Val) -> Result<Val> {
-        Err(error!(InternalError; "OP NOT IMPLEMENTED; PANIC"))
-    }
-
     pub fn negate(val: Val) -> Result<Val> {
         use Val::*;
         match val {
@@ -101,6 +97,24 @@ impl Operation {
                 _ => Err(error!(TypeMismatch)),
             },
             String(_) | Return(_) | Next(_) => Err(error!(TypeMismatch)),
+        }
+    }
+
+    pub fn divint(lhs: Val, rhs: Val) -> Result<Val> {
+        let lhs = i16::try_from(lhs)?;
+        let rhs = i16::try_from(rhs)?;
+        match lhs.checked_div(rhs) {
+            Some(n) => Ok(Val::Integer(n)),
+            None => Err(error!(DivisionByZero)),
+        }
+    }
+
+    pub fn remainder(lhs: Val, rhs: Val) -> Result<Val> {
+        let lhs = i16::try_from(lhs)?;
+        let rhs = i16::try_from(rhs)?;
+        match lhs.checked_rem(rhs) {
+            Some(n) => Ok(Val::Integer(n)),
+            None => Err(error!(DivisionByZero)),
         }
     }
 
@@ -305,6 +319,10 @@ impl Operation {
         Ok(Val::Integer(lhs & rhs))
     }
 
+    pub fn not(val: Val) -> Result<Val> {
+        Ok(Val::Integer(!i16::try_from(val)?))
+    }
+
     pub fn or(lhs: Val, rhs: Val) -> Result<Val> {
         let lhs = i16::try_from(lhs)?;
         let rhs = i16::try_from(rhs)?;
@@ -315,5 +333,17 @@ impl Operation {
         let lhs = i16::try_from(lhs)?;
         let rhs = i16::try_from(rhs)?;
         Ok(Val::Integer(lhs ^ rhs))
+    }
+
+    pub fn imp(lhs: Val, rhs: Val) -> Result<Val> {
+        let lhs = i16::try_from(lhs)?;
+        let rhs = i16::try_from(rhs)?;
+        Ok(Val::Integer(!lhs | rhs))
+    }
+
+    pub fn eqv(lhs: Val, rhs: Val) -> Result<Val> {
+        let lhs = i16::try_from(lhs)?;
+        let rhs = i16::try_from(rhs)?;
+        Ok(Val::Integer(!(lhs ^ rhs)))
     }
 }
