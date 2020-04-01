@@ -10,6 +10,14 @@ pub mod CLEAR;
 #[allow(non_snake_case)]
 pub mod CONT;
 
+#[path = "statements/data.rs"]
+#[allow(non_snake_case)]
+pub mod DATA;
+
+#[path = "statements/def.rs"]
+#[allow(non_snake_case)]
+pub mod DEF;
+
 #[path = "statements/dim.rs"]
 #[allow(non_snake_case)]
 pub mod DIM;
@@ -46,6 +54,10 @@ pub mod LET;
 #[allow(non_snake_case)]
 pub mod LIST;
 
+#[path = "statements/load.rs"]
+#[allow(non_snake_case)]
+pub mod LOAD;
+
 #[path = "statements/new.rs"]
 #[allow(non_snake_case)]
 pub mod NEW;
@@ -62,10 +74,26 @@ pub mod ON;
 #[allow(non_snake_case)]
 pub mod PRINT;
 
-#[path = "statements/return.rs"]
+#[path = "statements/read.rs"]
 #[allow(non_snake_case)]
-pub mod RETURN;
+pub mod READ;
+
+#[path = "statements/rem.rs"]
+#[allow(non_snake_case)]
+pub mod REM;
+
+#[path = "statements/restore.rs"]
+#[allow(non_snake_case)]
+pub mod RESTORE;
 
 #[path = "statements/run.rs"]
 #[allow(non_snake_case)]
 pub mod RUN;
+
+#[path = "statements/save.rs"]
+#[allow(non_snake_case)]
+pub mod SAVE;
+
+#[path = "statements/stop.rs"]
+#[allow(non_snake_case)]
+pub mod STOP;

@@ -12,7 +12,7 @@ with a comma immediately after the INPUT.
 ## Example
 ```text
 10 INPUT ,A$
-20 INPUT "WHAT IS YOUR NAME AND AGE"; name$, age%
+20 INPUT "WHAT IS YOUR NAME AND AGE"; NAME$, AGE%
 ```
 
 */
