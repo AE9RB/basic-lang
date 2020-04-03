@@ -1,3 +1,4 @@
+extern crate chrono;
 use super::{Opcode, Stack, Val};
 use crate::error;
 use crate::lang::Error;
@@ -15,6 +16,7 @@ impl Function {
             "ASC" => Some((Opcode::Asc, 1..=1)),
             "CHR$" => Some((Opcode::Chr, 1..=1)),
             "COS" => Some((Opcode::Cos, 1..=1)),
+            "DATE$" => Some((Opcode::Date, 0..=0)),
             "EXP" => Some((Opcode::Exp, 1..=1)),
             "INT" => Some((Opcode::Int, 1..=1)),
             "LEFT$" => Some((Opcode::Left, 2..=2)),
@@ -27,6 +29,7 @@ impl Function {
             "SQR" => Some((Opcode::Sqr, 1..=1)),
             "STR$" => Some((Opcode::Str, 1..=1)),
             "TAB" => Some((Opcode::Tab, 1..=1)),
+            "TIME$" => Some((Opcode::Time, 0..=0)),
             "VAL" => Some((Opcode::Val, 1..=1)),
             _ => None,
         }
@@ -74,6 +77,12 @@ impl Function {
             Double(n) => Ok(Double(n.cos())),
             String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
         }
+    }
+
+    pub fn date() -> Result<Val> {
+        Ok(Val::String(
+            chrono::Local::now().format("%m-%d-%Y").to_string().into(),
+        ))
     }
 
     pub fn exp(val: Val) -> Result<Val> {
@@ -239,6 +248,12 @@ impl Function {
             s.push_str(&" ".repeat(len));
         }
         Ok(Val::String(s.into()))
+    }
+
+    pub fn time() -> Result<Val> {
+        Ok(Val::String(
+            chrono::Local::now().format("%H:%M:%S").to_string().into(),
+        ))
     }
 
     pub fn val(val: Val) -> Result<Val> {

@@ -451,6 +451,7 @@ impl Runtime {
                 Opcode::Asc => self.stack.pop_1_push(&Function::asc)?,
                 Opcode::Chr => self.stack.pop_1_push(&Function::chr)?,
                 Opcode::Cos => self.stack.pop_1_push(&Function::cos)?,
+                Opcode::Date => self.stack.push(Function::date()?)?,
                 Opcode::Exp => self.stack.pop_1_push(&Function::exp)?,
                 Opcode::Int => self.stack.pop_1_push(&Function::int)?,
                 Opcode::Left => self.stack.pop_2_push(&Function::left)?,
@@ -472,6 +473,7 @@ impl Runtime {
                     let val = self.stack.pop()?;
                     self.stack.push(Function::tab(self.print_col, val)?)?;
                 }
+                Opcode::Time => self.stack.push(Function::time()?)?,
                 Opcode::Val => self.stack.pop_1_push(&Function::val)?,
             }
         }

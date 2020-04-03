@@ -97,7 +97,16 @@ impl VarItem {
         }
     }
 
+    fn test_for_built_in(&self) -> Result<()> {
+        if Function::opcode_and_arity(&self.name).is_some() {
+            Err(error!(SyntaxError, ..&self.col; "RESERVED FOR BUILT-IN FUNCTION"))
+        } else {
+            Ok(())
+        }
+    }
+
     fn push_as_dim(self, link: &mut Link) -> Result<Column> {
+        self.test_for_built_in()?;
         if self.len == 0 {
             Err(error!(SyntaxError, ..&self.col; "NOT AN ARRAY"))
         } else {
@@ -109,6 +118,7 @@ impl VarItem {
     }
 
     fn push_as_pop_unary(self, link: &mut Link) -> Result<Column> {
+        self.test_for_built_in()?;
         debug_assert!(self.len == 0);
         debug_assert!(self.link.is_empty());
         link.push(Opcode::Pop(self.name))?;
@@ -116,6 +126,7 @@ impl VarItem {
     }
 
     fn push_as_pop(self, link: &mut Link) -> Result<Column> {
+        self.test_for_built_in()?;
         if self.len == 0 {
             debug_assert!(self.link.is_empty());
             link.push(Opcode::Pop(self.name))?
@@ -442,7 +453,9 @@ impl Compiler {
     }
 
     fn r#next(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
-        link.push(Opcode::Next(self.var.pop()?.name))?;
+        let var = self.var.pop()?;
+        var.test_for_built_in()?;
+        link.push(Opcode::Next(var.name))?;
         Ok(col.clone())
     }
 

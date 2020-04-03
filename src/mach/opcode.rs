@@ -82,6 +82,7 @@ pub enum Opcode {
     Asc,
     Chr,
     Cos,
+    Date,
     Exp,
     Int,
     Left,
@@ -94,6 +95,7 @@ pub enum Opcode {
     Sqr,
     Str,
     Tab,
+    Time,
     Val,
 }
 
@@ -161,6 +163,7 @@ impl std::fmt::Display for Opcode {
             Asc => write!(f, "ASC"),
             Chr => write!(f, "CHR$"),
             Cos => write!(f, "COS"),
+            Date => write!(f, "DATE$"),
             Exp => write!(f, "EXP"),
             Int => write!(f, "INT"),
             Left => write!(f, "LEFT$"),
@@ -173,6 +176,7 @@ impl std::fmt::Display for Opcode {
             Sqr => write!(f, "SQR"),
             Str => write!(f, "STR"),
             Tab => write!(f, "TAB"),
+            Time => write!(f, "TIME$"),
             Val => write!(f, "VAL"),
         }
     }

@@ -42,6 +42,16 @@ pub mod COS {
     */
 }
 
+pub mod DATE {
+    /*!
+    ## `DATE$` Returns the system date.
+    ```text
+    PRINT DATE$
+    12-31-2000
+    ```
+    */
+}
+
 pub mod EXP {
     /*!
     ## `EXP(X)` Returns e to the power of X.
@@ -171,6 +181,16 @@ pub mod TAB {
     ```text
     PRINT 1.99 TAB(20) "furlongs per year"
      1.99               furlongs per year
+    ```
+    */
+}
+
+pub mod TIME {
+    /*!
+    ## `TIME$` Returns the system time.
+    ```text
+    PRINT TIME$
+    23:59:59
     ```
     */
 }
