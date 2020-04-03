@@ -27,6 +27,7 @@ impl Token {
             ("GOSUB", Token::Word(Word::Gosub1)),
             ("INPUT", Token::Word(Word::Input)),
             ("PRINT", Token::Word(Word::Print1)),
+            ("WHILE", Token::Word(Word::While)),
             ("CONT", Token::Word(Word::Cont)),
             ("DATA", Token::Word(Word::Data)),
             ("ELSE", Token::Word(Word::Else)),
@@ -39,6 +40,7 @@ impl Token {
             ("STEP", Token::Word(Word::Step)),
             ("STOP", Token::Word(Word::Stop)),
             ("THEN", Token::Word(Word::Then)),
+            ("WEND", Token::Word(Word::Wend)),
             ("AND", Token::Operator(Operator::And)),
             ("CLS", Token::Word(Word::Cls)),
             ("DEF", Token::Word(Word::Def)),
@@ -218,6 +220,8 @@ pub enum Word {
     Run,
     Then,
     To,
+    Wend,
+    While,
 }
 
 impl std::fmt::Display for Word {
@@ -258,6 +262,8 @@ impl std::fmt::Display for Word {
             Stop => write!(f, "STOP"),
             Then => write!(f, "THEN"),
             To => write!(f, "TO"),
+            Wend => write!(f, "WEND"),
+            While => write!(f, "WHILE"),
         }
     }
 }

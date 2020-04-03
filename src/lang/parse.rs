@@ -500,6 +500,7 @@ impl Expression {
 }
 
 impl Statement {
+    #[allow(clippy::cognitive_complexity)]
     fn expect(parse: &mut BasicParser) -> Result<Vec<Statement>> {
         match parse.peek() {
             Some(Token::Ident(_)) => return Ok(vec![Self::r#let(parse)?]),
@@ -532,6 +533,8 @@ impl Statement {
                     Run => return Ok(vec![Self::r#run(parse)?]),
                     Save => return Ok(vec![Self::r#save(parse)?]),
                     Stop => return Ok(vec![Self::r#stop(parse)?]),
+                    Wend => return Ok(vec![Self::r#wend(parse)?]),
+                    While => return Ok(vec![Self::r#while(parse)?]),
                     Else | Rem1 | Rem2 | Step | Then | To => {}
                 }
             }
@@ -815,6 +818,17 @@ impl Statement {
 
     fn r#stop(parse: &mut BasicParser) -> Result<Statement> {
         Ok(Statement::Stop(parse.col.clone()))
+    }
+
+    fn r#wend(parse: &mut BasicParser) -> Result<Statement> {
+        Ok(Statement::Wend(parse.col.clone()))
+    }
+
+    fn r#while(parse: &mut BasicParser) -> Result<Statement> {
+        Ok(Statement::While(
+            parse.col.clone(),
+            parse.expect_expression()?,
+        ))
     }
 }
 

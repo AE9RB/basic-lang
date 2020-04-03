@@ -101,3 +101,7 @@ pub mod SAVE;
 #[path = "statements/stop.rs"]
 #[allow(non_snake_case)]
 pub mod STOP;
+
+#[path = "statements/while.rs"]
+#[allow(non_snake_case)]
+pub mod WHILE;

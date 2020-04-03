@@ -186,3 +186,23 @@ fn test_restore_data() {
     r.enter(r#"RESTORE 30:READ A:PRINT A"#);
     assert_eq!(exec(&mut r), "-30 \n");
 }
+
+#[test]
+fn test_while_wend() {
+    let mut r = Runtime::default();
+    r.enter(r#"10 WHILE I<2:I=I+1:PRINT I;"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), "?WHILE WITHOUT WEND IN 10:4\n");
+    r.enter(r#"30 WEND"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), " 1  2 \n");
+    r.enter(r#"40 WEND"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), "?WEND WITHOUT WHILE IN 30:4\n");
+    r.enter(r#"20 WHILE J<2:J=J+1:PRINT J+10;"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), " 1  11  12  2 \n");
+    r.enter(r#"35 J=0"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), " 1  11  12  2  11  12 \n");
+}

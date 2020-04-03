@@ -277,6 +277,8 @@ impl Compiler {
             Statement::Run(col, ..) => self.r#run(link, col),
             Statement::Save(col, ..) => self.r#save(link, col),
             Statement::Stop(col, ..) => self.r#stop(link, col),
+            Statement::Wend(col, ..) => self.r#wend(link, col),
+            Statement::While(col, ..) => self.r#while(link, col),
         }
     }
 
@@ -526,5 +528,16 @@ impl Compiler {
     fn r#stop(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
         link.push(Opcode::Stop)?;
         Ok(col.clone())
+    }
+
+    fn r#wend(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
+        link.push_wend(col.clone())?;
+        Ok(col.clone())
+    }
+
+    fn r#while(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
+        let (sub_col, expr) = self.expr.pop()?;
+        link.push_while(col.clone(), expr)?;
+        Ok(col.start..sub_col.end)
     }
 }

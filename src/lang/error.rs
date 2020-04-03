@@ -128,6 +128,8 @@ pub enum ErrorCode {
     RedoFromStart = 21,
     LineBufferOverflow = 23,
     ForWithoutNext = 26,
+    WhileWithoutWend = 29,
+    WendWithoutWhile = 30,
     InternalError = 51,
     FileNotFound = 53,
     DirectStatementInFile = 66,

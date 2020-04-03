@@ -18,6 +18,8 @@ pub struct Link {
     direct_set: bool,
     symbols: BTreeMap<Symbol, (Address, Address)>,
     unlinked: HashMap<Address, (Column, Symbol)>,
+    whiles: Vec<(Column, Address, Symbol)>,
+    wends: Vec<(Column, Address, Symbol)>,
 }
 
 impl Default for Link {
@@ -30,6 +32,8 @@ impl Default for Link {
             direct_set: false,
             symbols: BTreeMap::default(),
             unlinked: HashMap::default(),
+            whiles: Vec::default(),
+            wends: Vec::default(),
         }
     }
 }
@@ -42,23 +46,31 @@ impl Link {
         let ops_addr_offset = self.ops.len();
         let data_addr_offset = self.data.len();
         let sym_offset = self.current_symbol;
-        for (symbol, (ops_addr, data_addr)) in link.symbols.iter() {
-            let mut symbol = *symbol;
+        for (symbol, (ops_addr, data_addr)) in link.symbols {
+            let mut symbol = symbol;
             if symbol < 0 {
                 symbol += sym_offset
             }
             self.symbols.insert(
                 symbol,
-                (*ops_addr + ops_addr_offset, *data_addr + data_addr_offset),
+                (ops_addr + ops_addr_offset, data_addr + data_addr_offset),
             );
         }
-        for (address, (col, symbol)) in link.unlinked.iter() {
-            let mut symbol = *symbol;
+        for (address, (col, symbol)) in link.unlinked {
+            let mut symbol = symbol;
             if symbol < 0 {
                 symbol += sym_offset
             }
             self.unlinked
-                .insert(*address + ops_addr_offset, (col.clone(), symbol));
+                .insert(address + ops_addr_offset, (col.clone(), symbol));
+        }
+        for (col, addr, sym) in link.whiles {
+            self.whiles
+                .push((col, addr + ops_addr_offset, sym + sym_offset));
+        }
+        for (col, addr, sym) in link.wends {
+            self.wends
+                .push((col, addr + ops_addr_offset, sym + sym_offset));
         }
         self.current_symbol += link.current_symbol;
         self.ops.append(&mut link.ops)?;
@@ -231,6 +243,23 @@ impl Link {
         }
     }
 
+    pub fn push_wend(&mut self, col: Column) -> Result<()> {
+        let sym = self.next_symbol();
+        let addr = self.ops.len();
+        self.wends.push((col, addr, sym));
+        self.push(Opcode::Jump(0))?;
+        self.push_symbol(sym);
+        Ok(())
+    }
+
+    pub fn push_while(&mut self, col: Column, expr: Link) -> Result<()> {
+        let sym = self.next_symbol();
+        self.push_symbol(sym);
+        self.append(expr)?;
+        self.whiles.push((col, self.ops.len(), sym));
+        self.push(Opcode::IfNot(0))
+    }
+
     pub fn set_start_of_direct(&mut self, op_addr: Address) {
         self.direct_set = true;
         self.symbols.insert(
@@ -254,6 +283,22 @@ impl Link {
 
     pub fn link(&mut self) -> Vec<Error> {
         let mut errors: Vec<Error> = vec![];
+        for (wh_col, wh_addr, wh_sym) in std::mem::take(&mut self.whiles) {
+            match self.wends.pop() {
+                Some((we_col, we_addr, we_sym)) => {
+                    self.unlinked.insert(wh_addr, (wh_col.clone(), we_sym));
+                    self.unlinked.insert(we_addr, (we_col, wh_sym));
+                }
+                None => errors.push(error!(
+                    WhileWithoutWend,
+                    self.line_number_for(wh_addr),
+                    ..&wh_col
+                )),
+            }
+        }
+        while let Some((col, addr, _)) = self.wends.pop() {
+            errors.push(error!(WendWithoutWhile, self.line_number_for(addr), ..&col));
+        }
         for (op_addr, (col, symbol)) in std::mem::take(&mut self.unlinked) {
             match self.symbols.get(&symbol) {
                 None => {
