@@ -47,6 +47,7 @@ impl<'a> BasicParser<'a> {
             return self.peeked.take();
         }
         loop {
+            self.col.start = self.col.end;
             let token = self.token_stream.next()?;
             if matches!(token, Token::Word(Word::Rem1) | Token::Word(Word::Rem2)) {
                 self.rem = true;
@@ -54,7 +55,6 @@ impl<'a> BasicParser<'a> {
             if self.rem {
                 continue;
             }
-            self.col.start = self.col.end;
             self.col.end += token.to_string().chars().count();
             match token {
                 Token::Whitespace(_) => continue,
@@ -312,8 +312,9 @@ impl<'a> BasicParser<'a> {
         }
         Err(error!(SyntaxError, ..&self.col;
             match token {
-                Token::Unknown(_) | Token::Whitespace(_) => {"EXPECTED IMPOSSIBLE"}
+                Token::Unknown(_) | Token::Whitespace(_) => {"EXPECTED THE IMPOSSIBLE"}
                 Token::Literal(_) => {"EXPECTED LITERAL"}
+                Token::Word(Word::Then) => {"EXPECTED THEN"}
                 Token::Word(Word::To) => {"EXPECTED TO"}
                 Token::Word(_) => {"EXPECTED STATEMENT WORD"}
                 Token::Operator(Operator::Equal) => {"EXPECTED EQUALS SIGN"}
