@@ -40,6 +40,7 @@ impl Token {
             ("STOP", Token::Word(Word::Stop)),
             ("THEN", Token::Word(Word::Then)),
             ("AND", Token::Operator(Operator::And)),
+            ("CLS", Token::Word(Word::Cls)),
             ("DEF", Token::Word(Word::Def)),
             ("DIM", Token::Word(Word::Dim)),
             ("END", Token::Word(Word::End)),
@@ -184,6 +185,7 @@ impl std::fmt::Display for Literal {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Word {
     Clear,
+    Cls,
     Cont,
     Data,
     Def,
@@ -223,6 +225,7 @@ impl std::fmt::Display for Word {
         use Word::*;
         match self {
             Clear => write!(f, "CLEAR"),
+            Cls => write!(f, "CLS"),
             Cont => write!(f, "CONT"),
             Data => write!(f, "DATA"),
             Def => write!(f, "DEF"),

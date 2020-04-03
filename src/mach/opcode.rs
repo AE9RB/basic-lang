@@ -40,6 +40,7 @@ pub enum Opcode {
 
     // *** Statements
     Clear,
+    Cls,
     Cont,
     Def(Rc<str>),
     End,
@@ -120,6 +121,7 @@ impl std::fmt::Display for Opcode {
             Return => write!(f, "RETURN"),
 
             Clear => write!(f, "CLEAR"),
+            Cls => write!(f, "CLS"),
             Cont => write!(f, "CONT"),
             Def(s) => write!(f, "DEF({})", s),
             End => write!(f, "END"),

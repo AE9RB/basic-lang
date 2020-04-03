@@ -43,6 +43,7 @@ pub enum Event {
     Stopped,
     Load(String),
     Save(String),
+    Cls,
 }
 
 #[derive(Debug)]
@@ -399,6 +400,7 @@ impl Runtime {
                     }
                 }
                 Opcode::Clear => self.r#clear(),
+                Opcode::Cls => return self.r#cls(),
                 Opcode::Cont => {
                     if let Some(event) = self.r#cont()? {
                         return Ok(event);
@@ -482,6 +484,10 @@ impl Runtime {
         self.vars.clear();
         self.functions.clear();
         self.cont = State::Stopped;
+    }
+
+    fn r#cls(&mut self) -> Result<Event> {
+        Ok(Event::Cls)
     }
 
     fn r#cont(&mut self) -> Result<Option<Event>> {

@@ -252,6 +252,7 @@ impl Compiler {
         use ast::Statement;
         match statement {
             Statement::Clear(col, ..) => self.r#clear(link, col),
+            Statement::Cls(col, ..) => self.r#cls(link, col),
             Statement::Cont(col, ..) => self.r#cont(link, col),
             Statement::Data(col, v) => self.r#data(link, col, v.len()),
             Statement::Def(col, _, v, _) => self.r#def(link, col, v.len()),
@@ -289,6 +290,11 @@ impl Compiler {
 
     fn r#clear(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
         link.push(Opcode::Clear)?;
+        Ok(col.clone())
+    }
+
+    fn r#cls(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
+        link.push(Opcode::Cls)?;
         Ok(col.clone())
     }
 

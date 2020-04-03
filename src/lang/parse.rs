@@ -508,6 +508,7 @@ impl Statement {
                 use Word::*;
                 match word {
                     Clear => return Ok(vec![Self::r#clear(parse)?]),
+                    Cls => return Ok(vec![Self::r#cls(parse)?]),
                     Cont => return Ok(vec![Self::r#cont(parse)?]),
                     Data => return Ok(vec![Self::r#data(parse)?]),
                     Def => return Ok(vec![Self::r#def(parse)?]),
@@ -548,6 +549,10 @@ impl Statement {
             parse.next();
         }
         result
+    }
+
+    fn r#cls(parse: &mut BasicParser) -> Result<Statement> {
+        Ok(Statement::Cls(parse.col.clone()))
     }
 
     fn r#cont(parse: &mut BasicParser) -> Result<Statement> {

@@ -4,6 +4,7 @@ use std::rc::Rc;
 #[derive(Debug, PartialEq)]
 pub enum Statement {
     Clear(Column),
+    Cls(Column),
     Cont(Column),
     Data(Column, Vec<Expression>),
     Def(Column, Variable, Vec<Variable>, Expression),
@@ -103,7 +104,7 @@ impl AcceptVisitor for Statement {
     fn accept<V: Visitor>(&self, visitor: &mut V) {
         use Statement::*;
         match self {
-            Clear(_) | Cont(_) | End(_) | New(_) | Stop(_) | Return(_) => {}
+            Clear(_) | Cls(_) | Cont(_) | End(_) | New(_) | Stop(_) | Return(_) => {}
             Data(_, vec_expr) => {
                 for v in vec_expr {
                     v.accept(visitor);

@@ -5,7 +5,8 @@ use crate::mach::{Event, Listing, Runtime};
 use crate::{error, lang::Error};
 use ansi_term::Style;
 use linefeed::{
-    Command, Completer, Completion, Function, Interface, Prompter, ReadResult, Signal, Terminal,
+    Command, Completer, Completion, DefaultTerminal, Function, Interface, Prompter, ReadResult,
+    Signal, Terminal,
 };
 use std::fs::File;
 use std::io::{BufRead, BufReader, ErrorKind, Write};
@@ -129,6 +130,9 @@ fn main_loop(interrupted: Arc<AtomicBool>, filename: String) -> std::io::Result<
                     Style::new().bold().paint(error.to_string())
                 ))?,
             },
+            Event::Cls => {
+                DefaultTerminal::new()?.lock_write().clear_screen()?;
+            }
         }
     }
     Ok(())

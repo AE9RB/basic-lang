@@ -34,6 +34,9 @@ pub fn exec_n(runtime: &mut Runtime, cycles: usize) -> String {
             Event::List((ls, _columns)) => {
                 s.push_str(&format!("{}\n", ls));
             }
+            Event::Cls => {
+                s.push('\n');
+            }
         }
         match event {
             Event::Running => prev_running = true,

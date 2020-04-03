@@ -6,7 +6,7 @@ license = "Apache-2.0 OR MIT"
 readme = "README.md"
 homepage = "http://basic-lang.org/"
 repository = "https://github.com/AE9RB/basic-lang"
-description = "The BASIC programming language as it was in 1978."
+description = "The BASIC programming language as it was in the 8-bit era."
 
 edition = "2018"
 

@@ -6,6 +6,10 @@
 #[allow(non_snake_case)]
 pub mod CLEAR;
 
+#[path = "statements/cls.rs"]
+#[allow(non_snake_case)]
+pub mod CLS;
+
 #[path = "statements/cont.rs"]
 #[allow(non_snake_case)]
 pub mod CONT;
