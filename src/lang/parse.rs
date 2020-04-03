@@ -19,7 +19,7 @@ pub fn parse(line_number: LineNumber, tokens: &[Token]) -> Result<Vec<Statement>
 struct BasicParser<'a> {
     token_stream: std::slice::Iter<'a, Token>,
     peeked: Option<&'a Token>,
-    rem2: bool,
+    rem: bool,
     col: Column,
 }
 
@@ -28,7 +28,7 @@ impl<'a> BasicParser<'a> {
         let mut parse = BasicParser {
             token_stream: tokens.iter(),
             peeked: None,
-            rem2: false,
+            rem: false,
             col: 0..0,
         };
         match parse.peek() {
@@ -47,17 +47,16 @@ impl<'a> BasicParser<'a> {
             return self.peeked.take();
         }
         loop {
-            self.col.start = self.col.end;
             let token = self.token_stream.next()?;
-            self.col.end += token.to_string().chars().count();
-            if self.rem2 {
+            if matches!(token, Token::Word(Word::Rem1) | Token::Word(Word::Rem2)) {
+                self.rem = true;
+            }
+            if self.rem {
                 continue;
             }
+            self.col.start = self.col.end;
+            self.col.end += token.to_string().chars().count();
             match token {
-                Token::Word(Word::Rem2) => {
-                    self.rem2 = true;
-                    continue;
-                }
                 Token::Whitespace(_) => continue,
                 _ => return Some(token),
             }
@@ -76,9 +75,7 @@ impl<'a> BasicParser<'a> {
         let mut expect_colon = false;
         loop {
             match self.peek() {
-                None | Some(Token::Word(Word::Rem1)) | Some(Token::Word(Word::Else)) => {
-                    return Ok(statements)
-                }
+                None | Some(Token::Word(Word::Else)) => return Ok(statements),
                 Some(Token::Colon) => {
                     expect_colon = false;
                     self.next();
@@ -131,7 +128,7 @@ impl<'a> BasicParser<'a> {
             match self.peek() {
                 None | Some(Token::Colon) | Some(Token::Word(Word::Else)) => {
                     let mut column = self.col.clone();
-                    column.end = column.start;
+                    column.start = column.end;
                     if linefeed {
                         expressions.push(Expression::String(column, "\n".into()));
                     }
@@ -427,10 +424,8 @@ impl Expression {
             NotEqual => Expression::NotEqual(col, Box::new(lhs), Box::new(rhs)),
             Less => Expression::Less(col, Box::new(lhs), Box::new(rhs)),
             LessEqual => Expression::LessEqual(col, Box::new(lhs), Box::new(rhs)),
-            EqualLess => Expression::LessEqual(col, Box::new(lhs), Box::new(rhs)),
             Greater => Expression::Greater(col, Box::new(lhs), Box::new(rhs)),
             GreaterEqual => Expression::GreaterEqual(col, Box::new(lhs), Box::new(rhs)),
-            EqualGreater => Expression::GreaterEqual(col, Box::new(lhs), Box::new(rhs)),
             Not => return Err(error!(InternalError)),
             And => Expression::And(col, Box::new(lhs), Box::new(rhs)),
             Or => Expression::Or(col, Box::new(lhs), Box::new(rhs)),
@@ -458,8 +453,7 @@ impl Expression {
             DivideInt => 10,
             Modulus => 9,
             Plus | Minus => 8,
-            Equal | NotEqual | Less | LessEqual | EqualLess | Greater | GreaterEqual
-            | EqualGreater => 7,
+            Equal | NotEqual | Less | LessEqual | Greater | GreaterEqual => 7,
             // Unary not => 6
             And => 5,
             Or => 4,
@@ -516,8 +510,8 @@ impl Statement {
                     Dim => return Self::r#dim(parse),
                     End => return Ok(vec![Self::r#end(parse)?]),
                     For => return Ok(vec![Self::r#for(parse)?]),
-                    Gosub1 | Gosub2 => return Ok(vec![Self::r#gosub(parse)?]),
-                    Goto1 | Goto2 => return Ok(vec![Self::r#goto(parse)?]),
+                    Gosub => return Ok(vec![Self::r#gosub(parse)?]),
+                    Goto => return Ok(vec![Self::r#goto(parse)?]),
                     If => return Ok(vec![Self::r#if(parse)?]),
                     Input => return Ok(vec![Self::r#input(parse)?]),
                     Let => return Ok(vec![Self::r#let(parse)?]),
@@ -526,7 +520,7 @@ impl Statement {
                     New => return Ok(vec![Self::r#new(parse)?]),
                     Next => return Self::r#next(parse),
                     On => return Ok(vec![Self::r#on(parse)?]),
-                    Print1 | Print2 => return Self::r#print(parse),
+                    Print => return Self::r#print(parse),
                     Read => return Ok(vec![Self::r#read(parse)?]),
                     Restore => return Ok(vec![Self::r#restore(parse)?]),
                     Return => return Ok(vec![Self::r#return(parse)?]),
@@ -646,7 +640,7 @@ impl Statement {
     fn r#if(parse: &mut BasicParser) -> Result<Statement> {
         let column = parse.col.clone();
         let predicate = parse.expect_expression()?;
-        if parse.maybe(Token::Word(Word::Goto1)) || parse.maybe(Token::Word(Word::Goto2)) {
+        if parse.maybe(Token::Word(Word::Goto)) {
             let stmt = Statement::Goto(parse.col.clone(), parse.expect_line_number()?);
             return Ok(Statement::If(column, predicate, vec![stmt], vec![]));
         }
@@ -751,12 +745,12 @@ impl Statement {
         let column = parse.col.clone();
         let expr = parse.expect_expression()?;
         match parse.next() {
-            Some(Token::Word(Word::Goto1)) => Ok(Statement::OnGoto(
+            Some(Token::Word(Word::Goto)) => Ok(Statement::OnGoto(
                 column,
                 expr,
                 parse.expect_line_number_list()?,
             )),
-            Some(Token::Word(Word::Gosub1)) => Ok(Statement::OnGosub(
+            Some(Token::Word(Word::Gosub)) => Ok(Statement::OnGosub(
                 column,
                 expr,
                 parse.expect_line_number_list()?,

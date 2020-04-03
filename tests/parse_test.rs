@@ -12,8 +12,8 @@ fn parse_str(s: &str) -> Option<Statement> {
 fn test_let_foo_eq_bar() {
     let answer = Statement::Let(
         0..3,
-        Variable::Unary(3..6, Ident::Plain("TER".into())),
-        Expression::Variable(Variable::Unary(7..10, Ident::Plain("BAR".into()))),
+        Variable::Unary(4..7, Ident::Plain("TER".into())),
+        Expression::Variable(Variable::Unary(8..11, Ident::Plain("BAR".into()))),
     );
     assert_eq!(parse_str("letter=bar:"), Some(answer));
     let answer = Statement::Let(
@@ -124,19 +124,39 @@ fn test_printer_list() {
     assert_eq!(
         parse(lin, &tokens).ok(),
         Some(vec!(
-            Statement::Print(0..1, Expression::Integer(2..3, 1)),
-            Statement::Print(0..1, Expression::Integer(4..5, 2)),
+            Statement::Print(0..5, Expression::Integer(6..7, 1)),
+            Statement::Print(0..5, Expression::Integer(8..9, 2)),
             Statement::Print(
-                0..1,
+                0..5,
                 Expression::Variable(Variable::Array(
-                    5..6,
+                    9..10,
                     Ident::String("TAB".into()),
-                    vec![Expression::Integer(5..6, -14)]
+                    vec![Expression::Integer(9..10, -14)]
                 ))
             ),
-            Statement::Print(0..1, Expression::Integer(6..7, 3)),
-            Statement::Print(9..10, Expression::Single(10..13, 0.0)),
-            Statement::Print(9..10, Expression::String(13..13, "\n".into())),
+            Statement::Print(0..5, Expression::Integer(10..11, 3)),
+            Statement::Print(13..18, Expression::Single(19..22, 0.0)),
+            Statement::Print(13..18, Expression::String(22..22, "\n".into())),
         ))
+    );
+}
+
+#[test]
+fn test_remarks() {
+    let (lin, tokens) = lex("10 PRINT REMARK");
+    assert_eq!(
+        parse(lin, &tokens).ok(),
+        Some(vec!(Statement::Print(
+            0..5,
+            Expression::String(6..6, "\n".into())
+        )))
+    );
+    let (lin, tokens) = lex("10 PRINT 'REMARK");
+    assert_eq!(
+        parse(lin, &tokens).ok(),
+        Some(vec!(Statement::Print(
+            0..5,
+            Expression::String(6..6, "\n".into())
+        )))
     );
 }

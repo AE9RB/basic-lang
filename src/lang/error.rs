@@ -195,12 +195,9 @@ impl std::fmt::Display for Error {
         let mut suffix = String::new();
         if let Some(line_number) = self.line_number {
             suffix.push_str(&format!(" {}", line_number));
-        }
-        if (0..0) != self.column {
-            if suffix.is_empty() {
-                suffix.push(' ');
+            if (0..0) != self.column {
+                suffix.push_str(&format!(":{}", self.column().start + 1));
             }
-            suffix.push_str(&format!(":{}", self.column().start + 1));
         }
         if !suffix.is_empty() {
             suffix.insert_str(0, " IN");

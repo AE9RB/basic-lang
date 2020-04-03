@@ -3,7 +3,7 @@ use basic::lang::{lex, token::*, Line};
 fn token(s: &str) -> Option<Token> {
     let s = format!("?{}", s);
     let (_, mut tokens) = lex(&s);
-    let mut t = tokens.drain(1..2);
+    let mut t = tokens.drain(2..3);
     t.next()
 }
 
@@ -16,7 +16,7 @@ fn test_eq_gt() {
         x.next(),
         Some(&Token::Literal(Literal::Integer("1".to_string())))
     );
-    assert_eq!(x.next(), Some(&Token::Operator(Operator::EqualLess)));
+    assert_eq!(x.next(), Some(&Token::Operator(Operator::LessEqual)));
     assert_eq!(x.next(), Some(&Token::Operator(Operator::GreaterEqual)));
     assert_eq!(x.next(), Some(&Token::Operator(Operator::NotEqual)));
     assert_eq!(
@@ -31,18 +31,18 @@ fn test_go_to_1() {
     let (ln, v) = lex("10 go to");
     assert_eq!(ln, Some(10));
     let mut x = v.iter();
-    assert_eq!(x.next(), Some(&Token::Word(Word::Goto1)));
+    assert_eq!(x.next(), Some(&Token::Word(Word::Goto)));
     assert_eq!(x.next(), None);
 }
 
 #[test]
 fn test_go_to_2() {
-    assert_eq!(token("GO TO"), Some(Token::Word(Word::Goto2)));
+    assert_eq!(token("GO TO"), Some(Token::Word(Word::Goto)));
 }
 
 #[test]
 fn test_go_sub_2() {
-    assert_eq!(token("GO SUB"), Some(Token::Word(Word::Gosub2)));
+    assert_eq!(token("GO SUB"), Some(Token::Word(Word::Gosub)));
 }
 
 #[test]
@@ -50,13 +50,13 @@ fn test_print_1() {
     let (ln, v) = lex("10 ?");
     assert_eq!(ln, Some(10));
     let mut x = v.iter();
-    assert_eq!(x.next(), Some(&Token::Word(Word::Print1)));
+    assert_eq!(x.next(), Some(&Token::Word(Word::Print)));
     assert_eq!(x.next(), None);
 }
 
 #[test]
 fn test_print_2() {
-    assert_eq!(token("?"), Some(Token::Word(Word::Print2)));
+    assert_eq!(token("?"), Some(Token::Word(Word::Print)));
 }
 
 #[test]
@@ -129,7 +129,9 @@ fn test_ident_with_word() {
     assert_eq!(ln, None);
     let mut x = v.iter();
     assert_eq!(x.next(), Some(&Token::Ident(Ident::Plain("B".into()))));
+    assert_eq!(x.next(), Some(&Token::Whitespace(1)));
     assert_eq!(x.next(), Some(&Token::Operator(Operator::And)));
+    assert_eq!(x.next(), Some(&Token::Whitespace(1)));
     assert_eq!(x.next(), Some(&Token::Ident(Ident::Plain("S".into()))));
     assert_eq!(x.next(), None);
 }
@@ -140,6 +142,7 @@ fn test_for_loop() {
     assert_eq!(ln, None);
     let mut x = v.iter();
     assert_eq!(x.next(), Some(&Token::Word(Word::For)));
+    assert_eq!(x.next(), Some(&Token::Whitespace(1)));
     assert_eq!(
         x.next(),
         Some(&Token::Ident(Ident::Integer("I%".to_string())))
@@ -149,7 +152,9 @@ fn test_for_loop() {
         x.next(),
         Some(&Token::Literal(Literal::Integer("1".to_string())))
     );
+    assert_eq!(x.next(), Some(&Token::Whitespace(1)));
     assert_eq!(x.next(), Some(&Token::Word(Word::To)));
+    assert_eq!(x.next(), Some(&Token::Whitespace(1)));
     assert_eq!(
         x.next(),
         Some(&Token::Literal(Literal::Integer("30".to_string())))
@@ -162,7 +167,7 @@ fn test_trim_start() {
     let (ln, v) = lex(" 10 PRINT 10");
     assert_eq!(ln, Some(10));
     let mut x = v.iter();
-    assert_eq!(x.next(), Some(&Token::Word(Word::Print1)));
+    assert_eq!(x.next(), Some(&Token::Word(Word::Print)));
     assert_eq!(x.next(), Some(&Token::Whitespace(1)));
 }
 
@@ -172,7 +177,7 @@ fn test_do_not_trim_start() {
     assert_eq!(ln, None);
     let mut x = v.iter();
     assert_eq!(x.next(), Some(&Token::Whitespace(2)));
-    assert_eq!(x.next(), Some(&Token::Word(Word::Print1)));
+    assert_eq!(x.next(), Some(&Token::Word(Word::Print)));
     assert_eq!(x.next(), Some(&Token::Whitespace(1)));
 }
 
@@ -216,25 +221,15 @@ fn test_unknown() {
 }
 
 #[test]
-fn test_direct_non_spacing() {
-    let (ln, v) = lex("printJ");
-    assert_eq!(ln, None);
-    let mut x = v.iter();
-    assert_eq!(x.next(), Some(&Token::Word(Word::Print1)));
-    assert_eq!(x.next(), Some(&Token::Ident(Ident::Plain("J".to_string()))));
-    assert_eq!(x.next(), None);
-}
-
-#[test]
 fn test_insert_spacing() {
     let (ln, v) = lex("10 printJ:printK");
     assert_eq!(ln, Some(10));
     let mut x = v.iter();
-    assert_eq!(x.next(), Some(&Token::Word(Word::Print1)));
+    assert_eq!(x.next(), Some(&Token::Word(Word::Print)));
     assert_eq!(x.next(), Some(&Token::Whitespace(1)));
     assert_eq!(x.next(), Some(&Token::Ident(Ident::Plain("J".to_string()))));
     assert_eq!(x.next(), Some(&Token::Colon));
-    assert_eq!(x.next(), Some(&Token::Word(Word::Print1)));
+    assert_eq!(x.next(), Some(&Token::Word(Word::Print)));
     assert_eq!(x.next(), Some(&Token::Whitespace(1)));
     assert_eq!(x.next(), Some(&Token::Ident(Ident::Plain("K".to_string()))));
     assert_eq!(x.next(), None);

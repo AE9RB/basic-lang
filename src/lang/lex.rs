@@ -94,26 +94,76 @@ impl<'a> BasicLexer<'a> {
         }
         .collect();
         BasicLexer::trim_end(&mut tokens);
-        BasicLexer::collapse_go(&mut tokens);
-        BasicLexer::collapse_operators(&mut tokens);
-        if line_number.is_some() {
-            BasicLexer::separate_words(&mut tokens);
-            BasicLexer::upgrade_tokens(&mut tokens);
-        }
+        BasicLexer::collapse_triples(&mut tokens);
+        BasicLexer::collapse_doubles(&mut tokens);
+        BasicLexer::separate_words(&mut tokens);
         (line_number, tokens)
     }
 
-    fn collapse_operators(tokens: &mut Vec<Token>) {
+    fn collapse_triples(tokens: &mut Vec<Token>) {
+        let mut locs: Vec<(usize, Token)> = vec![];
+        for (index, ttt) in tokens.windows(3).enumerate() {
+            if let Token::Operator(Operator::Less) = &ttt[0] {
+                if let Token::Whitespace(_) = &ttt[1] {
+                    if let Token::Operator(Operator::Greater) = &ttt[2] {
+                        locs.push((index, Token::Operator(Operator::NotEqual)));
+                    }
+                    if let Token::Operator(Operator::Equal) = &ttt[2] {
+                        locs.push((index, Token::Operator(Operator::LessEqual)));
+                    }
+                }
+            }
+            if let Token::Operator(Operator::Equal) = &ttt[0] {
+                if let Token::Whitespace(_) = &ttt[1] {
+                    if let Token::Operator(Operator::Greater) = &ttt[2] {
+                        locs.push((index, Token::Operator(Operator::GreaterEqual)));
+                    }
+                    if let Token::Operator(Operator::Less) = &ttt[2] {
+                        locs.push((index, Token::Operator(Operator::LessEqual)));
+                    }
+                }
+            }
+            if let Token::Operator(Operator::Greater) = &ttt[0] {
+                if let Token::Whitespace(_) = &ttt[1] {
+                    if let Token::Operator(Operator::Less) = &ttt[2] {
+                        locs.push((index, Token::Operator(Operator::NotEqual)));
+                    }
+                    if let Token::Operator(Operator::Equal) = &ttt[2] {
+                        locs.push((index, Token::Operator(Operator::GreaterEqual)));
+                    }
+                }
+            }
+            if let Token::Ident(Ident::Plain(go)) = &ttt[0] {
+                if go == "GO" {
+                    if let Token::Whitespace(_) = ttt[1] {
+                        if let Token::Word(Word::To) = ttt[2] {
+                            locs.push((index, Token::Word(Word::Goto)));
+                        }
+                        if let Token::Ident(Ident::Plain(sub)) = &ttt[2] {
+                            if sub == "SUB" {
+                                locs.push((index, Token::Word(Word::Gosub)));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        while let Some((index, token)) = locs.pop() {
+            tokens.splice(index..index + 3, Some(token));
+        }
+    }
+
+    fn collapse_doubles(tokens: &mut Vec<Token>) {
         let mut locs: Vec<(usize, Token)> = vec![];
         let mut tokens_iter = tokens.windows(2).enumerate();
         while let Some((index, tt)) = tokens_iter.next() {
             if let Token::Operator(Operator::Equal) = tt[0] {
                 if let Token::Operator(Operator::Greater) = tt[1] {
-                    locs.push((index, Token::Operator(Operator::EqualGreater)));
+                    locs.push((index, Token::Operator(Operator::GreaterEqual)));
                     tokens_iter.next();
                 }
                 if let Token::Operator(Operator::Less) = tt[1] {
-                    locs.push((index, Token::Operator(Operator::EqualLess)));
+                    locs.push((index, Token::Operator(Operator::LessEqual)));
                     tokens_iter.next();
                 }
             }
@@ -136,40 +186,6 @@ impl<'a> BasicLexer<'a> {
         }
         while let Some((index, token)) = locs.pop() {
             tokens.splice(index..index + 2, Some(token));
-        }
-    }
-
-    fn collapse_go(tokens: &mut Vec<Token>) {
-        let mut locs: Vec<(usize, Token)> = vec![];
-        for (index, ttt) in tokens.windows(3).enumerate() {
-            if let Token::Ident(Ident::Plain(go)) = &ttt[0] {
-                if go == "GO" {
-                    if let Token::Whitespace(_) = ttt[1] {
-                        if let Token::Word(Word::To) = ttt[2] {
-                            locs.push((index, Token::Word(Word::Goto2)));
-                        }
-                        if let Token::Ident(Ident::Plain(sub)) = &ttt[2] {
-                            if sub == "SUB" {
-                                locs.push((index, Token::Word(Word::Gosub2)));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        while let Some((index, token)) = locs.pop() {
-            tokens.splice(index..index + 3, Some(token));
-        }
-    }
-
-    fn upgrade_tokens(tokens: &mut Vec<Token>) {
-        for token in tokens.iter_mut() {
-            match token {
-                Token::Word(Word::Print2) => *token = Token::Word(Word::Print1),
-                Token::Word(Word::Goto2) => *token = Token::Word(Word::Goto1),
-                Token::Word(Word::Gosub2) => *token = Token::Word(Word::Gosub1),
-                _ => {}
-            };
         }
     }
 
