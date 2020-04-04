@@ -18,8 +18,7 @@ pub struct Link {
     direct_set: bool,
     symbols: BTreeMap<Symbol, (Address, Address)>,
     unlinked: HashMap<Address, (Column, Symbol)>,
-    whiles: Vec<(Column, Address, Symbol)>,
-    wends: Vec<(Column, Address, Symbol)>,
+    whiles: Vec<(bool, Column, Address, Symbol)>,
 }
 
 impl Default for Link {
@@ -33,7 +32,6 @@ impl Default for Link {
             symbols: BTreeMap::default(),
             unlinked: HashMap::default(),
             whiles: Vec::default(),
-            wends: Vec::default(),
         }
     }
 }
@@ -64,13 +62,9 @@ impl Link {
             self.unlinked
                 .insert(address + ops_addr_offset, (col.clone(), symbol));
         }
-        for (col, addr, sym) in link.whiles {
+        for (kind, col, addr, sym) in link.whiles {
             self.whiles
-                .push((col, addr + ops_addr_offset, sym + sym_offset));
-        }
-        for (col, addr, sym) in link.wends {
-            self.wends
-                .push((col, addr + ops_addr_offset, sym + sym_offset));
+                .push((kind, col, addr + ops_addr_offset, sym + sym_offset));
         }
         self.current_symbol += link.current_symbol;
         self.ops.append(&mut link.ops)?;
@@ -246,7 +240,7 @@ impl Link {
     pub fn push_wend(&mut self, col: Column) -> Result<()> {
         let sym = self.next_symbol();
         let addr = self.ops.len();
-        self.wends.push((col, addr, sym));
+        self.whiles.push((false, col, addr, sym));
         self.push(Opcode::Jump(0))?;
         self.push_symbol(sym);
         Ok(())
@@ -256,7 +250,7 @@ impl Link {
         let sym = self.next_symbol();
         self.push_symbol(sym);
         self.append(expr)?;
-        self.whiles.push((col, self.ops.len(), sym));
+        self.whiles.push((true, col, self.ops.len(), sym));
         self.push(Opcode::IfNot(0))
     }
 
@@ -281,24 +275,30 @@ impl Link {
         None
     }
 
-    pub fn link(&mut self) -> Vec<Error> {
+    fn link_whiles(&mut self) -> Vec<Error> {
         let mut errors: Vec<Error> = vec![];
-        for (wh_col, wh_addr, wh_sym) in std::mem::take(&mut self.whiles) {
-            match self.wends.pop() {
-                Some((we_col, we_addr, we_sym)) => {
-                    self.unlinked.insert(wh_addr, (wh_col.clone(), we_sym));
-                    self.unlinked.insert(we_addr, (we_col, wh_sym));
+        let mut whiles: Vec<(Column, Address, Symbol)> = Vec::default();
+        for (kind, col, addr, sym) in std::mem::take(&mut self.whiles).drain(..) {
+            if kind {
+                whiles.push((col, addr, sym));
+                continue;
+            }
+            match whiles.pop() {
+                None => errors.push(error!(WendWithoutWhile, self.line_number_for(addr), ..&col)),
+                Some((wh_col, wh_addr, wh_sym)) => {
+                    self.unlinked.insert(wh_addr, (wh_col.clone(), sym));
+                    self.unlinked.insert(addr, (col, wh_sym));
                 }
-                None => errors.push(error!(
-                    WhileWithoutWend,
-                    self.line_number_for(wh_addr),
-                    ..&wh_col
-                )),
             }
         }
-        while let Some((col, addr, _)) = self.wends.pop() {
-            errors.push(error!(WendWithoutWhile, self.line_number_for(addr), ..&col));
+        while let Some((col, addr, _)) = whiles.pop() {
+            errors.push(error!(WhileWithoutWend, self.line_number_for(addr), ..&col));
         }
+        errors
+    }
+
+    pub fn link(&mut self) -> Vec<Error> {
+        let mut errors = self.link_whiles();
         for (op_addr, (col, symbol)) in std::mem::take(&mut self.unlinked) {
             match self.symbols.get(&symbol) {
                 None => {

@@ -629,14 +629,10 @@ impl Runtime {
     }
 
     fn r#new_(&mut self) -> Event {
-        self.program.restore_data(0);
-        self.stack.clear();
-        self.vars.clear();
-        self.functions.clear();
+        self.r#clear();
         self.source.clear();
         self.dirty = true;
         self.state = State::Stopped;
-        self.cont = State::Stopped;
         Event::Stopped
     }
 

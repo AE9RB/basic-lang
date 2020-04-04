@@ -188,7 +188,7 @@ fn test_restore_data() {
 }
 
 #[test]
-fn test_while_wend() {
+fn test_while_wend_nested() {
     let mut r = Runtime::default();
     r.enter(r#"10 WHILE I<2:I=I+1:PRINT I;"#);
     r.enter(r#"RUN"#);
@@ -198,11 +198,20 @@ fn test_while_wend() {
     assert_eq!(exec(&mut r), " 1  2 \n");
     r.enter(r#"40 WEND"#);
     r.enter(r#"RUN"#);
-    assert_eq!(exec(&mut r), "?WEND WITHOUT WHILE IN 30:4\n");
+    assert_eq!(exec(&mut r), "?WEND WITHOUT WHILE IN 40:4\n");
     r.enter(r#"20 WHILE J<2:J=J+1:PRINT J+10;"#);
     r.enter(r#"RUN"#);
     assert_eq!(exec(&mut r), " 1  11  12  2 \n");
     r.enter(r#"35 J=0"#);
     r.enter(r#"RUN"#);
     assert_eq!(exec(&mut r), " 1  11  12  2  11  12 \n");
+}
+
+#[test]
+fn test_while_wend_not_nested() {
+    let mut r = Runtime::default();
+    r.enter(r#"10 WHILE A<2:A=A+1:PRINT A;:WEND"#);
+    r.enter(r#"20 WHILE B<2:B=B+1:PRINT B;:WEND"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), " 1  2  1  2 \n");
 }

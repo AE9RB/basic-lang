@@ -62,6 +62,15 @@ pub mod EXP {
     */
 }
 
+pub mod INKEY {
+    /*!
+    ## `INKEY$` Returns a single key press, empty string if none.
+    ```text
+    I$="":WHILE LEN(I$)=0:I$=INKEY$:WEND:PRINT I$
+    ```
+    */
+}
+
 pub mod INT {
     /*!
     ## `INT(X)` Returns the largest integer <= X.
