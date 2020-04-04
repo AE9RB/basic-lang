@@ -137,7 +137,7 @@ fn main_loop(interrupted: Arc<AtomicBool>, filename: String) -> std::io::Result<
             Event::Inkey => {
                 let mut s: std::rc::Rc<str> = "".into();
                 if let Some(mortal::terminal::Event::Key(key)) =
-                    terminal.read_event(Some(std::time::Duration::from_millis(16)))?
+                    terminal.read_event(Some(std::time::Duration::from_millis(1)))?
                 {
                     use mortal::terminal::Key::*;
                     s = match key {
