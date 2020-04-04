@@ -57,7 +57,7 @@ impl<'a> ast::Visitor for Visitor<'a> {
             Ok((col, name, len)) => (col, name, len),
             Err(e) => {
                 self.link.error(e);
-                (0..0, "".into(), 0)
+                (0..0, "".into(), None)
             }
         };
         let var_item = VarItem::new(col.clone(), name, link, len);
@@ -84,42 +84,44 @@ struct VarItem {
     col: Column,
     name: Rc<str>,
     link: Link,
-    len: usize,
+    arg_len: Option<usize>,
 }
 
 impl VarItem {
-    fn new(col: Column, name: Rc<str>, link: Link, len: usize) -> VarItem {
+    fn new(col: Column, name: Rc<str>, link: Link, arg_len: Option<usize>) -> VarItem {
         VarItem {
             col,
             name,
             link,
-            len,
+            arg_len,
         }
     }
 
     fn test_for_built_in(&self) -> Result<()> {
-        if Function::opcode_and_arity(&self.name).is_some() {
-            Err(error!(SyntaxError, ..&self.col; "RESERVED FOR BUILT-IN FUNCTION"))
-        } else {
-            Ok(())
+        match Function::opcode_and_arity(&self.name) {
+            Some((_, range)) if range == (0..=0) && self.arg_len.is_some() => Ok(()),
+            Some(_) if self.arg_len.is_none() => Ok(()),
+            Some(_) => Err(error!(SyntaxError, ..&self.col; "RESERVED FOR BUILT-IN")),
+            None => Ok(()),
         }
     }
 
     fn push_as_dim(self, link: &mut Link) -> Result<Column> {
         self.test_for_built_in()?;
-        if self.len == 0 {
-            Err(error!(SyntaxError, ..&self.col; "NOT AN ARRAY"))
-        } else {
-            link.append(self.link)?;
-            link.push(Opcode::Literal(Val::try_from(self.len)?))?;
-            link.push(Opcode::DimArr(self.name))?;
-            Ok(self.col.clone())
+        if let Some(len) = self.arg_len {
+            if len > 0 {
+                link.append(self.link)?;
+                link.push(Opcode::Literal(Val::try_from(len)?))?;
+                link.push(Opcode::DimArr(self.name))?;
+                return Ok(self.col.clone());
+            }
         }
+        Err(error!(SyntaxError, ..&self.col; "NOT AN ARRAY"))
     }
 
     fn push_as_pop_unary(self, link: &mut Link) -> Result<Column> {
         self.test_for_built_in()?;
-        debug_assert!(self.len == 0);
+        debug_assert!(self.arg_len.is_none());
         debug_assert!(self.link.is_empty());
         link.push(Opcode::Pop(self.name))?;
         Ok(self.col.clone())
@@ -127,13 +129,17 @@ impl VarItem {
 
     fn push_as_pop(self, link: &mut Link) -> Result<Column> {
         self.test_for_built_in()?;
-        if self.len == 0 {
-            debug_assert!(self.link.is_empty());
-            link.push(Opcode::Pop(self.name))?
+        if let Some(len) = self.arg_len {
+            if len > 0 {
+                link.append(self.link)?;
+                link.push(Opcode::Literal(Val::try_from(len)?))?;
+                link.push(Opcode::PopArr(self.name))?;
+            } else {
+                return Err(error!(SyntaxError, ..&self.col; "MISSING INDEX EXPRESSION"));
+            }
         } else {
-            link.append(self.link)?;
-            link.push(Opcode::Literal(Val::try_from(self.len)?))?;
-            link.push(Opcode::PopArr(self.name))?
+            debug_assert!(self.link.is_empty());
+            link.push(Opcode::Pop(self.name))?;
         }
         Ok(self.col.clone())
     }
@@ -141,23 +147,31 @@ impl VarItem {
     fn push_as_expression(self, link: &mut Link) -> Result<Column> {
         link.append(self.link)?;
         if let Some((opcode, arity)) = Function::opcode_and_arity(&self.name) {
-            if arity.contains(&self.len) {
-                if arity.start() != arity.end() {
-                    link.push(Opcode::Literal(Val::try_from(self.len)?))?;
-                }
+            if arity == (0..=0) && self.arg_len.is_none() {
                 link.push(opcode)?;
                 return Ok(self.col.clone());
+            } else if let Some(len) = self.arg_len {
+                if arity.contains(&len) {
+                    if arity.start() != arity.end() {
+                        link.push(Opcode::Literal(Val::try_from(len)?))?;
+                    }
+                    link.push(opcode)?;
+                    return Ok(self.col.clone());
+                }
+                return Err(error!(IllegalFunctionCall, ..&self.col; "WRONG NUMBER OF ARGUMENTS"));
             }
-            return Err(error!(IllegalFunctionCall, ..&self.col; "WRONG NUMBER OF ARGUMENTS"));
         }
-        if self.len == 0 {
-            link.push(Opcode::Push(self.name))?;
-        } else if self.name.starts_with("FN") {
-            link.push(Opcode::Literal(Val::try_from(self.len)?))?;
-            link.push(Opcode::Fn(self.name))?;
-        } else {
-            link.push(Opcode::Literal(Val::try_from(self.len)?))?;
-            link.push(Opcode::PushArr(self.name))?;
+        match self.arg_len {
+            None => link.push(Opcode::Push(self.name))?,
+            Some(len) => {
+                if self.name.starts_with("FN") {
+                    link.push(Opcode::Literal(Val::try_from(len)?))?;
+                    link.push(Opcode::Fn(self.name))?;
+                } else {
+                    link.push(Opcode::Literal(Val::try_from(len)?))?;
+                    link.push(Opcode::PushArr(self.name))?;
+                }
+            }
         }
         Ok(self.col.clone())
     }
@@ -182,17 +196,17 @@ impl Compiler {
         &mut self,
         link: &mut Link,
         var: &ast::Variable,
-    ) -> Result<(Column, Rc<str>, usize)> {
+    ) -> Result<(Column, Rc<str>, Option<usize>)> {
         use ast::Variable;
         let (col, ident, len) = match var {
-            Variable::Unary(col, ident) => (col, ident, 0),
+            Variable::Unary(col, ident) => (col, ident, None),
             Variable::Array(col, ident, vec_expr) => {
                 let len = vec_expr.len();
                 let vec_expr = self.expr.pop_n(len)?;
                 for (_col, ops) in vec_expr {
                     link.append(ops)?
                 }
-                (col, ident, len)
+                (col, ident, Some(len))
             }
         };
         let s = match ident {
@@ -328,12 +342,12 @@ impl Compiler {
     fn r#def(&mut self, link: &mut Link, col: &Column, len: usize) -> Result<Column> {
         let mut vars = self.var.pop_n(len)?;
         let fn_name = self.var.pop()?;
-        debug_assert_eq!(0, fn_name.len);
+        debug_assert!(fn_name.arg_len.is_none());
         let (_expr_col, expr_ops) = self.expr.pop()?;
         let fn_vars: Vec<Rc<str>> = vars
             .drain(..)
             .map(|var_item| {
-                debug_assert_eq!(0, var_item.len);
+                debug_assert!(var_item.arg_len.is_none());
                 var_item.name
             })
             .collect();

@@ -85,3 +85,14 @@ fn test_sgn() {
     r.enter(r#"?sgn(0.0);sgn(-1.0/0.0);sgn(10000000000)"#);
     assert_eq!(exec(&mut r), " 0 -1  1 \n");
 }
+
+#[test]
+fn test_built_in_reserved() {
+    let mut r = Runtime::default();
+    r.enter(r#"len$(0)="foo":?len$(0)"#);
+    assert_eq!(exec(&mut r), "foo\n");
+    r.enter(r#"rnd=42:?rnd"#);
+    assert_eq!(exec(&mut r), " 42 \n");
+    r.enter(r#"val(0)=42"#);
+    assert_eq!(exec(&mut r), "?SYNTAX ERROR; RESERVED FOR BUILT-IN\n");
+}
