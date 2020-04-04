@@ -479,7 +479,15 @@ impl Expression {
                 Err(_) => Err(error!(TypeMismatch, ..&col)),
             }
         }
+        fn parse_radix(col: Column, src: &str, radix: u32) -> Result<Expression> {
+            match i16::from_str_radix(src, radix) {
+                Ok(num) => Ok(Expression::Integer(col, num)),
+                Err(_) => Err(error!(Overflow, ..&col)),
+            }
+        }
         match lit {
+            Literal::Hex(s) => parse_radix(col, s, 16),
+            Literal::Octal(s) => parse_radix(col, s, 8),
             Literal::Single(s) => Ok(Expression::Single(col.clone(), parse(col, s)?)),
             Literal::Double(s) => Ok(Expression::Double(col.clone(), parse(col, s)?)),
             Literal::Integer(s) => Ok(Expression::Integer(col.clone(), parse(col, s)?)),

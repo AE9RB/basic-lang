@@ -144,7 +144,7 @@ impl TryFrom<&Token> for LineNumber {
                 Literal::Integer(s) => s,
                 Literal::Single(s) => s,
                 Literal::Double(s) => s,
-                Literal::String(_) => "",
+                Literal::Hex(_) | Literal::Octal(_) | Literal::String(_) => "",
             };
             if s.chars().all(|c| c.is_ascii_digit()) {
                 if let Ok(line) = s.parse::<u16>() {
@@ -164,6 +164,8 @@ pub enum Literal {
     Single(String),
     Double(String),
     Integer(String),
+    Hex(String),
+    Octal(String),
     String(String),
 }
 
@@ -174,6 +176,8 @@ impl std::fmt::Display for Literal {
             Single(s) => write!(f, "{}", s),
             Double(s) => write!(f, "{}", s),
             Integer(s) => write!(f, "{}", s),
+            Hex(s) => write!(f, "&H{}", s),
+            Octal(s) => write!(f, "&{}", s),
             String(s) => write!(f, "\"{}\"", s),
         }
     }

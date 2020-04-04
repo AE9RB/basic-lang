@@ -222,6 +222,16 @@ impl TryFrom<Val> for Rc<str> {
 
 impl From<&str> for Val {
     fn from(string: &str) -> Self {
+        if string.starts_with('&') {
+            let string = &string[1..];
+            if string.starts_with('H') || string.starts_with('h') {
+                if let Ok(num) = i16::from_str_radix(&string[1..], 16) {
+                    return Val::Integer(num);
+                }
+            } else if let Ok(num) = i16::from_str_radix(&string, 8) {
+                return Val::Integer(num);
+            }
+        }
         let mut s = String::from(string).replace("D", "E").replace("d", "e");
         match s.chars().last() {
             Some('!') | Some('#') | Some('%') => {

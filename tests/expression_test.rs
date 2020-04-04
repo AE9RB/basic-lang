@@ -96,3 +96,18 @@ fn test_built_in_reserved() {
     r.enter(r#"val(0)=42"#);
     assert_eq!(exec(&mut r), "?SYNTAX ERROR; RESERVED FOR BUILT-IN\n");
 }
+
+#[test]
+fn test_hex_octal() {
+    let mut r = Runtime::default();
+    r.enter(r#"?&h0d"#);
+    assert_eq!(exec(&mut r), " 13 \n");
+    r.enter(r#"?&h0100"#);
+    assert_eq!(exec(&mut r), " 256 \n");
+    r.enter(r#"?&h10000"#);
+    assert_eq!(exec(&mut r), "?OVERFLOW\n");
+    r.enter(r#"?&15"#);
+    assert_eq!(exec(&mut r), " 13 \n");
+    r.enter(r#"?&015"#);
+    assert_eq!(exec(&mut r), " 13 \n");
+}

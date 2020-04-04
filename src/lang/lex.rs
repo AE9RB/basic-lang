@@ -50,6 +50,9 @@ impl<'a> Iterator for BasicLexer<'a> {
         if *pk == '"' {
             return self.string();
         }
+        if *pk == '&' {
+            return self.radix();
+        }
         let minutia = self.minutia();
         if matches!(minutia, Some(Token::Word(Word::Rem2))) {
             self.remark = true;
@@ -345,6 +348,32 @@ impl<'a> BasicLexer<'a> {
             break;
         }
         self.pending.pop_front()
+    }
+
+    fn radix(&mut self) -> Option<Token> {
+        self.chars.next();
+        let is_hex = if matches!(self.chars.peek(), Some('H') | Some('h')) {
+            self.chars.next();
+            true
+        } else {
+            false
+        };
+        let mut s = String::new();
+        while let Some(ch) = self.chars.next() {
+            let ch = ch.to_ascii_uppercase();
+            if ('0'..='7').contains(&ch)
+                || (is_hex && (('8'..='9').contains(&ch) || ('A'..='F').contains(&ch)))
+            {
+                s.push(ch)
+            } else {
+                break;
+            }
+        }
+        if is_hex {
+            Some(Token::Literal(Literal::Hex(s)))
+        } else {
+            Some(Token::Literal(Literal::Octal(s)))
+        }
     }
 
     fn minutia(&mut self) -> Option<Token> {
