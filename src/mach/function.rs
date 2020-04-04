@@ -18,6 +18,7 @@ impl Function {
             "COS" => Some((Opcode::Cos, 1..=1)),
             "DATE$" => Some((Opcode::Date, 0..=0)),
             "EXP" => Some((Opcode::Exp, 1..=1)),
+            "INKEY$" => Some((Opcode::Inkey, 0..=0)),
             "INT" => Some((Opcode::Int, 1..=1)),
             "LEFT$" => Some((Opcode::Left, 2..=2)),
             "LEN" => Some((Opcode::Len, 1..=1)),

@@ -44,6 +44,7 @@ pub enum Event {
     Load(String),
     Save(String),
     Cls,
+    Inkey,
 }
 
 #[derive(Debug)]
@@ -57,6 +58,7 @@ enum State {
     InputRedo,
     InputRunning,
     Interrupt,
+    Inkey,
 }
 
 impl Default for Runtime {
@@ -88,6 +90,10 @@ impl Runtime {
             self.enter_input(string);
             self.print_col = 0;
             return true;
+        }
+        if let State::Inkey = self.state {
+            self.enter_inkey(string);
+            return false;
         }
         debug_assert!(matches!(self.state, State::Stopped | State::Intro));
         if string.len() > MAX_LINE_LEN {
@@ -131,6 +137,17 @@ impl Runtime {
             self.source.insert(line);
             self.dirty = true;
         }
+    }
+
+    fn enter_inkey(&mut self, mut string: &str) {
+        if string.len() > MAX_LINE_LEN {
+            string = "";
+        }
+        if let Err(error) = self.stack.push(Val::String(string.into())) {
+            self.clear();
+            self.state = State::RuntimeError(error);
+        }
+        self.state = State::Running;
     }
 
     fn enter_input(&mut self, string: &str) {
@@ -281,7 +298,7 @@ impl Runtime {
                     return Event::Errors(Arc::clone(&self.source.direct_errors));
                 }
             }
-            State::RuntimeError(_) => {}
+            State::Inkey | State::RuntimeError(_) => {}
         }
         if let State::RuntimeError(_) = self.state {
             if self.print_col > 0 {
@@ -453,6 +470,10 @@ impl Runtime {
                 Opcode::Cos => self.stack.pop_1_push(&Function::cos)?,
                 Opcode::Date => self.stack.push(Function::date()?)?,
                 Opcode::Exp => self.stack.pop_1_push(&Function::exp)?,
+                Opcode::Inkey => {
+                    self.state = State::Inkey;
+                    return Ok(Event::Inkey);
+                }
                 Opcode::Int => self.stack.pop_1_push(&Function::int)?,
                 Opcode::Left => self.stack.pop_2_push(&Function::left)?,
                 Opcode::Len => self.stack.pop_1_push(&Function::len)?,

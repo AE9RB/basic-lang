@@ -21,6 +21,7 @@ ansi_term = "0.12"
 chrono = "0.4"
 ctrlc = "3"
 linefeed = "0.6"
+mortal = "0.2"
 
 [lib]
 name = "basic"

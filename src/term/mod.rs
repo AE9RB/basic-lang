@@ -1,12 +1,12 @@
 extern crate ansi_term;
 extern crate ctrlc;
 extern crate linefeed;
+extern crate mortal;
 use crate::mach::{Event, Listing, Runtime};
 use crate::{error, lang::Error};
 use ansi_term::Style;
 use linefeed::{
-    Command, Completer, Completion, DefaultTerminal, Function, Interface, Prompter, ReadResult,
-    Signal, Terminal,
+    Command, Completer, Completion, Function, Interface, Prompter, ReadResult, Signal, Terminal,
 };
 use std::fs::File;
 use std::io::{BufRead, BufReader, ErrorKind, Write};
@@ -36,6 +36,7 @@ pub fn main() {
 }
 
 fn main_loop(interrupted: Arc<AtomicBool>, filename: String) -> std::io::Result<()> {
+    let terminal = mortal::Terminal::new()?;
     let mut runtime = Runtime::default();
     let command = Interface::new("BASIC")?;
     let input_full = Interface::new("Input")?;
@@ -131,7 +132,38 @@ fn main_loop(interrupted: Arc<AtomicBool>, filename: String) -> std::io::Result<
                 ))?,
             },
             Event::Cls => {
-                DefaultTerminal::new()?.lock_write().clear_screen()?;
+                terminal.clear_screen()?;
+            }
+            Event::Inkey => {
+                let mut s: std::rc::Rc<str> = "".into();
+                if let Some(mortal::terminal::Event::Key(key)) =
+                    terminal.read_event(Some(std::time::Duration::from_millis(16)))?
+                {
+                    use mortal::terminal::Key::*;
+                    s = match key {
+                        Backspace => "\x08".into(),
+                        Enter => "\x0D".into(),
+                        Escape => "\x1B".into(),
+                        Tab => "\x09".into(),
+                        Up => "\x00H".into(),
+                        Down => "\x00P".into(),
+                        Left => "\x00K".into(),
+                        Right => "\x00M".into(),
+                        Delete => "\x00S".into(),
+                        Insert => "\x00R".into(),
+                        Home => "\x00G".into(),
+                        End => "\x00O".into(),
+                        PageUp => "\x00I".into(),
+                        PageDown => "\x00Q".into(),
+                        Char(c) => c.to_string().into(),
+                        Ctrl(c) => match std::char::from_u32(c as u32 - 60) {
+                            Some(c) => c.to_string().into(),
+                            None => "".into(),
+                        },
+                        F(_) => "".into(),
+                    };
+                }
+                runtime.enter(&s);
             }
         }
     }

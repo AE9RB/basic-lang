@@ -10,7 +10,7 @@ pub fn exec_n(runtime: &mut Runtime, cycles: usize) -> String {
     loop {
         let event = runtime.execute(cycles);
         match &event {
-            Event::Stopped | Event::Load(_) | Event::Save(_) => {
+            Event::Stopped | Event::Load(_) | Event::Save(_) | Event::Inkey => {
                 break;
             }
             Event::Errors(errors) => {
