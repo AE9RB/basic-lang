@@ -100,7 +100,7 @@ impl VarItem {
     fn test_for_built_in(&self) -> Result<()> {
         match Function::opcode_and_arity(&self.name) {
             Some((_, range)) if range == (0..=0) && self.arg_len.is_some() => Ok(()),
-            Some(_) if self.arg_len.is_none() => Ok(()),
+            Some((_, range)) if range != (0..=0) && self.arg_len.is_none() => Ok(()),
             Some(_) => Err(error!(SyntaxError, ..&self.col; "RESERVED FOR BUILT-IN")),
             None => Ok(()),
         }

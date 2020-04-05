@@ -95,6 +95,10 @@ fn test_built_in_reserved() {
     assert_eq!(exec(&mut r), " 42 \n");
     r.enter(r#"val(0)=42"#);
     assert_eq!(exec(&mut r), "?SYNTAX ERROR; RESERVED FOR BUILT-IN\n");
+    r.enter(r#"time$="42""#);
+    assert_eq!(exec(&mut r), "?SYNTAX ERROR; RESERVED FOR BUILT-IN\n");
+    r.enter(r#"rnd()=42"#);
+    assert_eq!(exec(&mut r), "?SYNTAX ERROR; EXPECTED EXPRESSION\n");
 }
 
 #[test]
