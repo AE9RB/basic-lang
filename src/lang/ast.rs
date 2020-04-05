@@ -51,7 +51,7 @@ pub enum Expression {
     Multiply(Column, Box<Expression>, Box<Expression>),
     Divide(Column, Box<Expression>, Box<Expression>),
     DivideInt(Column, Box<Expression>, Box<Expression>),
-    Modulus(Column, Box<Expression>, Box<Expression>),
+    Modulo(Column, Box<Expression>, Box<Expression>),
     Add(Column, Box<Expression>, Box<Expression>),
     Subtract(Column, Box<Expression>, Box<Expression>),
     Equal(Column, Box<Expression>, Box<Expression>),
@@ -192,7 +192,7 @@ impl AcceptVisitor for Expression {
             | Multiply(_, expr1, expr2)
             | Divide(_, expr1, expr2)
             | DivideInt(_, expr1, expr2)
-            | Modulus(_, expr1, expr2)
+            | Modulo(_, expr1, expr2)
             | Add(_, expr1, expr2)
             | Subtract(_, expr1, expr2)
             | Equal(_, expr1, expr2)

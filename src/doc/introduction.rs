@@ -1,5 +1,5 @@
 /*!
-# Introductory Tutorial for 64K BASIC
+# Introductory Tutorial
 
 Begin by opening a terminal and running the executable. Double clicking
 the executable from a GUI desktop often works as well. If you get the

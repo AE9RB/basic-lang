@@ -418,7 +418,7 @@ impl Expression {
             Multiply => Expression::Multiply(col, Box::new(lhs), Box::new(rhs)),
             Divide => Expression::Divide(col, Box::new(lhs), Box::new(rhs)),
             DivideInt => Expression::DivideInt(col, Box::new(lhs), Box::new(rhs)),
-            Modulus => Expression::Modulus(col, Box::new(lhs), Box::new(rhs)),
+            Modulo => Expression::Modulo(col, Box::new(lhs), Box::new(rhs)),
             Plus => Expression::Add(col, Box::new(lhs), Box::new(rhs)),
             Minus => Expression::Subtract(col, Box::new(lhs), Box::new(rhs)),
             Equal => Expression::Equal(col, Box::new(lhs), Box::new(rhs)),
@@ -452,7 +452,7 @@ impl Expression {
             // Unary identity and negation => 12
             Multiply | Divide => 11,
             DivideInt => 10,
-            Modulus => 9,
+            Modulo => 9,
             Plus | Minus => 8,
             Equal | NotEqual | Less | LessEqual | Greater | GreaterEqual => 7,
             // Unary not => 6

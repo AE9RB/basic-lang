@@ -255,7 +255,7 @@ impl Compiler {
             Expression::Multiply(..) => binary_expression(self, link, Opcode::Mul),
             Expression::Divide(..) => binary_expression(self, link, Opcode::Div),
             Expression::DivideInt(..) => binary_expression(self, link, Opcode::DivInt),
-            Expression::Modulus(..) => binary_expression(self, link, Opcode::Mod),
+            Expression::Modulo(..) => binary_expression(self, link, Opcode::Mod),
             Expression::Add(..) => binary_expression(self, link, Opcode::Add),
             Expression::Subtract(..) => binary_expression(self, link, Opcode::Sub),
             Expression::Equal(..) => binary_expression(self, link, Opcode::Eq),

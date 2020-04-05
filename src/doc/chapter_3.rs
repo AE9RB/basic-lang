@@ -163,7 +163,7 @@ pub mod SIN {
 
 pub mod SQR {
     /*!
-    ## `SIN(X)` Returns the square root of X.
+    ## `SQR(X)` Returns the square root of X.
     ```text
     PRINT SQR(5)
      2.236068

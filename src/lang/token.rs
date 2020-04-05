@@ -50,7 +50,7 @@ impl Token {
             ("FOR", Token::Word(Word::For)),
             ("IMP", Token::Operator(Operator::Imp)),
             ("LET", Token::Word(Word::Let)),
-            ("MOD", Token::Operator(Operator::Modulus)),
+            ("MOD", Token::Operator(Operator::Modulo)),
             ("NEW", Token::Word(Word::New)),
             ("NOT", Token::Operator(Operator::Not)),
             ("REM", Token::Word(Word::Rem1)),
@@ -267,7 +267,7 @@ pub enum Operator {
     Multiply,
     Divide,
     DivideInt,
-    Modulus,
+    Modulo,
     Plus,
     Minus,
     Equal,
@@ -290,7 +290,7 @@ impl Operator {
         match self {
             Caret | Multiply | Divide | DivideInt | Plus | Minus | Equal | NotEqual | Less
             | LessEqual | Greater | GreaterEqual => false,
-            Modulus | Not | And | Or | Xor | Imp | Eqv => true,
+            Modulo | Not | And | Or | Xor | Imp | Eqv => true,
         }
     }
 }
@@ -303,7 +303,7 @@ impl std::fmt::Display for Operator {
             Multiply => write!(f, "*"),
             Divide => write!(f, "/"),
             DivideInt => write!(f, "\\"),
-            Modulus => write!(f, "MOD"),
+            Modulo => write!(f, "MOD"),
             Plus => write!(f, "+"),
             Minus => write!(f, "-"),
             Equal => write!(f, "="),
