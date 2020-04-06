@@ -102,6 +102,25 @@ fn test_fn_hex() {
 }
 
 #[test]
+fn test_fn_instr() {
+    let mut r = Runtime::default();
+    r.enter(r#"?instr("abcdeb","b")"#);
+    assert_eq!(exec(&mut r), " 2 \n");
+    r.enter(r#"?instr(6, "abcdeb","b")"#);
+    assert_eq!(exec(&mut r), " 6 \n");
+    r.enter(r#"?instr(0, "abcdeb","b")"#);
+    assert_eq!(exec(&mut r), "?ILLEGAL FUNCTION CALL; START IS 0\n");
+    r.enter(r#"?instr(4, "abcdeb","")"#);
+    assert_eq!(exec(&mut r), " 4 \n");
+    r.enter(r#"?instr(9, "abcdeb","a")"#);
+    assert_eq!(exec(&mut r), " 0 \n");
+    r.enter(r#"?instr(2,"","a")"#);
+    assert_eq!(exec(&mut r), " 0 \n");
+    r.enter(r#"?instr("","a")"#);
+    assert_eq!(exec(&mut r), " 0 \n");
+}
+
+#[test]
 fn test_fn_int() {
     let mut r = Runtime::default();
     r.enter(r#"?int(9.9)int(-9.9)"#);

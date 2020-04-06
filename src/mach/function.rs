@@ -25,6 +25,7 @@ impl Function {
             "FIX" => Some((Opcode::Fix, 1..=1)),
             "HEX$" => Some((Opcode::Hex, 1..=1)),
             "INKEY$" => Some((Opcode::Inkey, 0..=0)),
+            "INSTR" => Some((Opcode::Instr, 2..=3)),
             "INT" => Some((Opcode::Int, 1..=1)),
             "LEFT$" => Some((Opcode::Left, 2..=2)),
             "LEN" => Some((Opcode::Len, 1..=1)),
@@ -153,6 +154,41 @@ impl Function {
     pub fn hex(val: Val) -> Result<Val> {
         let num = i16::try_from(val)?;
         Ok(Val::String(format!("{:X}", num).into()))
+    }
+
+    pub fn instr(mut vec_val: Stack<Val>) -> Result<Val> {
+        let pattern = Rc::<str>::try_from(vec_val.pop()?)?;
+        let string = Rc::<str>::try_from(vec_val.pop()?)?;
+        let start = match vec_val.pop() {
+            Ok(n) => i16::try_from(n)?,
+            Err(_) => 1,
+        } as usize;
+        if start == 0 {
+            return Err(error!(IllegalFunctionCall; "START IS 0"));
+        }
+        let ch_idx = match string.char_indices().nth(start - 1) {
+            Some((pos, _ch)) => pos,
+            None => return Ok(Val::Integer(0)),
+        };
+        let string: Rc<str> = string[ch_idx..].into(); //??
+        let index = match string.find(pattern.as_ref()) {
+            Some(n) => n,
+            None => 0,
+        };
+        let str_index = string
+            .char_indices()
+            .enumerate()
+            .find_map(|(str_idx, (ch_idx, _ch))| {
+                if ch_idx == index {
+                    Some(str_idx + start)
+                } else {
+                    None
+                }
+            });
+        match str_index {
+            Some(n) => Ok(Val::try_from(n)?),
+            None => Ok(Val::Integer(0)),
+        }
     }
 
     pub fn int(val: Val) -> Result<Val> {

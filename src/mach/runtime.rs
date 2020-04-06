@@ -480,6 +480,10 @@ impl Runtime {
                     self.state = State::Inkey;
                     return Ok(Event::Inkey);
                 }
+                Opcode::Instr => {
+                    let vec = self.stack.pop_vec()?;
+                    self.stack.push(Function::instr(vec)?)?;
+                }
                 Opcode::Int => self.stack.pop_1_push(&Function::int)?,
                 Opcode::Left => self.stack.pop_2_push(&Function::left)?,
                 Opcode::Len => self.stack.pop_1_push(&Function::len)?,

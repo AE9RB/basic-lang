@@ -132,6 +132,20 @@ pub mod INKEY {
     */
 }
 
+pub mod INSTR {
+    /*!
+    ## `INSTR([I],S$,Y$)` Returns position of Y$ in X$.
+    Optionally, start searching at index I.
+    Returns 0 if not found. Returns I or 1 if Y$ = "".
+    ```text
+    PRINT INSTR("abcdeb","b")
+     2
+    PRINT INSTR(5,"abcdeb","b")
+     6
+    ```
+    */
+}
+
 pub mod INT {
     /*!
     ## `INT(X)` Returns the largest integer <= X.
