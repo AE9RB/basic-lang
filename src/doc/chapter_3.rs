@@ -54,7 +54,7 @@ pub mod CHR {
 
 pub mod CINT {
     /*!
-    ## `CINT(X)` Returns X as an Integer. Overflow error mar occur.
+    ## `CINT(X)` Returns X as an Integer. Overflow error may occur.
     ```text
     PRINT CINT(-9.9)
     -10
@@ -134,7 +134,7 @@ pub mod INKEY {
 
 pub mod INSTR {
     /*!
-    ## `INSTR([I],S$,Y$)` Returns position of Y$ in X$.
+    ## `INSTR([I],X$,Y$)` Returns position of Y$ in X$.
     Optionally, start searching at index I.
     Returns 0 if not found. Returns I or 1 if Y$ = "".
     ```text
