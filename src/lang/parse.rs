@@ -713,9 +713,12 @@ impl Statement {
     fn r#let(parse: &mut BasicParser) -> Result<Statement> {
         let column = parse.col.clone();
         let var = parse.expect_var()?;
-        parse.expect(Token::Operator(Operator::Equal))?;
-        let expr = parse.expect_expression()?;
-        Ok(Statement::Let(column, var, expr))
+        match parse.next() {
+            Some(Token::Operator(Operator::Equal)) => {
+                Ok(Statement::Let(column, var, parse.expect_expression()?))
+            }
+            _ => Err(error!(SyntaxError, ..&column; "UNKNOWN STATEMENT")),
+        }
     }
 
     fn r#list(parse: &mut BasicParser) -> Result<Statement> {
