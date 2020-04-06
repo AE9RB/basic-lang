@@ -1,54 +1,59 @@
 /*!
-# Error Codes and Messages
+# Conversions and Compatibility
 
-<style>td code { white-space: pre; }</style>
+64K BASIC is the classic experience of 8-bit BASIC on a modern terminal.
+Part of that experience was a slightly different version of BASIC for
+each model of computer. BASIC was usually on ROM which wasn't trivial to
+update like modern storage, so you were stuck with the same version for
+the entire life of the computer. So instead of keeping your compiler up
+to date as we do today, you would know how to adjust programs written
+on another platform. Most books with program listings would include a page
+or two about the dialect the code was written for. This is that page.
 
-|Code| Message | Description |
-|----| :--- | --- |
-| 1  | `NEXT WITHOUT FOR` | The variable specified in `NEXT` does not match any previously executed `FOR` statement. |
-| 2  | `SYNTAX ERROR` |
-| 3  | `RETURN WITHOUT GOSUB` |
-| 4  | `OUT OF DATA` |
-| 5  | `ILLEGAL FUNCTION CALL` |
-| 6  | `OVERFLOW` |
-| 7  | `OUT OF MEMORY` |
-| 8  | `UNDEFINED LINE` |
-| 9  | `SUBSCRIPT OUT OF RANGE` |
-| 10 | `REDIMENSIONED ARRAY` |
-| 11 | `DIVISION BY ZERO` |
-| 12 | `ILLEGAL DIRECT` |
-| 13 | `TYPE MISMATCH` |
-| 14 | `OUT OF STRING SPACE` |
-| 15 | `STRING TOO LONG` |
-| 16 | `STRING FORMULA TOO COMPLEX` |
-| 17 | `CAN'T CONTINUE` |
-| 18 | `UNDEFINED USER FUNCTION` |
-| 19 | `NO RESUME` |
-| 20 | `RESUME WITHOUT ERROR` |
-| 21 | `UNPRINTABLE ERROR` |
-| 22 | `MISSING OPERAND` |
-| 23 | `LINE BUFFER OVERFLOW` |
-| 26 | `FOR WITHOUT NEXT` |
-| 29 | `WHILE WITHOUT WEND` |
-| 30 | `WEND WITHOUT WHILE` |
-| 50 | `FIELD OVERFLOW` |
-| 51 | `INTERNAL ERROR` |
-| 52 | `BAD FILE NUMBER` |
-| 53 | `FILE NOT FOUND` |
-| 54 | `BAD FILE MODE` |
-| 55 | `FILE ALREADY OPEN` |
-| 56 | `DISK NOT MOUNTED` |
-| 57 | `DISK I/O ERROR` |
-| 58 | `FILE ALREADY EXISTS` |
-| 59 | `SET TO NON-DISK STRING` |
-| 60 | `DISK ALREADY MOUNTED` |
-| 61 | `DISK FULL` |
-| 62 | `INPUT PAST END` |
-| 63 | `BAD RECORD NUMBER` |
-| 64 | `BAD FILE NAME` |
-| 65 | `MODE-MISMATCH` |
-| 66 | `DIRECT STATEMENT IN FILE` |
-| 67 | `TOO MANY FILES` |
-| 68 | `OUT OF RANDOM BLOCKS` |
+## `RANDOMIZE X`
+The random number generator in BASIC will start in the same state every
+boot of the computer. Some implementations will even reset it every run.
+64K BASIC uses the `RND()` function with a negative number as a seed
+instead of the `RANDOMIZE` statement.
+
+`RANDOMIZE` without an X will prompt the user for a seed value.
+Use this as a replacement:
+
+```text
+INPUT "Random Number Seed";A:RND=RND(-ABS(A))
+```
+
+Probably the most common way to seed the random number generator is to time
+how long it takes the user to respond to a prompt. Here's how to do that
+in 64K BASIC:
+
+```text
+PRINT "Press any key to continue";:WHILE INKEY$="":RND=RND():WEND:PRINT
+```
+
+## `GET A$`
+
+To get a single keypress and store it in A$, 64K BASIC uses the newer style:
+```text
+A$ = INKEY$
+```
+
+## `LOCATE ROW,COL`
+
+This is probably a GW-BASIC program so it might use graphics and sound.
+However, in many cases it is simply used to center text on the screen.
+Use a `PRINT` statement for each row you want to move down and `TAB(-X)`
+to move to the column.
+```text
+REM CLS:LOCATE 3,20:PRINT "TITLE"
+CLS:PRINT:PRINT:PRINT TAB(-20) "TITLE"
+```
+
+## `SOUND` and `BEEP`
+
+64K BASIC does not support sound. Your terminal might with:
+```text
+PRINT CHR$(7)
+```
 
 */
