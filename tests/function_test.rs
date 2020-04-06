@@ -95,6 +95,13 @@ fn test_fn_fix() {
 }
 
 #[test]
+fn test_fn_hex() {
+    let mut r = Runtime::default();
+    r.enter(r#"?hex$(13)"#);
+    assert_eq!(exec(&mut r), "D\n");
+}
+
+#[test]
 fn test_fn_int() {
     let mut r = Runtime::default();
     r.enter(r#"?int(9.9)int(-9.9)"#);
@@ -129,6 +136,13 @@ fn test_fn_mid() {
     assert_eq!(exec(&mut r), "TY\n");
     r.enter(r#"?mid$("TASTY",4,1)"#);
     assert_eq!(exec(&mut r), "T\n");
+}
+
+#[test]
+fn test_fn_oct() {
+    let mut r = Runtime::default();
+    r.enter(r#"?oct$(13)"#);
+    assert_eq!(exec(&mut r), "15\n");
 }
 
 #[test]

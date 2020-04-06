@@ -113,6 +113,16 @@ pub mod FIX {
     */
 }
 
+pub mod HEX {
+    /*!
+    ## `HEX$(X)` Returns hexadecimal string of integer X.
+    ```text
+    PRINT HEX$(-1)
+    FFFF
+    ```
+    */
+}
+
 pub mod INKEY {
     /*!
     ## `INKEY$` Returns a single key press, empty string if none.
@@ -174,6 +184,16 @@ pub mod MID {
     THE
     PRINT MID$("HUNT THE WUMPUS", 6)
     THE WUMPUS
+    ```
+    */
+}
+
+pub mod OCT {
+    /*!
+    ## `OCT$(X)` Returns octal string of integer X.
+    ```text
+    PRINT OCT$(-1)
+    177777
     ```
     */
 }

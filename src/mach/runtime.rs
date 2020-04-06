@@ -475,6 +475,7 @@ impl Runtime {
                 Opcode::Date => self.stack.push(Function::date()?)?,
                 Opcode::Exp => self.stack.pop_1_push(&Function::exp)?,
                 Opcode::Fix => self.stack.pop_1_push(&Function::fix)?,
+                Opcode::Hex => self.stack.pop_1_push(&Function::hex)?,
                 Opcode::Inkey => {
                     self.state = State::Inkey;
                     return Ok(Event::Inkey);
@@ -487,6 +488,7 @@ impl Runtime {
                     let vec = self.stack.pop_vec()?;
                     self.stack.push(Function::mid(vec)?)?;
                 }
+                Opcode::Oct => self.stack.pop_1_push(&Function::oct)?,
                 Opcode::Pos => {
                     let _val = self.stack.pop_vec()?;
                     self.stack.push(Function::pos(self.print_col)?)?;

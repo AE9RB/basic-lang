@@ -23,12 +23,14 @@ impl Function {
             "DATE$" => Some((Opcode::Date, 0..=0)),
             "EXP" => Some((Opcode::Exp, 1..=1)),
             "FIX" => Some((Opcode::Fix, 1..=1)),
+            "HEX$" => Some((Opcode::Hex, 1..=1)),
             "INKEY$" => Some((Opcode::Inkey, 0..=0)),
             "INT" => Some((Opcode::Int, 1..=1)),
             "LEFT$" => Some((Opcode::Left, 2..=2)),
             "LEN" => Some((Opcode::Len, 1..=1)),
             "LOG" => Some((Opcode::Log, 1..=1)),
             "MID$" => Some((Opcode::Mid, 2..=3)),
+            "OCT$" => Some((Opcode::Oct, 1..=1)),
             "POS" => Some((Opcode::Pos, 0..=1)),
             "RIGHT$" => Some((Opcode::Right, 2..=2)),
             "RND" => Some((Opcode::Rnd, 0..=1)),
@@ -148,6 +150,11 @@ impl Function {
         }
     }
 
+    pub fn hex(val: Val) -> Result<Val> {
+        let num = i16::try_from(val)?;
+        Ok(Val::String(format!("{:X}", num).into()))
+    }
+
     pub fn int(val: Val) -> Result<Val> {
         use Val::*;
         match val {
@@ -205,6 +212,11 @@ impl Function {
             },
             None => Ok(Val::String(string)),
         }
+    }
+
+    pub fn oct(val: Val) -> Result<Val> {
+        let num = i16::try_from(val)?;
+        Ok(Val::String(format!("{:o}", num).into()))
     }
 
     pub fn pos(print_col: usize) -> Result<Val> {
