@@ -88,6 +88,13 @@ fn test_fn_exp() {
 }
 
 #[test]
+fn test_fn_fix() {
+    let mut r = Runtime::default();
+    r.enter(r#"?fix(-9.9)"#);
+    assert_eq!(exec(&mut r), "-9 \n");
+}
+
+#[test]
 fn test_fn_int() {
     let mut r = Runtime::default();
     r.enter(r#"?int(9.9)int(-9.9)"#);
@@ -109,12 +116,28 @@ fn test_fn_len() {
 }
 
 #[test]
+fn test_fn_log() {
+    let mut r = Runtime::default();
+    r.enter(r#"?log(8/37)"#);
+    assert_eq!(exec(&mut r), "-1.5314764 \n");
+}
+
+#[test]
 fn test_fn_mid() {
     let mut r = Runtime::default();
     r.enter(r#"?mid$("TASTY",4)"#);
     assert_eq!(exec(&mut r), "TY\n");
     r.enter(r#"?mid$("TASTY",4,1)"#);
     assert_eq!(exec(&mut r), "T\n");
+}
+
+#[test]
+fn test_fn_pos() {
+    let mut r = Runtime::default();
+    r.enter(r#"?"     ";pos()"#);
+    assert_eq!(exec(&mut r), "      5 \n");
+    r.enter(r#"?"      ";pos(-10)"#);
+    assert_eq!(exec(&mut r), "       6 \n");
 }
 
 #[test]
@@ -169,6 +192,13 @@ fn test_fn_tab() {
     let mut r = Runtime::default();
     r.enter(r#"?tab(5)"!""#);
     assert_eq!(exec(&mut r), "     !\n");
+}
+
+#[test]
+fn test_fn_tan() {
+    let mut r = Runtime::default();
+    r.enter(r#"?tan(5/13)"#);
+    assert_eq!(exec(&mut r), " 0.40477434 \n");
 }
 
 #[test]

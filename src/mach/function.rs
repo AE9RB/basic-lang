@@ -22,11 +22,14 @@ impl Function {
             "CSNG" => Some((Opcode::Csng, 1..=1)),
             "DATE$" => Some((Opcode::Date, 0..=0)),
             "EXP" => Some((Opcode::Exp, 1..=1)),
+            "FIX" => Some((Opcode::Fix, 1..=1)),
             "INKEY$" => Some((Opcode::Inkey, 0..=0)),
             "INT" => Some((Opcode::Int, 1..=1)),
             "LEFT$" => Some((Opcode::Left, 2..=2)),
             "LEN" => Some((Opcode::Len, 1..=1)),
+            "LOG" => Some((Opcode::Log, 1..=1)),
             "MID$" => Some((Opcode::Mid, 2..=3)),
+            "POS" => Some((Opcode::Pos, 0..=1)),
             "RIGHT$" => Some((Opcode::Right, 2..=2)),
             "RND" => Some((Opcode::Rnd, 0..=1)),
             "SGN" => Some((Opcode::Sgn, 1..=1)),
@@ -34,6 +37,7 @@ impl Function {
             "SQR" => Some((Opcode::Sqr, 1..=1)),
             "STR$" => Some((Opcode::Str, 1..=1)),
             "TAB" => Some((Opcode::Tab, 1..=1)),
+            "TAN" => Some((Opcode::Tan, 1..=1)),
             "TIME$" => Some((Opcode::Time, 0..=0)),
             "VAL" => Some((Opcode::Val, 1..=1)),
             _ => None,
@@ -46,7 +50,7 @@ impl Function {
             Integer(n) => Ok(Integer(n.abs())),
             Single(n) => Ok(Single(n.abs())),
             Double(n) => Ok(Double(n.abs())),
-            String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
+            String(_) | Return(_) | Next(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -73,7 +77,7 @@ impl Function {
             Integer(n) => Ok(Single((n as f32).atan())),
             Single(n) => Ok(Single(n.atan())),
             Double(n) => Ok(Double(n.atan())),
-            String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
+            String(_) | Return(_) | Next(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -83,7 +87,7 @@ impl Function {
             Integer(n) => Ok(Double(n as f64)),
             Single(n) => Ok(Double(n as f64)),
             Double(n) => Ok(Double(n)),
-            String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
+            String(_) | Return(_) | Next(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -104,7 +108,7 @@ impl Function {
             Integer(n) => Ok(Single((n as f32).cos())),
             Single(n) => Ok(Single(n.cos())),
             Double(n) => Ok(Double(n.cos())),
-            String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
+            String(_) | Return(_) | Next(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -114,7 +118,7 @@ impl Function {
             Integer(n) => Ok(Single(n as f32)),
             Single(n) => Ok(Single(n)),
             Double(n) => Ok(Single(n as f32)),
-            String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
+            String(_) | Return(_) | Next(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -130,7 +134,17 @@ impl Function {
             Integer(n) => Ok(Single((n as f32).exp())),
             Single(n) => Ok(Single(n.exp())),
             Double(n) => Ok(Double(n.exp())),
-            String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
+            String(_) | Return(_) | Next(_) => Err(error!(TypeMismatch)),
+        }
+    }
+
+    pub fn fix(val: Val) -> Result<Val> {
+        use Val::*;
+        match val {
+            Integer(n) => Ok(Integer(n)),
+            Single(n) => Ok(Single(n.trunc())),
+            Double(n) => Ok(Double(n.trunc())),
+            String(_) | Return(_) | Next(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -140,7 +154,7 @@ impl Function {
             Integer(n) => Ok(Integer(n)),
             Single(n) => Ok(Single(n.floor())),
             Double(n) => Ok(Double(n.floor())),
-            String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
+            String(_) | Return(_) | Next(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -156,6 +170,16 @@ impl Function {
     pub fn len(string: Val) -> Result<Val> {
         let string = Rc::<str>::try_from(string)?;
         Ok(Val::try_from(string.chars().count())?)
+    }
+
+    pub fn log(val: Val) -> Result<Val> {
+        use Val::*;
+        match val {
+            Integer(n) => Ok(Single((n as f32).ln())),
+            Single(n) => Ok(Single(n.ln())),
+            Double(n) => Ok(Double(n.ln())),
+            String(_) | Return(_) | Next(_) => Err(error!(TypeMismatch)),
+        }
     }
 
     pub fn mid(mut args: Stack<Val>) -> Result<Val> {
@@ -180,6 +204,13 @@ impl Function {
                 }
             },
             None => Ok(Val::String(string)),
+        }
+    }
+
+    pub fn pos(print_col: usize) -> Result<Val> {
+        match i16::try_from(print_col) {
+            Ok(pos) => Ok(Val::Integer(pos)),
+            Err(_) => Err(error!(Overflow)),
         }
     }
 
@@ -240,7 +271,7 @@ impl Function {
             } else {
                 1
             })),
-            String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
+            String(_) | Return(_) | Next(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -250,7 +281,7 @@ impl Function {
             Integer(n) => Ok(Single((n as f32).sin())),
             Single(n) => Ok(Single(n.sin())),
             Double(n) => Ok(Double(n.sin())),
-            String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
+            String(_) | Return(_) | Next(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -260,7 +291,7 @@ impl Function {
             Integer(n) => Ok(Single((n as f32).sqrt())),
             Single(n) => Ok(Single(n.sqrt())),
             Double(n) => Ok(Double(n.sqrt())),
-            String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
+            String(_) | Return(_) | Next(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -268,7 +299,7 @@ impl Function {
         use Val::*;
         match val {
             Integer(_) | Single(_) | Double(_) => Ok(String(format!("{}", val).into())),
-            String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
+            String(_) | Return(_) | Next(_) => Err(error!(TypeMismatch)),
         }
     }
 
@@ -287,6 +318,16 @@ impl Function {
             s.push_str(&" ".repeat(len));
         }
         Ok(Val::String(s.into()))
+    }
+
+    pub fn tan(val: Val) -> Result<Val> {
+        use Val::*;
+        match val {
+            Integer(n) => Ok(Single((n as f32).tan())),
+            Single(n) => Ok(Single(n.tan())),
+            Double(n) => Ok(Double(n.tan())),
+            String(_) | Return(_) | Next(_) => Err(error!(TypeMismatch)),
+        }
     }
 
     pub fn time() -> Result<Val> {

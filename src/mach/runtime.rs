@@ -474,6 +474,7 @@ impl Runtime {
                 Opcode::Csng => self.stack.pop_1_push(&Function::csng)?,
                 Opcode::Date => self.stack.push(Function::date()?)?,
                 Opcode::Exp => self.stack.pop_1_push(&Function::exp)?,
+                Opcode::Fix => self.stack.pop_1_push(&Function::fix)?,
                 Opcode::Inkey => {
                     self.state = State::Inkey;
                     return Ok(Event::Inkey);
@@ -481,9 +482,14 @@ impl Runtime {
                 Opcode::Int => self.stack.pop_1_push(&Function::int)?,
                 Opcode::Left => self.stack.pop_2_push(&Function::left)?,
                 Opcode::Len => self.stack.pop_1_push(&Function::len)?,
+                Opcode::Log => self.stack.pop_1_push(&Function::log)?,
                 Opcode::Mid => {
                     let vec = self.stack.pop_vec()?;
                     self.stack.push(Function::mid(vec)?)?;
+                }
+                Opcode::Pos => {
+                    let _val = self.stack.pop_vec()?;
+                    self.stack.push(Function::pos(self.print_col)?)?;
                 }
                 Opcode::Right => self.stack.pop_2_push(&Function::right)?,
                 Opcode::Rnd => {
@@ -498,6 +504,7 @@ impl Runtime {
                     let val = self.stack.pop()?;
                     self.stack.push(Function::tab(self.print_col, val)?)?;
                 }
+                Opcode::Tan => self.stack.pop_1_push(&Function::tan)?,
                 Opcode::Time => self.stack.push(Function::time()?)?,
                 Opcode::Val => self.stack.pop_1_push(&Function::val)?,
             }

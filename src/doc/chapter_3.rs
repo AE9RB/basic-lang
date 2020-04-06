@@ -102,6 +102,17 @@ pub mod EXP {
     */
 }
 
+pub mod FIX {
+    /*!
+    ## `FIX(X)` Returns the truncated integer value of X.
+    See `INT` for a flooring function.
+    ```text
+    PRINT FIX( 9.9) FIX(-9.9)
+     9  9
+    ```
+    */
+}
+
 pub mod INKEY {
     /*!
     ## `INKEY$` Returns a single key press, empty string if none.
@@ -114,6 +125,7 @@ pub mod INKEY {
 pub mod INT {
     /*!
     ## `INT(X)` Returns the largest integer <= X.
+    See `FIX` for a truncating function.
     ```text
     PRINT INT(9.9) INT(-9.9)
      9 -10
@@ -141,6 +153,16 @@ pub mod LEN {
     */
 }
 
+pub mod LOG {
+    /*!
+    ## `LOG(X)` Returns the natural logarithm of X.
+    ```text
+    PRINT LOG(8/37)
+    -1.5314764
+    ```
+    */
+}
+
 pub mod MID {
     /*!
     ## `MID$(A$,X,[Y])` Returns a portion of A$.
@@ -162,6 +184,17 @@ pub mod RIGHT {
     ```text
     PRINT RIGHT$("HUNT THE WUMPUS", 6)
     WUMPUS
+    ```
+    */
+}
+
+pub mod POS {
+    /*!
+    ## `POS(X)` Returns the horizontal cursor position of the terminal.
+    `X` is optional and ignored. First position is 0.
+    ```text
+    PRINT "     ";POS()
+          5
     ```
     */
 }
@@ -230,6 +263,16 @@ pub mod TAB {
     ```text
     PRINT 1.99 TAB(20) "furlongs per year"
      1.99               furlongs per year
+    ```
+    */
+}
+
+pub mod TAN {
+    /*!
+    ## `TAN(X)` Returns the tangent of X in radians.
+    ```text
+    PRINT TAN(5/13)
+     0.40477434
     ```
     */
 }

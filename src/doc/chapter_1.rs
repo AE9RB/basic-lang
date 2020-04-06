@@ -20,7 +20,7 @@ You specify one of the four types by optionally decorating the variable or
 value with "!", "#", "%", and "$".
 
 ```text
-LET A = 1.5 ' 32-bit floating point, aka Single
+LET A = 1.5  ' 32-bit floating point, aka Single
 LET A! = 1.5 ' 32-bit floating point, aka Single
 LET A# = 1.5 ' 64-bit floating point, aka Double
 LET A% = 5   ' Signed 16-bit integer
@@ -58,8 +58,8 @@ Values are promoted as needed to preserve precision. For example, adding
 a Single to a Double causes the Single to be promoted and the addition
 done on two Doubles with the result being a Double.
 
-Values can only be demoted by assignment with `LET`. If the value won't
-fit into an integer variable then you get an `?OVERFLOW` error.
+Values are automatically demoted only by assignment with `LET`. If the value
+won't fit into an integer variable then you get an `?OVERFLOW` error.
 Storing a Double value in a Single variable will result in a loss
 of precision.
 
@@ -79,6 +79,7 @@ A! = 1.2345678912345 ' 1.2345679
 | %   | Remainder (aka Modulo) |
 | + - | Addition and subtraction |
 | = <> < <= > >= | Comparison |
+| NOT | Bitwise not, unary |
 | AND | Bitwise and |
 | OR | Bitwise or |
 | XOR | Bitwise exclusive or |
@@ -112,8 +113,8 @@ variables of 255 character strings if you want. You won't find any old programs
 that come anywhere near this limit but it's something to consider if you
 are writing portable BASIC meant to run on old hardware or emulators.
 
-Let's finish this chapter with more complex expressions and a built-in function.
-Functions are documented in another chapter.
+Let's finish this chapter with an example of more complex expressions and a
+built-in function. Functions are documented in Chapter 3.
 
 ```text
 10 PI = 3.14159
