@@ -40,6 +40,7 @@ impl Function {
             "SPC" => Some((Opcode::Spc, 1..=1)),
             "SQR" => Some((Opcode::Sqr, 1..=1)),
             "STR$" => Some((Opcode::Str, 1..=1)),
+            "STRING$" => Some((Opcode::String, 2..=2)),
             "TAB" => Some((Opcode::Tab, 1..=1)),
             "TAN" => Some((Opcode::Tan, 1..=1)),
             "TIME$" => Some((Opcode::Time, 0..=0)),
@@ -358,6 +359,27 @@ impl Function {
             Integer(_) | Single(_) | Double(_) => Ok(String(format!("{}", val).into())),
             String(_) | Return(_) | Next(_) => Err(error!(TypeMismatch)),
         }
+    }
+
+    pub fn string(num: Val, ch: Val) -> Result<Val> {
+        let num = usize::try_from(num)?;
+        if num > 255 {
+            return Err(error!(Overflow));
+        }
+        let ch = match ch {
+            Val::String(s) => match s.chars().next() {
+                Some(ch) => ch,
+                None => return Err(error!(IllegalFunctionCall)),
+            },
+            _ => {
+                let num = u32::try_from(ch)?;
+                match char::try_from(num) {
+                    Ok(ch) => ch,
+                    _ => return Err(error!(Overflow)),
+                }
+            }
+        };
+        Ok(Val::String(ch.to_string().repeat(num).into()))
     }
 
     pub fn tab(print_col: usize, val: Val) -> Result<Val> {

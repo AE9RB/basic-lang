@@ -298,6 +298,18 @@ pub mod STR {
     */
 }
 
+pub mod STRING {
+    /*!
+    ## `STRING$(X, <Y|Y$>)` Returns X copies of Y as a string.
+    You can specify Y as an integer or a string. Only the first
+    character of a string is used.
+    ```text
+    PRINT STRING$(5,45)"KAPOW"STRING$(5,"-")
+    -----KAPOW-----
+    ```
+    */
+}
+
 pub mod TAB {
     /*!
     ## `TAB(X)` Returns a string of spaces.

@@ -234,6 +234,23 @@ fn test_fn_str() {
 }
 
 #[test]
+fn test_fn_string() {
+    let mut r = Runtime::default();
+    r.enter(r#"?string$(5,45)"#);
+    assert_eq!(exec(&mut r), "-----\n");
+    r.enter(r#"?string$(3,"^*")"#);
+    assert_eq!(exec(&mut r), "^^^\n");
+    r.enter(r#"?string$(3,"")"#);
+    assert_eq!(exec(&mut r), "?ILLEGAL FUNCTION CALL\n");
+    r.enter(r#"?string$(256,"=")"#);
+    assert_eq!(exec(&mut r), "?OVERFLOW\n");
+    r.enter(r#"?string$(-1,"=")"#);
+    assert_eq!(exec(&mut r), "?OVERFLOW\n");
+    r.enter(r#"?string$(0,"=")"#);
+    assert_eq!(exec(&mut r), "\n");
+}
+
+#[test]
 fn test_fn_tab() {
     let mut r = Runtime::default();
     r.enter(r#"?tab(5)"!""#);
