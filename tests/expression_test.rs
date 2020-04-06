@@ -48,60 +48,6 @@ fn test_array_basics() {
 }
 
 #[test]
-fn test_fn_rnd() {
-    let mut r = Runtime::default();
-    r.enter(r#"?rnd()rnd()rnd(0)rnd(1)"#);
-    assert_eq!(
-        exec(&mut r),
-        " 1.6930906E-2  0.89525414  0.89525414  1.11491084E-1 \n"
-    );
-    r.enter(r#"?rnd(-1.61803)rnd(0)rnd()"#);
-    assert_eq!(exec(&mut r), " 0.2008394  0.2008394  1.7587423E-2 \n");
-}
-
-#[test]
-fn test_fn_int() {
-    let mut r = Runtime::default();
-    r.enter(r#"?int(9.9)int(-9.9)"#);
-    assert_eq!(exec(&mut r), " 9 -10 \n");
-}
-
-#[test]
-fn test_fn_val() {
-    let mut r = Runtime::default();
-    r.enter(r#"?val(123)"#);
-    assert_eq!(exec(&mut r), "?TYPE MISMATCH\n");
-    r.enter(r#"?val("123")"#);
-    assert_eq!(exec(&mut r), " 123 \n");
-    r.enter(r#"?val("one")"#);
-    assert_eq!(exec(&mut r), " 0 \n");
-    r.enter(r#"?val("    42  ")"#);
-    assert_eq!(exec(&mut r), " 42 \n");
-}
-
-#[test]
-fn test_sgn() {
-    let mut r = Runtime::default();
-    r.enter(r#"?sgn(0.0);sgn(-1.0/0.0);sgn(10000000000)"#);
-    assert_eq!(exec(&mut r), " 0 -1  1 \n");
-}
-
-#[test]
-fn test_built_in_reserved() {
-    let mut r = Runtime::default();
-    r.enter(r#"len$(0)="foo":?len$(0)"#);
-    assert_eq!(exec(&mut r), "foo\n");
-    r.enter(r#"rnd=42:?rnd"#);
-    assert_eq!(exec(&mut r), " 42 \n");
-    r.enter(r#"val(0)=42"#);
-    assert_eq!(exec(&mut r), "?SYNTAX ERROR; RESERVED FOR BUILT-IN\n");
-    r.enter(r#"time$="42""#);
-    assert_eq!(exec(&mut r), "?SYNTAX ERROR; RESERVED FOR BUILT-IN\n");
-    r.enter(r#"rnd()=42"#);
-    assert_eq!(exec(&mut r), "?SYNTAX ERROR; EXPECTED EXPRESSION\n");
-}
-
-#[test]
 fn test_hex_octal() {
     let mut r = Runtime::default();
     r.enter(r#"?&h0d"#);

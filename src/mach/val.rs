@@ -108,6 +108,7 @@ impl TryFrom<Val> for i16 {
         match val {
             Val::Integer(num) => Ok(num),
             Val::Single(num) => {
+                let num = num.floor();
                 if num >= i16::min_value() as f32 && num <= i16::max_value() as f32 {
                     Ok(num as i16)
                 } else {
@@ -115,6 +116,7 @@ impl TryFrom<Val> for i16 {
                 }
             }
             Val::Double(num) => {
+                let num = num.floor();
                 if num >= i16::min_value() as f64 && num <= i16::max_value() as f64 {
                     Ok(num as i16)
                 } else {

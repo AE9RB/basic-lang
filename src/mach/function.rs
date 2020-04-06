@@ -14,8 +14,12 @@ impl Function {
         match func_name {
             "ABS" => Some((Opcode::Abs, 1..=1)),
             "ASC" => Some((Opcode::Asc, 1..=1)),
+            "ATN" => Some((Opcode::Atn, 1..=1)),
+            "CDBL" => Some((Opcode::Cdbl, 1..=1)),
             "CHR$" => Some((Opcode::Chr, 1..=1)),
+            "CINT" => Some((Opcode::Cint, 1..=1)),
             "COS" => Some((Opcode::Cos, 1..=1)),
+            "CSNG" => Some((Opcode::Csng, 1..=1)),
             "DATE$" => Some((Opcode::Date, 0..=0)),
             "EXP" => Some((Opcode::Exp, 1..=1)),
             "INKEY$" => Some((Opcode::Inkey, 0..=0)),
@@ -63,11 +67,35 @@ impl Function {
         }
     }
 
+    pub fn atn(val: Val) -> Result<Val> {
+        use Val::*;
+        match val {
+            Integer(n) => Ok(Single((n as f32).atan())),
+            Single(n) => Ok(Single(n.atan())),
+            Double(n) => Ok(Double(n.atan())),
+            String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
+        }
+    }
+
+    pub fn cdbl(val: Val) -> Result<Val> {
+        use Val::*;
+        match val {
+            Integer(n) => Ok(Double(n as f64)),
+            Single(n) => Ok(Double(n as f64)),
+            Double(n) => Ok(Double(n)),
+            String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
+        }
+    }
+
     pub fn chr(val: Val) -> Result<Val> {
         match char::try_from(u32::try_from(val)?) {
             Ok(ch) => Ok(Val::String(ch.to_string().into())),
             Err(_) => Err(error!(Overflow)),
         }
+    }
+
+    pub fn cint(val: Val) -> Result<Val> {
+        Ok(Val::Integer(i16::try_from(val)?))
     }
 
     pub fn cos(val: Val) -> Result<Val> {
@@ -76,6 +104,16 @@ impl Function {
             Integer(n) => Ok(Single((n as f32).cos())),
             Single(n) => Ok(Single(n.cos())),
             Double(n) => Ok(Double(n.cos())),
+            String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
+        }
+    }
+
+    pub fn csng(val: Val) -> Result<Val> {
+        use Val::*;
+        match val {
+            Integer(n) => Ok(Single(n as f32)),
+            Single(n) => Ok(Single(n)),
+            Double(n) => Ok(Single(n as f32)),
             String(_) | Return(_) | Val::Next(_) => Err(error!(TypeMismatch)),
         }
     }

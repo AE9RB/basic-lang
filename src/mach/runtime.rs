@@ -466,8 +466,12 @@ impl Runtime {
 
                 Opcode::Abs => self.stack.pop_1_push(&Function::abs)?,
                 Opcode::Asc => self.stack.pop_1_push(&Function::asc)?,
+                Opcode::Atn => self.stack.pop_1_push(&Function::atn)?,
+                Opcode::Cdbl => self.stack.pop_1_push(&Function::cdbl)?,
                 Opcode::Chr => self.stack.pop_1_push(&Function::chr)?,
+                Opcode::Cint => self.stack.pop_1_push(&Function::cint)?,
                 Opcode::Cos => self.stack.pop_1_push(&Function::cos)?,
+                Opcode::Csng => self.stack.pop_1_push(&Function::csng)?,
                 Opcode::Date => self.stack.push(Function::date()?)?,
                 Opcode::Exp => self.stack.pop_1_push(&Function::exp)?,
                 Opcode::Inkey => {

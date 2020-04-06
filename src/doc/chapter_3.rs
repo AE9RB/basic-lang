@@ -22,6 +22,26 @@ pub mod ASC {
     */
 }
 
+pub mod ATN {
+    /*!
+    ## `ATN(X)` Returns the arctangent of X.
+    ```text
+    PRINT ATN(3)
+      1.2490457
+    ```
+    */
+}
+
+pub mod CDBL {
+    /*!
+    ## `CDBL(X)` Returns X as a Double.
+    ```text
+    PRINT 1/CDBL(3)
+      0.3333333333333333
+    ```
+    */
+}
+
 pub mod CHR {
     /*!
     ## `CHR$(X)` Returns a character of ASCII X.
@@ -32,12 +52,32 @@ pub mod CHR {
     */
 }
 
+pub mod CINT {
+    /*!
+    ## `CINT(X)` Returns X as an Integer. Overflow error mar occur.
+    ```text
+    PRINT CINT(-9.9)
+    -10
+    ```
+    */
+}
+
 pub mod COS {
     /*!
     ## `COS(X)` Returns the cosine of X in radians.
     ```text
     PRINT COS(0.123)
      0.99244505
+    ```
+    */
+}
+
+pub mod CSNG {
+    /*!
+    ## `CSNG(X)` Returns X as a Single.
+    ```text
+    PRINT 1/CSNG(3#)
+      0.33333334
     ```
     */
 }
