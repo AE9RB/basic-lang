@@ -268,6 +268,16 @@ pub mod SIN {
     */
 }
 
+pub mod SPC {
+    /*!
+    ## `SPC(X)` Returns a string of X spaces.
+    ```text
+    PRINT "<"SPC(5)">"
+    <     >
+    ```
+    */
+}
+
 pub mod SQR {
     /*!
     ## `SQR(X)` Returns the square root of X.

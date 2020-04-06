@@ -502,6 +502,7 @@ impl Runtime {
                     let vec = self.stack.pop_vec()?;
                     self.stack.push(Function::rnd(&mut self.rand, vec)?)?;
                 }
+                Opcode::Spc => self.stack.pop_1_push(&Function::spc)?,
                 Opcode::Sgn => self.stack.pop_1_push(&Function::sgn)?,
                 Opcode::Sin => self.stack.pop_1_push(&Function::sin)?,
                 Opcode::Sqr => self.stack.pop_1_push(&Function::sqr)?,

@@ -207,6 +207,19 @@ fn test_fn_sin() {
 }
 
 #[test]
+fn test_fn_spc() {
+    let mut r = Runtime::default();
+    r.enter(r#"?spc(-1)"#);
+    assert_eq!(exec(&mut r), "?OVERFLOW\n");
+    r.enter(r#"?spc(0)"#);
+    assert_eq!(exec(&mut r), "\n");
+    r.enter(r#"?spc(1)"#);
+    assert_eq!(exec(&mut r), " \n");
+    r.enter(r#"?spc(256)"#);
+    assert_eq!(exec(&mut r), "?OVERFLOW\n");
+}
+
+#[test]
 fn test_fn_sqr() {
     let mut r = Runtime::default();
     r.enter(r#"?sqr(5)"#);

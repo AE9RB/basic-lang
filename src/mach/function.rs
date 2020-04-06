@@ -37,6 +37,7 @@ impl Function {
             "RND" => Some((Opcode::Rnd, 0..=1)),
             "SGN" => Some((Opcode::Sgn, 1..=1)),
             "SIN" => Some((Opcode::Sin, 1..=1)),
+            "SPC" => Some((Opcode::Spc, 1..=1)),
             "SQR" => Some((Opcode::Sqr, 1..=1)),
             "STR$" => Some((Opcode::Str, 1..=1)),
             "TAB" => Some((Opcode::Tab, 1..=1)),
@@ -333,6 +334,14 @@ impl Function {
         }
     }
 
+    pub fn spc(val: Val) -> Result<Val> {
+        let len = usize::try_from(val)?;
+        if len > 255 {
+            return Err(error!(Overflow));
+        }
+        Ok(Val::String(" ".repeat(len).into()))
+    }
+
     pub fn sqr(val: Val) -> Result<Val> {
         use Val::*;
         match val {
@@ -352,20 +361,19 @@ impl Function {
     }
 
     pub fn tab(print_col: usize, val: Val) -> Result<Val> {
-        let mut s = String::new();
         let tab = i16::try_from(val)?;
         if tab < -255 || tab > 255 {
             return Err(error!(Overflow));
         }
-        if tab < 0 {
+        let len = if tab < 0 {
             let tab = -tab as usize;
-            let len = tab - (print_col % tab);
-            s.push_str(&" ".repeat(len));
+            tab - (print_col % tab)
         } else if tab as usize > print_col {
-            let len = tab as usize - print_col;
-            s.push_str(&" ".repeat(len));
-        }
-        Ok(Val::String(s.into()))
+            tab as usize - print_col
+        } else {
+            0
+        };
+        Ok(Val::String(" ".repeat(len).into()))
     }
 
     pub fn tan(val: Val) -> Result<Val> {
