@@ -13,7 +13,7 @@ pub enum Statement {
     Defsng(Column, Variable, Variable),
     Defstr(Column, Variable, Variable),
     Delete(Column, Expression, Expression),
-    Dim(Column, Variable),
+    Dim(Column, Vec<Variable>),
     End(Column),
     Erase(Column, Vec<Variable>),
     For(Column, Variable, Expression, Expression, Expression),
@@ -25,10 +25,10 @@ pub enum Statement {
     List(Column, Expression, Expression),
     Load(Column, Expression),
     New(Column),
-    Next(Column, Variable),
+    Next(Column, Vec<Variable>),
     OnGoto(Column, Expression, Vec<Expression>),
     OnGosub(Column, Expression, Vec<Expression>),
-    Print(Column, Expression),
+    Print(Column, Vec<Expression>),
     Read(Column, Vec<Variable>),
     Restore(Column, Expression),
     Return(Column),
@@ -113,7 +113,7 @@ impl AcceptVisitor for Statement {
         use Statement::*;
         match self {
             Clear(_) | Cls(_) | Cont(_) | End(_) | New(_) | Stop(_) | Return(_) | Wend(_) => {}
-            Data(_, vec_expr) => {
+            Data(_, vec_expr) | Print(_, vec_expr) => {
                 for v in vec_expr {
                     v.accept(visitor);
                 }
@@ -132,9 +132,6 @@ impl AcceptVisitor for Statement {
                 from_var.accept(visitor);
                 to_var.accept(visitor);
             }
-            Dim(_, var) => {
-                var.accept(visitor);
-            }
             For(_, var, expr1, expr2, expr3) => {
                 var.accept(visitor);
                 expr1.accept(visitor);
@@ -144,7 +141,6 @@ impl AcceptVisitor for Statement {
             Gosub(_, expr)
             | Goto(_, expr)
             | Load(_, expr)
-            | Print(_, expr)
             | Restore(_, expr)
             | Run(_, expr)
             | Save(_, expr)
@@ -175,16 +171,13 @@ impl AcceptVisitor for Statement {
                     var.accept(visitor);
                 }
             }
-            Next(_, var) => {
-                var.accept(visitor);
-            }
             OnGoto(_, expr, vec_expr) | OnGosub(_, expr, vec_expr) => {
                 expr.accept(visitor);
                 for expr in vec_expr {
                     expr.accept(visitor);
                 }
             }
-            Erase(_, vec_var) | Read(_, vec_var) => {
+            Dim(_, vec_var) | Erase(_, vec_var) | Next(_, vec_var) | Read(_, vec_var) => {
                 for var in vec_var {
                     var.accept(visitor);
                 }

@@ -286,7 +286,7 @@ impl Compiler {
             Statement::Defsng(col, ..) => self.r#defsng(link, col),
             Statement::Defstr(col, ..) => self.r#defstr(link, col),
             Statement::Delete(col, ..) => self.r#delete(link, col),
-            Statement::Dim(col, ..) => self.r#dim(link, col),
+            Statement::Dim(col, v) => self.r#dim(link, col, v.len()),
             Statement::End(col, ..) => self.r#end(link, col),
             Statement::Erase(col, v) => self.r#erase(link, col, v.len()),
             Statement::For(col, ..) => self.r#for(link, col),
@@ -298,10 +298,10 @@ impl Compiler {
             Statement::List(col, ..) => self.r#list(link, col),
             Statement::Load(col, ..) => self.r#load(link, col),
             Statement::New(col, ..) => self.r#new_(link, col),
-            Statement::Next(col, ..) => self.r#next(link, col),
+            Statement::Next(col, v) => self.r#next(link, col, v.len()),
             Statement::OnGoto(col, _, v) => self.r#on(link, col, v.len(), false),
             Statement::OnGosub(col, _, v) => self.r#on(link, col, v.len(), true),
-            Statement::Print(col, ..) => self.r#print(link, col),
+            Statement::Print(col, v) => self.r#print(link, col, v.len()),
             Statement::Read(col, v) => self.r#read(link, col, v.len()),
             Statement::Restore(col, ..) => self.r#restore(link, col),
             Statement::Return(col, ..) => self.r#return(link, col),
@@ -406,10 +406,13 @@ impl Compiler {
         Ok(col.start..col_to.end)
     }
 
-    fn r#dim(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
-        let var = self.var.pop()?;
-        let sub_col = var.push_as_dim(link)?;
-        Ok(col.start..sub_col.end)
+    fn r#dim(&mut self, link: &mut Link, col: &Column, len: usize) -> Result<Column> {
+        let mut col = col.clone();
+        for var in self.var.pop_n(len)? {
+            let sub_col = var.push_as_dim(link)?;
+            col.end = sub_col.end;
+        }
+        Ok(col)
     }
 
     fn r#end(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
@@ -524,10 +527,11 @@ impl Compiler {
         Ok(col.clone())
     }
 
-    fn r#next(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
-        let var = self.var.pop()?;
-        var.test_for_built_in()?;
-        link.push(Opcode::Next(var.name))?;
+    fn r#next(&mut self, link: &mut Link, col: &Column, len: usize) -> Result<Column> {
+        for var in self.var.pop_n(len)? {
+            var.test_for_built_in()?;
+            link.push(Opcode::Next(var.name))?;
+        }
         Ok(col.clone())
     }
 
@@ -562,10 +566,11 @@ impl Compiler {
         Ok(col.start..sub_col.end)
     }
 
-    fn r#print(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
-        let (_expr_col, expr) = self.expr.pop()?;
-        link.append(expr)?;
-        link.push(Opcode::Print)?;
+    fn r#print(&mut self, link: &mut Link, col: &Column, len: usize) -> Result<Column> {
+        for (_col, expr_ops) in self.expr.pop_n(len)? {
+            link.append(expr_ops)?;
+            link.push(Opcode::Print)?;
+        }
         Ok(col.clone())
     }
 

@@ -124,19 +124,26 @@ fn test_printer_list() {
     assert_eq!(
         parse(lin, &tokens).ok(),
         Some(vec!(
-            Statement::Print(0..5, Expression::Integer(6..7, 1)),
-            Statement::Print(0..5, Expression::Integer(8..9, 2)),
             Statement::Print(
                 0..5,
-                Expression::Variable(Variable::Array(
-                    9..10,
-                    Ident::String("TAB".into()),
-                    vec![Expression::Integer(9..10, -14)]
-                ))
+                vec![
+                    Expression::Integer(6..7, 1),
+                    Expression::Integer(8..9, 2),
+                    Expression::Variable(Variable::Array(
+                        9..10,
+                        Ident::String("TAB".into()),
+                        vec![Expression::Integer(9..10, -14)]
+                    )),
+                    Expression::Integer(10..11, 3),
+                ]
             ),
-            Statement::Print(0..5, Expression::Integer(10..11, 3)),
-            Statement::Print(13..18, Expression::Single(19..22, 0.0)),
-            Statement::Print(13..18, Expression::String(22..22, "\n".into())),
+            Statement::Print(
+                13..18,
+                vec![
+                    Expression::Single(19..22, 0.0),
+                    Expression::String(22..22, "\n".into())
+                ]
+            )
         ))
     );
 }
@@ -148,7 +155,7 @@ fn test_remarks() {
         parse(lin, &tokens).ok(),
         Some(vec!(Statement::Print(
             0..5,
-            Expression::String(6..6, "\n".into())
+            vec![Expression::String(6..6, "\n".into())]
         )))
     );
     let (lin, tokens) = lex("10 PRINT 'REMARK");
@@ -156,7 +163,7 @@ fn test_remarks() {
         parse(lin, &tokens).ok(),
         Some(vec!(Statement::Print(
             0..5,
-            Expression::String(6..6, "\n".into())
+            vec![Expression::String(6..6, "\n".into())]
         )))
     );
 }

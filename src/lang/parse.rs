@@ -85,7 +85,7 @@ impl<'a> BasicParser<'a> {
                     if expect_colon {
                         return Err(error!(SyntaxError, ..&self.col; "UNEXPECTED TOKEN"));
                     }
-                    statements.append(&mut Statement::expect(self)?);
+                    statements.push(Statement::expect(self)?);
                     expect_colon = true;
                 }
             }
@@ -532,46 +532,46 @@ impl Expression {
 
 impl Statement {
     #[allow(clippy::cognitive_complexity)]
-    fn expect(parse: &mut BasicParser) -> Result<Vec<Statement>> {
+    fn expect(parse: &mut BasicParser) -> Result<Statement> {
         match parse.peek() {
-            Some(Token::Ident(_)) => return Ok(vec![Self::r#let(parse)?]),
+            Some(Token::Ident(_)) => return Ok(Self::r#let(parse)?),
             Some(Token::Word(word)) => {
                 parse.next();
                 use Word::*;
                 match word {
-                    Clear => return Ok(vec![Self::r#clear(parse)?]),
-                    Cls => return Ok(vec![Self::r#cls(parse)?]),
-                    Cont => return Ok(vec![Self::r#cont(parse)?]),
-                    Data => return Ok(vec![Self::r#data(parse)?]),
-                    Def => return Ok(vec![Self::r#def(parse)?]),
-                    Defdbl => return Ok(vec![Self::r#defdbl(parse)?]),
-                    Defint => return Ok(vec![Self::r#defint(parse)?]),
-                    Defsng => return Ok(vec![Self::r#defsng(parse)?]),
-                    Defstr => return Ok(vec![Self::r#defstr(parse)?]),
-                    Delete => return Ok(vec![Self::r#delete(parse)?]),
-                    Dim => return Self::r#dim(parse),
-                    End => return Ok(vec![Self::r#end(parse)?]),
-                    Erase => return Ok(vec![Self::r#erase(parse)?]),
-                    For => return Ok(vec![Self::r#for(parse)?]),
-                    Gosub => return Ok(vec![Self::r#gosub(parse)?]),
-                    Goto => return Ok(vec![Self::r#goto(parse)?]),
-                    If => return Ok(vec![Self::r#if(parse)?]),
-                    Input => return Ok(vec![Self::r#input(parse)?]),
-                    Let => return Ok(vec![Self::r#let(parse)?]),
-                    List => return Ok(vec![Self::r#list(parse)?]),
-                    Load => return Ok(vec![Self::r#load(parse)?]),
-                    New => return Ok(vec![Self::r#new(parse)?]),
-                    Next => return Self::r#next(parse),
-                    On => return Ok(vec![Self::r#on(parse)?]),
-                    Print => return Self::r#print(parse),
-                    Read => return Ok(vec![Self::r#read(parse)?]),
-                    Restore => return Ok(vec![Self::r#restore(parse)?]),
-                    Return => return Ok(vec![Self::r#return(parse)?]),
-                    Run => return Ok(vec![Self::r#run(parse)?]),
-                    Save => return Ok(vec![Self::r#save(parse)?]),
-                    Stop => return Ok(vec![Self::r#stop(parse)?]),
-                    Wend => return Ok(vec![Self::r#wend(parse)?]),
-                    While => return Ok(vec![Self::r#while(parse)?]),
+                    Clear => return Ok(Self::r#clear(parse)?),
+                    Cls => return Ok(Self::r#cls(parse)?),
+                    Cont => return Ok(Self::r#cont(parse)?),
+                    Data => return Ok(Self::r#data(parse)?),
+                    Def => return Ok(Self::r#def(parse)?),
+                    Defdbl => return Ok(Self::r#defdbl(parse)?),
+                    Defint => return Ok(Self::r#defint(parse)?),
+                    Defsng => return Ok(Self::r#defsng(parse)?),
+                    Defstr => return Ok(Self::r#defstr(parse)?),
+                    Delete => return Ok(Self::r#delete(parse)?),
+                    Dim => return Ok(Self::r#dim(parse)?),
+                    End => return Ok(Self::r#end(parse)?),
+                    Erase => return Ok(Self::r#erase(parse)?),
+                    For => return Ok(Self::r#for(parse)?),
+                    Gosub => return Ok(Self::r#gosub(parse)?),
+                    Goto => return Ok(Self::r#goto(parse)?),
+                    If => return Ok(Self::r#if(parse)?),
+                    Input => return Ok(Self::r#input(parse)?),
+                    Let => return Ok(Self::r#let(parse)?),
+                    List => return Ok(Self::r#list(parse)?),
+                    Load => return Ok(Self::r#load(parse)?),
+                    New => return Ok(Self::r#new(parse)?),
+                    Next => return Ok(Self::r#next(parse)?),
+                    On => return Ok(Self::r#on(parse)?),
+                    Print => return Ok(Self::r#print(parse)?),
+                    Read => return Ok(Self::r#read(parse)?),
+                    Restore => return Ok(Self::r#restore(parse)?),
+                    Return => return Ok(Self::r#return(parse)?),
+                    Run => return Ok(Self::r#run(parse)?),
+                    Save => return Ok(Self::r#save(parse)?),
+                    Stop => return Ok(Self::r#stop(parse)?),
+                    Wend => return Ok(Self::r#wend(parse)?),
+                    While => return Ok(Self::r#while(parse)?),
                     Else | Rem1 | Rem2 | Step | Then | To => {}
                 }
             }
@@ -662,14 +662,10 @@ impl Statement {
         Ok(Statement::Delete(column, from, to))
     }
 
-    fn r#dim(parse: &mut BasicParser) -> Result<Vec<Statement>> {
+    fn r#dim(parse: &mut BasicParser) -> Result<Statement> {
         let column = parse.col.clone();
-        let mut vec_stmt: Vec<Statement> = vec![];
         let var_list = parse.expect_var_list()?;
-        for var in var_list {
-            vec_stmt.push(Statement::Dim(column.clone(), var));
-        }
-        Ok(vec_stmt)
+        Ok(Statement::Dim(column, var_list))
     }
 
     fn r#end(parse: &mut BasicParser) -> Result<Statement> {
@@ -811,19 +807,21 @@ impl Statement {
         Ok(Statement::New(parse.col.clone()))
     }
 
-    fn r#next(parse: &mut BasicParser) -> Result<Vec<Statement>> {
+    fn r#next(parse: &mut BasicParser) -> Result<Statement> {
         let column = parse.col.clone();
         let mut idents = parse.expect_ident_list()?;
         if idents.is_empty() {
-            return Ok(vec![Statement::Next(
+            return Ok(Statement::Next(
                 column,
-                Variable::Unary(0..0, Ident::Plain("".into())),
-            )]);
+                vec![Variable::Unary(0..0, Ident::Plain("".into()))],
+            ));
         }
-        Ok(idents
+        let vec_var = idents
             .drain(..)
-            .map(|(col, i)| Statement::Next(column.clone(), Variable::Unary(col, i.into())))
-            .collect::<Vec<Statement>>())
+            .map(|(col, i)| Variable::Unary(col, i.into()))
+            .collect::<Vec<Variable>>();
+
+        Ok(Statement::Next(column, vec_var))
     }
 
     fn r#on(parse: &mut BasicParser) -> Result<Statement> {
@@ -844,13 +842,10 @@ impl Statement {
         }
     }
 
-    fn r#print(parse: &mut BasicParser) -> Result<Vec<Statement>> {
+    fn r#print(parse: &mut BasicParser) -> Result<Statement> {
         let column = parse.col.clone();
-        let mut vec_expr = parse.expect_print_list()?;
-        Ok(vec_expr
-            .drain(..)
-            .map(|e| Statement::Print(column.clone(), e))
-            .collect())
+        let vec_expr = parse.expect_print_list()?;
+        Ok(Statement::Print(column, vec_expr))
     }
 
     fn r#read(parse: &mut BasicParser) -> Result<Statement> {
