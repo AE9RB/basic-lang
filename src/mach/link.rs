@@ -337,17 +337,28 @@ impl Link {
     }
 }
 
-impl TryFrom<Link> for LineNumber {
+impl TryFrom<&Link> for LineNumber {
     type Error = Error;
 
-    fn try_from(mut prog: Link) -> std::result::Result<Self, Self::Error> {
+    fn try_from(prog: &Link) -> std::result::Result<Self, Self::Error> {
         if prog.ops.len() == 1 {
-            match prog.ops.pop() {
-                Ok(Opcode::Literal(val)) => return Ok(LineNumber::try_from(val)?),
-                Err(e) => return Err(e),
-                _ => {}
+            if let Some(Opcode::Literal(val)) = prog.ops.last() {
+                return Ok(LineNumber::try_from(val.clone())?);
             }
         }
         Err(error!(UndefinedLine; "INVALID LINE NUMBER"))
+    }
+}
+
+impl TryFrom<&Link> for Rc<str> {
+    type Error = Error;
+
+    fn try_from(prog: &Link) -> std::result::Result<Self, Self::Error> {
+        if prog.ops.len() == 1 {
+            if let Some(Opcode::Literal(Val::String(s))) = prog.ops.last() {
+                return Ok(s.clone());
+            }
+        }
+        Err(error!(SyntaxError; "EXPECTED STRING LITERAL"))
     }
 }

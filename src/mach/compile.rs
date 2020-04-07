@@ -317,7 +317,7 @@ impl Compiler {
 
     fn expr_pop_line_number(&mut self) -> Result<(Column, LineNumber)> {
         let (sub_col, ops) = self.expr.pop()?;
-        match LineNumber::try_from(ops) {
+        match LineNumber::try_from(&ops) {
             Ok(ln) => Ok((sub_col, ln)),
             Err(e) => Err(e.in_column(&sub_col)),
         }
@@ -556,7 +556,7 @@ impl Compiler {
         link.push(Opcode::On)?;
         for (column, ops) in line_numbers {
             sub_col.end = column.end;
-            let ln = match LineNumber::try_from(ops) {
+            let ln = match LineNumber::try_from(&ops) {
                 Ok(ln) => ln,
                 Err(e) => return Err(e.in_column(&column)),
             };
@@ -587,7 +587,7 @@ impl Compiler {
     fn r#restore(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
         let mut line_number: LineNumber = None;
         let (sub_col, ops) = self.expr.pop()?;
-        if let Ok(ln) = LineNumber::try_from(ops) {
+        if let Ok(ln) = LineNumber::try_from(&ops) {
             line_number = ln;
         }
         link.push_restore(sub_col, line_number)?;
@@ -600,13 +600,16 @@ impl Compiler {
     }
 
     fn r#run(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
-        let mut line_number: LineNumber = None;
         let (sub_col, ops) = self.expr.pop()?;
-        if let Ok(ln) = LineNumber::try_from(ops) {
-            line_number = ln;
-        }
         let full_col = col.start..sub_col.end;
-        link.push_run(sub_col, line_number)?;
+        if let Ok(filename) = Rc::<str>::try_from(&ops) {
+            link.push(Opcode::Literal(Val::String(filename)))?;
+            link.push(Opcode::LoadRun)?;
+        } else if let Ok(ln) = LineNumber::try_from(&ops) {
+            link.push_run(sub_col, ln)?;
+        } else {
+            link.push_run(sub_col, None)?;
+        }
         Ok(full_col)
     }
 

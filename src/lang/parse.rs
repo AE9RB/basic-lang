@@ -871,16 +871,21 @@ impl Statement {
 
     fn r#run(parse: &mut BasicParser) -> Result<Statement> {
         let column = parse.col.clone();
-        match parse.maybe_line_number()? {
-            Some(num) => Ok(Statement::Run(
+        if let Some(Token::Literal(Literal::String(s))) = parse.peek() {
+            parse.next();
+            Ok(Statement::Run(
+                column,
+                Expression::String(parse.col.clone(), s.clone().into()),
+            ))
+        } else if let Some(num) = parse.maybe_line_number()? {
+            Ok(Statement::Run(
                 column,
                 Expression::Single(parse.col.clone(), num as f32),
-            )),
-            None => {
-                let empty = parse.col.clone();
-                let empty = empty.start..empty.start;
-                Ok(Statement::Run(column, Expression::Single(empty, -1.0)))
-            }
+            ))
+        } else {
+            let empty = parse.col.clone();
+            let empty = empty.start..empty.start;
+            Ok(Statement::Run(column, Expression::Single(empty, -1.0)))
         }
     }
 

@@ -48,9 +48,8 @@ fn main_loop(interrupted: Arc<AtomicBool>, filename: String) -> std::io::Result<
     if !filename.is_empty() {
         match load(&filename) {
             Ok(listing) => {
-                runtime.set_listing(listing);
-                runtime.enter("RUN");
                 runtime.set_prompt("");
+                runtime.set_listing(listing, true);
             }
             Err(error) => {
                 command.write_fmt(format_args!(
@@ -118,7 +117,14 @@ fn main_loop(interrupted: Arc<AtomicBool>, filename: String) -> std::io::Result<
                 command.write_fmt(format_args!("{}\n", decorate_list(&s, &columns)))?;
             }
             Event::Load(s) => match load(&s) {
-                Ok(listing) => runtime.set_listing(listing),
+                Ok(listing) => runtime.set_listing(listing, false),
+                Err(error) => command.write_fmt(format_args!(
+                    "{}\n",
+                    Style::new().bold().paint(error.to_string())
+                ))?,
+            },
+            Event::Run(s) => match load(&s) {
+                Ok(listing) => runtime.set_listing(listing, true),
                 Err(error) => command.write_fmt(format_args!(
                     "{}\n",
                     Style::new().bold().paint(error.to_string())

@@ -42,6 +42,7 @@ pub enum Event {
     Running,
     Stopped,
     Load(String),
+    Run(String),
     Save(String),
     Cls,
     Inkey,
@@ -222,9 +223,12 @@ impl Runtime {
     }
 
     /// Set a new listing. Used to load a program.
-    pub fn set_listing(&mut self, listing: Listing) {
+    pub fn set_listing(&mut self, listing: Listing, run: bool) {
         self.r#new_();
         self.source = listing;
+        if run {
+            self.enter("RUN");
+        }
     }
 
     /// Set a prompt instead of the default "READY."
@@ -439,6 +443,7 @@ impl Runtime {
                 }
                 Opcode::List => return self.r#list(),
                 Opcode::Load => return self.r#load(),
+                Opcode::LoadRun => return self.r#loadrun(),
                 Opcode::New => return Ok(self.r#new_()),
                 Opcode::On => self.r#on()?,
                 Opcode::Next(var_name) => self.r#next(var_name)?,
@@ -682,6 +687,14 @@ impl Runtime {
                 }
             }
             _ => Err(error!(TypeMismatch)),
+        }
+    }
+
+    fn r#loadrun(&mut self) -> Result<Event> {
+        match self.r#load() {
+            Ok(Event::Load(s)) => Ok(Event::Run(s)),
+            Ok(r) => Ok(r),
+            Err(e) => Err(e),
         }
     }
 
