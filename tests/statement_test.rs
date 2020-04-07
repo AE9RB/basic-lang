@@ -221,6 +221,8 @@ fn test_deftype() {
     let mut r = Runtime::default();
     r.enter(r#"DEFSTR s:s="foo":?s"#);
     assert_eq!(exec(&mut r), "foo\n");
+    r.enter(r#"DEFSTR t:?t"#);
+    assert_eq!(exec(&mut r), "\n");
     r.enter(r#"DEFINT i-"#);
     assert_eq!(exec(&mut r), "?SYNTAX ERROR; EXPECTED VARIABLE\n");
     r.enter(r#"DEFINT i-j:i=3.14:?i"#);
@@ -231,4 +233,17 @@ fn test_deftype() {
     assert_eq!(exec(&mut r), " 0 \n");
     r.enter(r#"a=1.1:DEFINT a-a:?a"#);
     assert_eq!(exec(&mut r), " 1 \n");
+}
+
+#[test]
+fn test_erase() {
+    let mut r = Runtime::default();
+    r.enter(r#"DIM A$(10,10):A$(5,5)="FIVE":PRINT A$(5,5)"#);
+    assert_eq!(exec(&mut r), "FIVE\n");
+    r.enter(r#"ERASE A$:PRINT A$(5,5)"#);
+    assert_eq!(exec(&mut r), "\n");
+    r.enter(r#"DIM A$(20):PRINT A$(20)"#);
+    assert_eq!(exec(&mut r), "?REDIMENSIONED ARRAY\n");
+    r.enter(r#"ERASE A$:DIM A$(20):PRINT A$(20)"#);
+    assert_eq!(exec(&mut r), "\n");
 }

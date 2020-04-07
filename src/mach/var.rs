@@ -94,7 +94,19 @@ impl Var {
                 } else if var_name.ends_with('%') {
                     Val::Integer(0)
                 } else {
-                    Val::Single(0.0)
+                    use VarType::*;
+                    if let Some(idx) = var_name.chars().next() {
+                        debug_assert!(idx >= 'A' && idx <= 'Z');
+                        match self.types[idx as usize - 'A' as usize] {
+                            Integer => Val::Integer(0),
+                            Single => Val::Single(0.0),
+                            Double => Val::Double(0.0),
+                            String => Val::String("".into()),
+                        }
+                    } else {
+                        debug_assert!(false);
+                        Val::Single(0.0)
+                    }
                 }
             }
         }
@@ -108,6 +120,16 @@ impl Var {
     pub fn fetch_array(&mut self, var_name: &Rc<str>, arr: Stack<Val>) -> Result<Val> {
         let key = self.build_array_key(var_name, arr)?;
         Ok(self.fetch(&key))
+    }
+
+    pub fn erase_array(&mut self, var_name: &Rc<str>) -> Result<()> {
+        if self.dims.remove(var_name).is_none() {
+            return Err(error!(IllegalFunctionCall; "ARRAY NOT DIMENSIONED"));
+        }
+        let mut pattern = var_name.to_string();
+        pattern.push(',');
+        self.vars.retain(|k, _| !k.starts_with(&pattern));
+        Ok(())
     }
 
     pub fn dimension_array(&mut self, var_name: &Rc<str>, arr: Stack<Val>) -> Result<()> {
@@ -126,7 +148,7 @@ impl Var {
             None => self
                 .dims
                 .entry(var_name.clone())
-                .or_insert_with(|| vec![10]),
+                .or_insert_with(|| vec![10; requested.len()]),
         };
         if dimensioned.len() != requested.len() {
             return Err(error!(SubscriptOutOfRange));

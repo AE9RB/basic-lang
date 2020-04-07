@@ -551,6 +551,7 @@ impl Statement {
                     Delete => return Ok(vec![Self::r#delete(parse)?]),
                     Dim => return Self::r#dim(parse),
                     End => return Ok(vec![Self::r#end(parse)?]),
+                    Erase => return Ok(vec![Self::r#erase(parse)?]),
                     For => return Ok(vec![Self::r#for(parse)?]),
                     Gosub => return Ok(vec![Self::r#gosub(parse)?]),
                     Goto => return Ok(vec![Self::r#goto(parse)?]),
@@ -673,6 +674,19 @@ impl Statement {
 
     fn r#end(parse: &mut BasicParser) -> Result<Statement> {
         Ok(Statement::End(parse.col.clone()))
+    }
+
+    fn r#erase(parse: &mut BasicParser) -> Result<Statement> {
+        let column = parse.col.clone();
+        let mut idents = parse.expect_ident_list()?;
+        if idents.is_empty() {
+            return Err(error!(SyntaxError, ..&(column.start..column.start); "EXPECTED VARIABLE"));
+        }
+        let vec_var = idents
+            .drain(..)
+            .map(|(col, i)| Variable::Unary(col, i.into()))
+            .collect::<Vec<Variable>>();
+        Ok(Statement::Erase(column, vec_var))
     }
 
     fn r#for(parse: &mut BasicParser) -> Result<Statement> {

@@ -15,6 +15,7 @@ pub enum Statement {
     Delete(Column, Expression, Expression),
     Dim(Column, Variable),
     End(Column),
+    Erase(Column, Vec<Variable>),
     For(Column, Variable, Expression, Expression, Expression),
     Gosub(Column, Expression),
     Goto(Column, Expression),
@@ -183,7 +184,7 @@ impl AcceptVisitor for Statement {
                     expr.accept(visitor);
                 }
             }
-            Read(_, vec_var) => {
+            Erase(_, vec_var) | Read(_, vec_var) => {
                 for var in vec_var {
                     var.accept(visitor);
                 }

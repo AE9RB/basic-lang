@@ -288,6 +288,7 @@ impl Compiler {
             Statement::Delete(col, ..) => self.r#delete(link, col),
             Statement::Dim(col, ..) => self.r#dim(link, col),
             Statement::End(col, ..) => self.r#end(link, col),
+            Statement::Erase(col, v) => self.r#erase(link, col, v.len()),
             Statement::For(col, ..) => self.r#for(link, col),
             Statement::Gosub(col, ..) => self.r#gosub(link, col),
             Statement::Goto(col, ..) => self.r#goto(link, col),
@@ -413,6 +414,13 @@ impl Compiler {
 
     fn r#end(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
         link.push(Opcode::End)?;
+        Ok(col.clone())
+    }
+
+    fn r#erase(&mut self, link: &mut Link, col: &Column, len: usize) -> Result<Column> {
+        for var in self.var.pop_n(len)? {
+            link.push(Opcode::EraseArr(var.name))?;
+        }
         Ok(col.clone())
     }
 

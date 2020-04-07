@@ -396,6 +396,7 @@ impl Runtime {
                     let vec = self.stack.pop_vec()?;
                     self.vars.dimension_array(&var_name, vec)?;
                 }
+                Opcode::EraseArr(var_name) => self.vars.erase_array(&var_name)?,
                 Opcode::IfNot(addr) => {
                     if match self.stack.pop()? {
                         Val::Return(_) | Val::String(_) | Val::Next(_) => {

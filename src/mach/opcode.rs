@@ -23,6 +23,7 @@ pub enum Opcode {
     PushArr(Rc<str>),
     PopArr(Rc<str>),
     DimArr(Rc<str>),
+    EraseArr(Rc<str>),
 
     // *** Branch control
     /// Pop stack and branch to Address if not zero.
@@ -134,6 +135,7 @@ impl std::fmt::Display for Opcode {
             PushArr(s) => write!(f, "PUSHARR({})", s),
             PopArr(s) => write!(f, "POPARR({})", s),
             DimArr(s) => write!(f, "DIMARR({})", s),
+            EraseArr(s) => write!(f, "ERASEARR({})", s),
 
             IfNot(a) => write!(f, "IFNOT({})", a),
             Jump(a) => write!(f, "JUMP({})", a),

@@ -38,6 +38,10 @@ pub mod DIM;
 #[allow(non_snake_case)]
 pub mod END;
 
+#[path = "statements/erase.rs"]
+#[allow(non_snake_case)]
+pub mod ERASE;
+
 #[path = "statements/for.rs"]
 #[allow(non_snake_case)]
 pub mod FOR;
