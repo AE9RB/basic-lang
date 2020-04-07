@@ -8,6 +8,10 @@ pub enum Statement {
     Cont(Column),
     Data(Column, Vec<Expression>),
     Def(Column, Variable, Vec<Variable>, Expression),
+    Defdbl(Column, Variable, Variable),
+    Defint(Column, Variable, Variable),
+    Defsng(Column, Variable, Variable),
+    Defstr(Column, Variable, Variable),
     Dim(Column, Variable),
     End(Column),
     For(Column, Variable, Expression, Expression, Expression),
@@ -118,6 +122,13 @@ impl AcceptVisitor for Statement {
                     v.accept(visitor);
                 }
                 expr.accept(visitor);
+            }
+            Defdbl(_, from_var, to_var)
+            | Defint(_, from_var, to_var)
+            | Defsng(_, from_var, to_var)
+            | Defstr(_, from_var, to_var) => {
+                from_var.accept(visitor);
+                to_var.accept(visitor);
             }
             Dim(_, var) => {
                 var.accept(visitor);

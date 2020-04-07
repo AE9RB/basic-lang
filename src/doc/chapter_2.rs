@@ -22,6 +22,10 @@ pub mod DATA;
 #[allow(non_snake_case)]
 pub mod DEF;
 
+#[path = "statements/deftype.rs"]
+#[allow(non_snake_case)]
+pub mod DEFTYPE;
+
 #[path = "statements/dim.rs"]
 #[allow(non_snake_case)]
 pub mod DIM;

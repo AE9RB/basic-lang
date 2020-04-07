@@ -281,6 +281,10 @@ impl Compiler {
             Statement::Cont(col, ..) => self.r#cont(link, col),
             Statement::Data(col, v) => self.r#data(link, col, v.len()),
             Statement::Def(col, _, v, _) => self.r#def(link, col, v.len()),
+            Statement::Defdbl(col, ..) => self.r#defdbl(link, col),
+            Statement::Defint(col, ..) => self.r#defint(link, col),
+            Statement::Defsng(col, ..) => self.r#defsng(link, col),
+            Statement::Defstr(col, ..) => self.r#defstr(link, col),
             Statement::Dim(col, ..) => self.r#dim(link, col),
             Statement::End(col, ..) => self.r#end(link, col),
             Statement::For(col, ..) => self.r#for(link, col),
@@ -352,6 +356,42 @@ impl Compiler {
             })
             .collect();
         link.push_def_fn(col.clone(), fn_name.name, fn_vars, expr_ops)?;
+        Ok(col.clone())
+    }
+
+    fn r#defdbl(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
+        let to = self.var.pop()?;
+        let from = self.var.pop()?;
+        link.push(Opcode::Literal(Val::String(from.name)))?;
+        link.push(Opcode::Literal(Val::String(to.name)))?;
+        link.push(Opcode::Defdbl)?;
+        Ok(col.clone())
+    }
+
+    fn r#defint(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
+        let to = self.var.pop()?;
+        let from = self.var.pop()?;
+        link.push(Opcode::Literal(Val::String(from.name)))?;
+        link.push(Opcode::Literal(Val::String(to.name)))?;
+        link.push(Opcode::Defint)?;
+        Ok(col.clone())
+    }
+
+    fn r#defsng(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
+        let to = self.var.pop()?;
+        let from = self.var.pop()?;
+        link.push(Opcode::Literal(Val::String(from.name)))?;
+        link.push(Opcode::Literal(Val::String(to.name)))?;
+        link.push(Opcode::Defsng)?;
+        Ok(col.clone())
+    }
+
+    fn r#defstr(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
+        let to = self.var.pop()?;
+        let from = self.var.pop()?;
+        link.push(Opcode::Literal(Val::String(from.name)))?;
+        link.push(Opcode::Literal(Val::String(to.name)))?;
+        link.push(Opcode::Defstr)?;
         Ok(col.clone())
     }
 

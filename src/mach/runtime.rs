@@ -424,6 +424,10 @@ impl Runtime {
                     }
                 }
                 Opcode::Def(var_name) => self.r#def(var_name)?,
+                Opcode::Defdbl => self.r#defdbl()?,
+                Opcode::Defint => self.r#defint()?,
+                Opcode::Defsng => self.r#defsng()?,
+                Opcode::Defstr => self.r#defstr()?,
                 Opcode::End => return Ok(self.r#end()),
                 Opcode::Fn(var_name) => self.r#fn(var_name)?,
                 Opcode::Input(var_name) => {
@@ -559,6 +563,30 @@ impl Runtime {
         } else {
             Err(error!(InternalError))
         }
+    }
+
+    fn r#defdbl(&mut self) -> Result<()> {
+        let to = self.stack.pop()?;
+        let from = self.stack.pop()?;
+        self.vars.defdbl(from, to)
+    }
+
+    fn r#defint(&mut self) -> Result<()> {
+        let to = self.stack.pop()?;
+        let from = self.stack.pop()?;
+        self.vars.defint(from, to)
+    }
+
+    fn r#defsng(&mut self) -> Result<()> {
+        let to = self.stack.pop()?;
+        let from = self.stack.pop()?;
+        self.vars.defsng(from, to)
+    }
+
+    fn r#defstr(&mut self) -> Result<()> {
+        let to = self.stack.pop()?;
+        let from = self.stack.pop()?;
+        self.vars.defstr(from, to)
     }
 
     fn r#end(&mut self) -> Event {

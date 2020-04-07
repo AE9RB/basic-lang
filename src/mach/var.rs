@@ -13,6 +13,21 @@ type Result<T> = std::result::Result<T, Error>;
 pub struct Var {
     vars: HashMap<Rc<str>, Val>,
     dims: HashMap<Rc<str>, Vec<i16>>,
+    types: [VarType; 26],
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum VarType {
+    Integer,
+    Single,
+    Double,
+    String,
+}
+
+impl Default for VarType {
+    fn default() -> Self {
+        VarType::Single
+    }
 }
 
 impl Var {
@@ -23,6 +38,47 @@ impl Var {
     pub fn clear(&mut self) {
         self.vars.clear();
         self.dims.clear();
+        self.types = Default::default();
+    }
+
+    pub fn defint(&mut self, from: Val, to: Val) -> Result<()> {
+        self.def(VarType::Integer, from, to)
+    }
+
+    pub fn defsng(&mut self, from: Val, to: Val) -> Result<()> {
+        self.def(VarType::Single, from, to)
+    }
+
+    pub fn defdbl(&mut self, from: Val, to: Val) -> Result<()> {
+        self.def(VarType::Double, from, to)
+    }
+
+    pub fn defstr(&mut self, from: Val, to: Val) -> Result<()> {
+        self.def(VarType::String, from, to)
+    }
+
+    fn def(&mut self, var_type: VarType, from: Val, to: Val) -> Result<()> {
+        let from = Rc::<str>::try_from(from)?;
+        let to = Rc::<str>::try_from(to)?;
+        if let Some(from) = from.chars().next() {
+            if let Some(to) = to.chars().next() {
+                for idx in (from as usize - 'A' as usize)..=(to as usize - 'A' as usize) {
+                    self.types[idx] = var_type.clone();
+                }
+                self.vars.retain(|_, v| match v {
+                    Val::Integer(_) => var_type == VarType::Integer,
+                    Val::Single(_) => var_type == VarType::Single,
+                    Val::Double(_) => var_type == VarType::Double,
+                    Val::String(_) => var_type == VarType::String,
+                    Val::Next(_) | Val::Return(_) => {
+                        debug_assert!(false);
+                        true
+                    }
+                });
+                return Ok(());
+            }
+        }
+        Err(error!(IllegalFunctionCall))
     }
 
     pub fn fetch(&self, var_name: &Rc<str>) -> Val {
@@ -80,7 +136,13 @@ impl Var {
                 return Err(error!(SubscriptOutOfRange));
             }
         }
-        let mut s: String = requested.iter().map(|r| format!(",{}", r)).collect();
+        let mut s: String = format!("{}", var_name);
+        s.push_str(
+            &requested
+                .iter()
+                .map(|r| format!(",{}", r))
+                .collect::<String>(),
+        );
         s.push_str(&format!(",{}", var_name));
         Ok(s.into())
     }
@@ -105,16 +167,26 @@ impl Var {
         if self.vars.len() > u16::max_value() as usize {
             return Err(error!(OutOfMemory));
         }
-        if var_name.ends_with('$') {
-            self.insert_string(var_name, value)
-        } else if var_name.ends_with('!') {
+        if var_name.ends_with('!') {
             self.insert_single(var_name, value)
         } else if var_name.ends_with('#') {
             self.insert_double(var_name, value)
         } else if var_name.ends_with('%') {
             self.insert_integer(var_name, value)
+        } else if var_name.ends_with('$') {
+            self.insert_string(var_name, value)
+        } else if let Some(idx) = var_name.chars().next() {
+            debug_assert!(idx >= 'A' && idx <= 'Z');
+            use VarType::*;
+            match self.types[idx as usize - 'A' as usize] {
+                Integer => self.insert_integer(var_name, value),
+                Single => self.insert_single(var_name, value),
+                Double => self.insert_double(var_name, value),
+                String => self.insert_string(var_name, value),
+            }
         } else {
-            self.insert_single(var_name, value)
+            debug_assert!(false);
+            Err(error!(InternalError))
         }
     }
 

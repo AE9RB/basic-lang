@@ -279,8 +279,7 @@ impl<'a> BasicParser<'a> {
             let col = self.col.start..self.col.start;
             from = Expression::Single(col, 0.0);
         };
-        if let Some(&&Token::Operator(Operator::Minus)) = self.peek() {
-            self.next();
+        if self.maybe(Token::Operator(Operator::Minus)) {
             if let Some(ln) = self.maybe_line_number()? {
                 to = Expression::Single(self.col.clone(), ln as f32);
             } else {
@@ -291,6 +290,29 @@ impl<'a> BasicParser<'a> {
             let col = self.col.start..self.col.start;
             to = Expression::Single(col, from_num);
         }
+        Ok((from, to))
+    }
+
+    fn expect_var_range(&mut self) -> Result<(Variable, Variable)> {
+        let (from_col, from_ident) = self.expect_ident()?;
+        let (to_col, to_ident) = if self.maybe(Token::Operator(Operator::Minus)) {
+            self.expect_ident()?
+        } else {
+            (from_col.clone(), from_ident.clone())
+        };
+        let from_char = match &from_ident {
+            token::Ident::Plain(s) if s.len() == 1 => s,
+            _ => return Err(error!(SyntaxError, ..&from_col)),
+        };
+        let to_char = match &to_ident {
+            token::Ident::Plain(s) if s.len() == 1 => s,
+            _ => return Err(error!(SyntaxError, ..&to_col)),
+        };
+        if from_char > to_char {
+            return Err(error!(SyntaxError, ..&(from_col.start..to_col.end)));
+        }
+        let from = Variable::Unary(from_col, from_ident.into());
+        let to = Variable::Unary(to_col, to_ident.into());
         Ok((from, to))
     }
 
@@ -516,6 +538,10 @@ impl Statement {
                     Cont => return Ok(vec![Self::r#cont(parse)?]),
                     Data => return Ok(vec![Self::r#data(parse)?]),
                     Def => return Ok(vec![Self::r#def(parse)?]),
+                    Defdbl => return Ok(vec![Self::r#defdbl(parse)?]),
+                    Defint => return Ok(vec![Self::r#defint(parse)?]),
+                    Defsng => return Ok(vec![Self::r#defsng(parse)?]),
+                    Defstr => return Ok(vec![Self::r#defstr(parse)?]),
                     Dim => return Self::r#dim(parse),
                     End => return Ok(vec![Self::r#end(parse)?]),
                     For => return Ok(vec![Self::r#for(parse)?]),
@@ -600,6 +626,26 @@ impl Statement {
         let expr = parse.expect_fn_expression(&var_map)?;
         let var = Variable::Unary(fn_ident_col, fn_ident.into());
         Ok(Statement::Def(column, var, var_ident, expr))
+    }
+
+    fn r#defdbl(parse: &mut BasicParser) -> Result<Statement> {
+        let (from, to) = parse.expect_var_range()?;
+        Ok(Statement::Defdbl(parse.col.clone(), from, to))
+    }
+
+    fn r#defint(parse: &mut BasicParser) -> Result<Statement> {
+        let (from, to) = parse.expect_var_range()?;
+        Ok(Statement::Defint(parse.col.clone(), from, to))
+    }
+
+    fn r#defsng(parse: &mut BasicParser) -> Result<Statement> {
+        let (from, to) = parse.expect_var_range()?;
+        Ok(Statement::Defsng(parse.col.clone(), from, to))
+    }
+
+    fn r#defstr(parse: &mut BasicParser) -> Result<Statement> {
+        let (from, to) = parse.expect_var_range()?;
+        Ok(Statement::Defstr(parse.col.clone(), from, to))
     }
 
     fn r#dim(parse: &mut BasicParser) -> Result<Vec<Statement>> {

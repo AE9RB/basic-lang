@@ -215,3 +215,20 @@ fn test_while_wend_not_nested() {
     r.enter(r#"RUN"#);
     assert_eq!(exec(&mut r), " 1  2  1  2 \n");
 }
+
+#[test]
+fn test_deftype() {
+    let mut r = Runtime::default();
+    r.enter(r#"DEFSTR s:s="foo":?s"#);
+    assert_eq!(exec(&mut r), "foo\n");
+    r.enter(r#"DEFINT i-"#);
+    assert_eq!(exec(&mut r), "?SYNTAX ERROR; EXPECTED VARIABLE\n");
+    r.enter(r#"DEFINT i-j:i=3.14:?i"#);
+    assert_eq!(exec(&mut r), " 3 \n");
+    r.enter(r#"DEFINT ii"#);
+    assert_eq!(exec(&mut r), "?SYNTAX ERROR\n");
+    r.enter(r#"a=1.1:DEFINT a-a:?a"#);
+    assert_eq!(exec(&mut r), " 0 \n");
+    r.enter(r#"a=1.1:DEFINT a-a:?a"#);
+    assert_eq!(exec(&mut r), " 1 \n");
+}
