@@ -2,7 +2,7 @@ use super::MAX_LINE_LEN;
 use crate::error;
 use crate::lang::{Column, Error, Line, LineNumber, MaxValue};
 use std::collections::{btree_map::Values, BTreeMap};
-use std::ops::Range;
+use std::ops::{Range, RangeInclusive};
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Default)]
@@ -33,11 +33,27 @@ impl Listing {
         Arc::get_mut(&mut self.source).unwrap().remove(&ln)
     }
 
+    pub fn remove_range(&mut self, range: RangeInclusive<LineNumber>) -> bool {
+        let to_remove = self
+            .source
+            .range(range)
+            .map(|(k, _)| *k)
+            .collect::<Vec<LineNumber>>();
+        if to_remove.is_empty() {
+            return false;
+        }
+        let source = Arc::get_mut(&mut self.source).unwrap();
+        for line_number in to_remove {
+            source.remove(&line_number);
+        }
+        true
+    }
+
     pub fn line(&self, num: usize) -> Option<(String, Vec<Range<usize>>)> {
         if num > LineNumber::max_value() as usize {
             return None;
         }
-        let mut range = Some(num as u16)..Some(num as u16);
+        let mut range = Some(num as u16)..=Some(num as u16);
         self.list_line(&mut range)
     }
 
@@ -61,16 +77,18 @@ impl Listing {
         }
     }
 
-    pub fn list_line(&self, range: &mut Range<LineNumber>) -> Option<(String, Vec<Range<usize>>)> {
-        let mut source_range = self.source.range(range.start..=range.end);
+    pub fn list_line(
+        &self,
+        range: &mut RangeInclusive<LineNumber>,
+    ) -> Option<(String, Vec<Range<usize>>)> {
+        let mut source_range = self.source.range(range.clone());
         if let Some((line_number, line)) = source_range.next() {
-            if *line_number < range.end {
+            if line_number < range.end() {
                 if let Some(num) = line_number {
-                    range.start = Some(num + 1);
+                    *range = Some(num + 1)..=*range.end();
                 }
             } else {
-                range.start = Some(LineNumber::max_value() + 1);
-                range.end = Some(LineNumber::max_value() + 1);
+                *range = Some(LineNumber::max_value() + 1)..=Some(LineNumber::max_value() + 1);
             }
             let columns: Vec<Column> = self
                 .indirect_errors

@@ -285,6 +285,7 @@ impl Compiler {
             Statement::Defint(col, ..) => self.r#defint(link, col),
             Statement::Defsng(col, ..) => self.r#defsng(link, col),
             Statement::Defstr(col, ..) => self.r#defstr(link, col),
+            Statement::Delete(col, ..) => self.r#delete(link, col),
             Statement::Dim(col, ..) => self.r#dim(link, col),
             Statement::End(col, ..) => self.r#end(link, col),
             Statement::For(col, ..) => self.r#for(link, col),
@@ -393,6 +394,15 @@ impl Compiler {
         link.push(Opcode::Literal(Val::String(to.name)))?;
         link.push(Opcode::Defstr)?;
         Ok(col.clone())
+    }
+
+    fn r#delete(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
+        let (col_to, ln_to) = self.expr_pop_line_number()?;
+        let (_col_from, ln_from) = self.expr_pop_line_number()?;
+        link.push(Opcode::Literal(Val::try_from(ln_from)?))?;
+        link.push(Opcode::Literal(Val::try_from(ln_to)?))?;
+        link.push(Opcode::Delete)?;
+        Ok(col.start..col_to.end)
     }
 
     fn r#dim(&mut self, link: &mut Link, col: &Column) -> Result<Column> {

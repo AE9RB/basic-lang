@@ -12,6 +12,7 @@ pub enum Statement {
     Defint(Column, Variable, Variable),
     Defsng(Column, Variable, Variable),
     Defstr(Column, Variable, Variable),
+    Delete(Column, Expression, Expression),
     Dim(Column, Variable),
     End(Column),
     For(Column, Variable, Expression, Expression, Expression),
@@ -162,7 +163,7 @@ impl AcceptVisitor for Statement {
                 var.accept(visitor);
                 expr.accept(visitor);
             }
-            List(_, expr1, expr2) => {
+            Delete(_, expr1, expr2) | List(_, expr1, expr2) => {
                 expr1.accept(visitor);
                 expr2.accept(visitor);
             }

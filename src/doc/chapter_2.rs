@@ -26,6 +26,10 @@ pub mod DEF;
 #[allow(non_snake_case)]
 pub mod DEFTYPE;
 
+#[path = "statements/delete.rs"]
+#[allow(non_snake_case)]
+pub mod DELETE;
+
 #[path = "statements/dim.rs"]
 #[allow(non_snake_case)]
 pub mod DIM;

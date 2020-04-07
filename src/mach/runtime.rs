@@ -1,9 +1,9 @@
 use super::*;
 use crate::error;
-use crate::lang::{Error, Line, LineNumber};
+use crate::lang::{Error, Line, LineNumber, MaxValue};
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::ops::Range;
+use std::ops::{Range, RangeInclusive};
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -51,7 +51,7 @@ pub enum Event {
 enum State {
     Intro,
     Stopped,
-    Listing(Range<LineNumber>),
+    Listing(RangeInclusive<LineNumber>),
     RuntimeError(Error),
     Running,
     Input,
@@ -428,6 +428,7 @@ impl Runtime {
                 Opcode::Defint => self.r#defint()?,
                 Opcode::Defsng => self.r#defsng()?,
                 Opcode::Defstr => self.r#defstr()?,
+                Opcode::Delete => return self.r#delete(),
                 Opcode::End => return Ok(self.r#end()),
                 Opcode::Fn(var_name) => self.r#fn(var_name)?,
                 Opcode::Input(var_name) => {
@@ -566,27 +567,37 @@ impl Runtime {
     }
 
     fn r#defdbl(&mut self) -> Result<()> {
-        let to = self.stack.pop()?;
-        let from = self.stack.pop()?;
+        let (from, to) = self.stack.pop_2()?;
         self.vars.defdbl(from, to)
     }
 
     fn r#defint(&mut self) -> Result<()> {
-        let to = self.stack.pop()?;
-        let from = self.stack.pop()?;
+        let (from, to) = self.stack.pop_2()?;
         self.vars.defint(from, to)
     }
 
     fn r#defsng(&mut self) -> Result<()> {
-        let to = self.stack.pop()?;
-        let from = self.stack.pop()?;
+        let (from, to) = self.stack.pop_2()?;
         self.vars.defsng(from, to)
     }
 
     fn r#defstr(&mut self) -> Result<()> {
-        let to = self.stack.pop()?;
-        let from = self.stack.pop()?;
+        let (from, to) = self.stack.pop_2()?;
         self.vars.defstr(from, to)
+    }
+
+    fn r#delete(&mut self) -> Result<Event> {
+        let (from, to) = self.stack.pop_2()?;
+        let from = LineNumber::try_from(from)?;
+        let to = LineNumber::try_from(to)?;
+        if from == Some(0) && to == Some(LineNumber::max_value()) {
+            return Err(error!(IllegalFunctionCall));
+        }
+        if self.source.remove_range(from..=to) {
+            self.dirty = true;
+            self.state = State::Stopped;
+        }
+        Ok(self.r#end())
     }
 
     fn r#end(&mut self) -> Event {
@@ -654,10 +665,7 @@ impl Runtime {
         let (from, to) = self.stack.pop_2()?;
         let from = LineNumber::try_from(from)?;
         let to = LineNumber::try_from(to)?;
-        if to < from {
-            return Err(error!(UndefinedLine; "INVALID RANGE"));
-        }
-        self.state = State::Listing(from..to);
+        self.state = State::Listing(from..=to);
         Ok(Event::Running)
     }
 

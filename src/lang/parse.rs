@@ -271,24 +271,30 @@ impl<'a> BasicParser<'a> {
         let from;
         let from_num;
         let to;
+        let mut to_num;
+        let col = self.col.clone();
         if let Some(num) = self.maybe_line_number()? {
             from_num = num as f32;
-            from = Expression::Single(self.col.clone(), num as f32);
+            to_num = from_num;
+            from = Expression::Single(self.col.clone(), from_num);
         } else {
-            from_num = LineNumber::max_value() as f32;
-            let col = self.col.start..self.col.start;
-            from = Expression::Single(col, 0.0);
+            from_num = 0.0;
+            to_num = LineNumber::max_value() as f32;
+            from = Expression::Single(self.col.start..self.col.start, from_num);
         };
         if self.maybe(Token::Operator(Operator::Minus)) {
             if let Some(ln) = self.maybe_line_number()? {
-                to = Expression::Single(self.col.clone(), ln as f32);
+                to_num = ln as f32;
+                to = Expression::Single(self.col.clone(), to_num);
             } else {
-                let col = self.col.start..self.col.start;
-                to = Expression::Single(col, LineNumber::max_value() as f32);
-            };
+                to_num = LineNumber::max_value() as f32;
+                to = Expression::Single(self.col.start..self.col.start, to_num);
+            }
         } else {
-            let col = self.col.start..self.col.start;
-            to = Expression::Single(col, from_num);
+            to = Expression::Single(self.col.start..self.col.start, to_num);
+        }
+        if from_num > to_num {
+            return Err(error!(UndefinedLine, ..&(col.start..self.col.end); "INVALID RANGE"));
         }
         Ok((from, to))
     }
@@ -542,6 +548,7 @@ impl Statement {
                     Defint => return Ok(vec![Self::r#defint(parse)?]),
                     Defsng => return Ok(vec![Self::r#defsng(parse)?]),
                     Defstr => return Ok(vec![Self::r#defstr(parse)?]),
+                    Delete => return Ok(vec![Self::r#delete(parse)?]),
                     Dim => return Self::r#dim(parse),
                     End => return Ok(vec![Self::r#end(parse)?]),
                     For => return Ok(vec![Self::r#for(parse)?]),
@@ -646,6 +653,12 @@ impl Statement {
     fn r#defstr(parse: &mut BasicParser) -> Result<Statement> {
         let (from, to) = parse.expect_var_range()?;
         Ok(Statement::Defstr(parse.col.clone(), from, to))
+    }
+
+    fn r#delete(parse: &mut BasicParser) -> Result<Statement> {
+        let column = parse.col.clone();
+        let (from, to) = parse.expect_line_number_range()?;
+        Ok(Statement::Delete(column, from, to))
     }
 
     fn r#dim(parse: &mut BasicParser) -> Result<Vec<Statement>> {
