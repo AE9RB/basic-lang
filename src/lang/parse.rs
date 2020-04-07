@@ -570,6 +570,7 @@ impl Statement {
                     Run => return Ok(Self::r#run(parse)?),
                     Save => return Ok(Self::r#save(parse)?),
                     Stop => return Ok(Self::r#stop(parse)?),
+                    Swap => return Ok(Self::r#swap(parse)?),
                     Wend => return Ok(Self::r#wend(parse)?),
                     While => return Ok(Self::r#while(parse)?),
                     Else | Rem1 | Rem2 | Step | Then | To => {}
@@ -892,6 +893,21 @@ impl Statement {
 
     fn r#stop(parse: &mut BasicParser) -> Result<Statement> {
         Ok(Statement::Stop(parse.col.clone()))
+    }
+
+    fn r#swap(parse: &mut BasicParser) -> Result<Statement> {
+        let col = parse.col.clone();
+        let mut var_list = parse.expect_var_list()?;
+        if var_list.len() != 2 {
+            return Err(
+                error!(SyntaxError, ..&(col.start..parse.col.end); "EXPECTED TWO VARIABLES" ),
+            );
+        }
+        Ok(Statement::Swap(
+            col,
+            var_list.pop().unwrap(),
+            var_list.pop().unwrap(),
+        ))
     }
 
     fn r#wend(parse: &mut BasicParser) -> Result<Statement> {

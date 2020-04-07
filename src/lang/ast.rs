@@ -35,6 +35,7 @@ pub enum Statement {
     Run(Column, Expression),
     Save(Column, Expression),
     Stop(Column),
+    Swap(Column, Variable, Variable),
     Wend(Column),
     While(Column, Expression),
 }
@@ -125,12 +126,13 @@ impl AcceptVisitor for Statement {
                 }
                 expr.accept(visitor);
             }
-            Defdbl(_, from_var, to_var)
-            | Defint(_, from_var, to_var)
-            | Defsng(_, from_var, to_var)
-            | Defstr(_, from_var, to_var) => {
-                from_var.accept(visitor);
-                to_var.accept(visitor);
+            Defdbl(_, var1, var2)
+            | Defint(_, var1, var2)
+            | Defsng(_, var1, var2)
+            | Defstr(_, var1, var2)
+            | Swap(_, var1, var2) => {
+                var1.accept(visitor);
+                var2.accept(visitor);
             }
             For(_, var, expr1, expr2, expr3) => {
                 var.accept(visitor);

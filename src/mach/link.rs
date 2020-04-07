@@ -9,7 +9,7 @@ type Result<T> = std::result::Result<T, Error>;
 
 /// ## Linkable object
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Link {
     current_symbol: Symbol,
     ops: Stack<Opcode>,

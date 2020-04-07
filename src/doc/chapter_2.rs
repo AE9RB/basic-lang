@@ -114,6 +114,10 @@ pub mod SAVE;
 #[allow(non_snake_case)]
 pub mod STOP;
 
+#[path = "statements/swap.rs"]
+#[allow(non_snake_case)]
+pub mod SWAP;
+
 #[path = "statements/while.rs"]
 #[allow(non_snake_case)]
 pub mod WHILE;

@@ -60,6 +60,7 @@ pub enum Opcode {
     Restore(Address),
     Save,
     Stop,
+    Swap,
 
     // *** Expression operations
     Neg,
@@ -163,6 +164,7 @@ impl std::fmt::Display for Opcode {
             Restore(s) => write!(f, "RESTORE({})", s),
             Save => write!(f, "SAVE"),
             Stop => write!(f, "STOP"),
+            Swap => write!(f, "SWAP"),
 
             Neg => write!(f, "NEG"),
             Pow => write!(f, "POW"),

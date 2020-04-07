@@ -5,6 +5,7 @@ type Result<T> = std::result::Result<T, Error>;
 
 /// ## Stack enforced and size limited vector
 
+#[derive(Clone)]
 pub struct Stack<T> {
     overflow_message: &'static str,
     vec: Vec<T>,

@@ -247,3 +247,18 @@ fn test_erase() {
     r.enter(r#"ERASE A$:DIM A$(20):PRINT A$(20)"#);
     assert_eq!(exec(&mut r), "\n");
 }
+
+#[test]
+fn test_swap() {
+    let mut r = Runtime::default();
+    r.enter(r#"SWAP A,B!:PRINT A"#);
+    assert_eq!(exec(&mut r), " 0 \n");
+    r.enter(r#"A=1:B=2:SWAPA,B:PRINTA;B"#);
+    assert_eq!(exec(&mut r), " 2  1 \n");
+    r.enter(r#"DEFSTR S:S="S":A$="A":SWAP S,A$:PRINTA$;S"#);
+    assert_eq!(exec(&mut r), "SA\n");
+    r.enter(r#"A%=127:SWAP A%,B#"#);
+    assert_eq!(exec(&mut r), "?TYPE MISMATCH\n");
+    r.enter(r#"PRINT A%"#);
+    assert_eq!(exec(&mut r), " 127 \n");
+}

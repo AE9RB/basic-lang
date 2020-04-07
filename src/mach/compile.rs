@@ -80,6 +80,7 @@ impl<'a> ast::Visitor for Visitor<'a> {
     }
 }
 
+#[derive(Clone)]
 struct VarItem {
     col: Column,
     name: Rc<str>,
@@ -308,6 +309,7 @@ impl Compiler {
             Statement::Run(col, ..) => self.r#run(link, col),
             Statement::Save(col, ..) => self.r#save(link, col),
             Statement::Stop(col, ..) => self.r#stop(link, col),
+            Statement::Swap(col, ..) => self.r#swap(link, col),
             Statement::Wend(col, ..) => self.r#wend(link, col),
             Statement::While(col, ..) => self.r#while(link, col),
         }
@@ -617,6 +619,19 @@ impl Compiler {
 
     fn r#stop(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
         link.push(Opcode::Stop)?;
+        Ok(col.clone())
+    }
+
+    fn r#swap(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
+        let var1 = self.var.pop()?;
+        let var2 = self.var.pop()?;
+        var1.test_for_built_in()?;
+        var2.test_for_built_in()?;
+        var1.clone().push_as_expression(link)?;
+        var2.clone().push_as_expression(link)?;
+        link.push(Opcode::Swap)?;
+        var1.push_as_pop(link)?;
+        var2.push_as_pop(link)?;
         Ok(col.clone())
     }
 

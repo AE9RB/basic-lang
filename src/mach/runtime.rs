@@ -448,6 +448,7 @@ impl Runtime {
                 Opcode::Return => self.r#return()?,
                 Opcode::Save => return self.r#save(),
                 Opcode::Stop => return Err(error!(Break)),
+                Opcode::Swap => self.r#swap()?,
 
                 Opcode::Neg => self.stack.pop_1_push(&Operation::negate)?,
                 Opcode::Pow => self.stack.pop_2_push(&Operation::power)?,
@@ -808,6 +809,24 @@ impl Runtime {
             }
             _ => Err(error!(TypeMismatch)),
         }
+    }
+
+    fn r#swap(&mut self) -> Result<()> {
+        let (val1, val2) = self.stack.pop_2()?;
+        match val1 {
+            Val::Integer(_) if matches!(val2, Val::Integer(_)) => {}
+            Val::Single(_) if matches!(val2, Val::Single(_)) => {}
+            Val::Double(_) if matches!(val2, Val::Double(_)) => {}
+            Val::String(_) if matches!(val2, Val::String(_)) => {}
+            _ => {
+                self.stack.push(val2)?;
+                self.stack.push(val1)?;
+                return Err(error!(TypeMismatch));
+            }
+        }
+        self.stack.push(val1)?;
+        self.stack.push(val2)?;
+        Ok(())
     }
 }
 
