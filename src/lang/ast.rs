@@ -24,6 +24,7 @@ pub enum Statement {
     Let(Column, Variable, Expression),
     List(Column, Expression, Expression),
     Load(Column, Expression),
+    Mid(Column, Variable, Expression, Expression, Expression),
     New(Column),
     Next(Column, Vec<Variable>),
     OnGoto(Column, Expression, Vec<Expression>),
@@ -134,7 +135,7 @@ impl AcceptVisitor for Statement {
                 var1.accept(visitor);
                 var2.accept(visitor);
             }
-            For(_, var, expr1, expr2, expr3) => {
+            Mid(_, var, expr1, expr2, expr3) | For(_, var, expr1, expr2, expr3) => {
                 var.accept(visitor);
                 expr1.accept(visitor);
                 expr2.accept(visitor);

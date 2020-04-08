@@ -782,6 +782,24 @@ impl Statement {
 
     fn r#let(parse: &mut BasicParser) -> Result<Statement> {
         let column = parse.col.clone();
+        if let Some(Token::Ident(token::Ident::String(s))) = parse.peek() {
+            if s == "MID$" {
+                parse.next();
+                parse.expect(Token::LParen)?;
+                let var = parse.expect_var()?;
+                parse.expect(Token::Comma)?;
+                let pos = parse.expect_expression()?;
+                let len = if parse.maybe(Token::Comma) {
+                    parse.expect_expression()?
+                } else {
+                    Expression::Integer(parse.col.start..parse.col.start, i16::max_value())
+                };
+                parse.expect(Token::RParen)?;
+                parse.expect(Token::Operator(Operator::Equal))?;
+                let expr = parse.expect_expression()?;
+                return Ok(Statement::Mid(column, var, pos, len, expr));
+            }
+        }
         let var = parse.expect_var()?;
         match parse.next() {
             Some(Token::Operator(Operator::Equal)) => {

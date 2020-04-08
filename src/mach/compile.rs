@@ -80,7 +80,7 @@ impl<'a> ast::Visitor for Visitor<'a> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct VarItem {
     col: Column,
     name: Rc<str>,
@@ -298,6 +298,7 @@ impl Compiler {
             Statement::Let(col, ..) => self.r#let(link, col),
             Statement::List(col, ..) => self.r#list(link, col),
             Statement::Load(col, ..) => self.r#load(link, col),
+            Statement::Mid(col, ..) => self.r#mid(link, col),
             Statement::New(col, ..) => self.r#new_(link, col),
             Statement::Next(col, v) => self.r#next(link, col, v.len()),
             Statement::OnGoto(col, _, v) => self.r#on(link, col, v.len(), false),
@@ -522,6 +523,20 @@ impl Compiler {
         link.append(expr)?;
         link.push(Opcode::Load)?;
         Ok(col.start..sub_col.end)
+    }
+
+    fn r#mid(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
+        let var = self.var.pop()?;
+        let (expr_col, expr_link) = self.expr.pop()?;
+        let (_len_col, len_link) = self.expr.pop()?;
+        let (_pos_col, pos_link) = self.expr.pop()?;
+        var.clone().push_as_expression(link)?;
+        link.append(expr_link)?;
+        link.append(len_link)?;
+        link.append(pos_link)?;
+        link.push(Opcode::LetMid)?;
+        var.push_as_pop(link)?;
+        Ok(col.start..expr_col.end)
     }
 
     fn r#new_(&mut self, link: &mut Link, col: &Column) -> Result<Column> {

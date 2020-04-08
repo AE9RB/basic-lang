@@ -84,6 +84,7 @@ impl TryFrom<Val> for u16 {
                 }
             }
             Val::Single(num) => {
+                let num = num.floor();
                 if num >= 0.0 && num <= u16::max_value() as f32 {
                     Ok(num as u16)
                 } else {
@@ -91,6 +92,7 @@ impl TryFrom<Val> for u16 {
                 }
             }
             Val::Double(num) => {
+                let num = num.floor();
                 if num >= 0.0 && num <= u16::max_value() as f64 {
                     Ok(num as u16)
                 } else {
@@ -140,6 +142,7 @@ impl TryFrom<Val> for u32 {
                 }
             }
             Val::Single(num) => {
+                let num = num.floor();
                 if num >= 0.0 && num <= u32::max_value() as f32 {
                     Ok(num as u32)
                 } else {
@@ -147,6 +150,7 @@ impl TryFrom<Val> for u32 {
                 }
             }
             Val::Double(num) => {
+                let num = num.floor();
                 if num >= 0.0 && num <= u32::max_value() as f64 {
                     Ok(num as u32)
                 } else {
@@ -170,6 +174,7 @@ impl TryFrom<Val> for usize {
                 }
             }
             Val::Single(num) => {
+                let num = num.floor();
                 if num >= 0.0 && num <= usize::max_value() as f32 {
                     Ok(num as usize)
                 } else {
@@ -177,6 +182,7 @@ impl TryFrom<Val> for usize {
                 }
             }
             Val::Double(num) => {
+                let num = num.floor();
                 if num >= 0.0 && num <= usize::max_value() as f64 {
                     Ok(num as usize)
                 } else {

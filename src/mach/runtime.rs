@@ -441,6 +441,7 @@ impl Runtime {
                         return Ok(event);
                     }
                 }
+                Opcode::LetMid => self.r#letmid()?,
                 Opcode::List => return self.r#list(),
                 Opcode::Load => return self.r#load(),
                 Opcode::LoadRun => return self.r#loadrun(),
@@ -666,6 +667,30 @@ impl Runtime {
         }
         debug_assert!(false, "input stack corrupt");
         Err(error!(InternalError))
+    }
+
+    fn r#letmid(&mut self) -> Result<()> {
+        let pos = usize::try_from(self.stack.pop()?)?;
+        let mut len = usize::try_from(self.stack.pop()?)?;
+        let ins_string = Rc::<str>::try_from(self.stack.pop()?)?;
+        if pos == 0 {
+            return Err(error!(IllegalFunctionCall; "POSITION IS ZERO"));
+        }
+        let orig_string = Rc::<str>::try_from(self.stack.pop()?)?;
+        let mut ins = ins_string.chars();
+        let mut s = String::default();
+        for (index, ch) in orig_string.chars().enumerate() {
+            if index + 1 >= pos && len > 0 {
+                len -= 1;
+                if let Some(ch) = ins.next() {
+                    s.push(ch);
+                    continue;
+                }
+            }
+            s.push(ch)
+        }
+        self.stack.push(Val::String(s.into()))?;
+        Ok(())
     }
 
     fn r#list(&mut self) -> Result<Event> {

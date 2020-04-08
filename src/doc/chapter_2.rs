@@ -74,6 +74,10 @@ pub mod LIST;
 #[allow(non_snake_case)]
 pub mod LOAD;
 
+#[path = "statements/mid.rs"]
+#[allow(non_snake_case)]
+pub mod MID;
+
 #[path = "statements/new.rs"]
 #[allow(non_snake_case)]
 pub mod NEW;

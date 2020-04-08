@@ -262,3 +262,22 @@ fn test_swap() {
     r.enter(r#"PRINT A%"#);
     assert_eq!(exec(&mut r), " 127 \n");
 }
+
+#[test]
+fn test_let_mid_statement() {
+    let mut r = Runtime::default();
+    r.enter(r#"A$="PORTLAND, ME":MID$(A$,11)="OR":?A$"#);
+    assert_eq!(exec(&mut r), "PORTLAND, OR\n");
+    r.enter(r#"LET MID$(A$,11)="MEH":?A$"#);
+    assert_eq!(exec(&mut r), "PORTLAND, ME\n");
+    r.enter(r#"MID$(A$,0)="Portland":?A$"#);
+    assert_eq!(exec(&mut r), "?ILLEGAL FUNCTION CALL; POSITION IS ZERO\n");
+    r.enter(r#"MID$(A$,1)="Portland":?A$"#);
+    assert_eq!(exec(&mut r), "Portland, ME\n");
+    r.enter(r#"MID$(A$,5,1)="LALA":?A$"#);
+    assert_eq!(exec(&mut r), "PortLand, ME\n");
+    r.enter(r#"MID$(A$,1,0)="LALA":?A$"#);
+    assert_eq!(exec(&mut r), "PortLand, ME\n");
+    r.enter(r#"A$(5)="PORTLAND, ME":MID$(A$(5),11)="OR":?A$(5)"#);
+    assert_eq!(exec(&mut r), "PORTLAND, OR\n");
+}
