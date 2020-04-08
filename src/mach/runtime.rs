@@ -1,3 +1,4 @@
+extern crate rand;
 use super::*;
 use crate::error;
 use crate::lang::{Error, Line, LineNumber, MaxValue};
@@ -77,7 +78,11 @@ impl Default for Runtime {
             cont: State::Stopped,
             cont_pc: 0,
             print_col: 0,
-            rand: (1, 1, 1),
+            rand: (
+                rand::random::<u32>(),
+                rand::random::<u32>(),
+                rand::random::<u32>(),
+            ),
             functions: HashMap::default(),
         }
     }
@@ -534,6 +539,11 @@ impl Runtime {
     }
 
     fn r#clear(&mut self) {
+        self.rand = (
+            rand::random::<u32>(),
+            rand::random::<u32>(),
+            rand::random::<u32>(),
+        );
         self.program.restore_data(0);
         self.stack.clear();
         self.vars.clear();

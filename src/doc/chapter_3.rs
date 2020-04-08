@@ -240,6 +240,7 @@ pub mod RND {
     Returns a random Single between 0 and 1 when X is missing or > 0.
     When X is 0, return the previous random number.
     When X < 0 the random number generator is seeded with X.
+    The `CLEAR`, `NEW` and `RUN` statements reseed the generator with entropy.
     ```text
     PRINT RND()
      0.6923401

@@ -22,6 +22,7 @@ chrono = "0.4"
 ctrlc = "3"
 linefeed = "0.6"
 mortal = "0.2"
+rand = "0.7"
 
 [lib]
 name = "basic"

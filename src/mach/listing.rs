@@ -68,6 +68,11 @@ impl Listing {
         }
         let line = Line::new(line);
         if line.is_empty() {
+            if !line.is_direct() {
+                Arc::get_mut(&mut self.source)
+                    .unwrap()
+                    .remove(&line.number());
+            }
             Ok(())
         } else if line.is_direct() {
             Err(error!(DirectStatementInFile))

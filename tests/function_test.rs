@@ -183,10 +183,10 @@ fn test_fn_right() {
 #[test]
 fn test_fn_rnd() {
     let mut r = Runtime::default();
-    r.enter(r#"?rnd()rnd()rnd(0)rnd(1)"#);
+    r.enter(r#"?rnd(-1)rnd()rnd()rnd(0)rnd(1)"#);
     assert_eq!(
         exec(&mut r),
-        " 1.6930906E-2  0.89525414  0.89525414  1.11491084E-1 \n"
+        " 2.5737405E-2  0.6736604  0.6325681  0.6325681  0.8636829 \n"
     );
     r.enter(r#"?rnd(-1.61803)rnd(0)rnd()"#);
     assert_eq!(exec(&mut r), " 0.2008394  0.2008394  1.7587423E-2 \n");
