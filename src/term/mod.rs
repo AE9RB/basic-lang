@@ -2,6 +2,7 @@ extern crate ansi_term;
 extern crate ctrlc;
 extern crate linefeed;
 extern crate mortal;
+extern crate reqwest;
 use crate::mach::{Event, Listing, Runtime};
 use crate::{error, lang::Error};
 use ansi_term::Style;
@@ -46,8 +47,11 @@ fn main_loop(interrupted: Arc<AtomicBool>, filename: String) -> std::io::Result<
     CapsFunction::install(&input_caps);
 
     if !filename.is_empty() {
-        match load(&filename) {
+        match load(&filename, true) {
             Ok(listing) => {
+                if listing.is_empty() {
+                    return Ok(());
+                }
                 runtime.set_prompt("");
                 runtime.set_listing(listing, true);
             }
@@ -116,14 +120,14 @@ fn main_loop(interrupted: Arc<AtomicBool>, filename: String) -> std::io::Result<
             Event::List((s, columns)) => {
                 command.write_fmt(format_args!("{}\n", decorate_list(&s, &columns)))?;
             }
-            Event::Load(s) => match load(&s) {
+            Event::Load(s) => match load(&s, false) {
                 Ok(listing) => runtime.set_listing(listing, false),
                 Err(error) => command.write_fmt(format_args!(
                     "{}\n",
                     Style::new().bold().paint(error.to_string())
                 ))?,
             },
-            Event::Run(s) => match load(&s) {
+            Event::Run(s) => match load(&s, false) {
                 Ok(listing) => runtime.set_listing(listing, true),
                 Err(error) => command.write_fmt(format_args!(
                     "{}\n",
@@ -263,34 +267,6 @@ fn decorate_list(ins: &str, columns: &[std::ops::Range<usize>]) -> String {
     out
 }
 
-fn load(filename: &str) -> Result<Listing, Error> {
-    let mut listing = Listing::default();
-    let reader = match File::open(filename) {
-        Ok(file) => BufReader::new(file),
-        Err(error) => {
-            let msg = error.to_string();
-            match error.kind() {
-                ErrorKind::NotFound => return Err(error!(FileNotFound; msg.as_str())),
-                _ => return Err(error!(InternalError; msg.as_str())),
-            }
-        }
-    };
-    for (index, line) in reader.lines().enumerate() {
-        match line {
-            Err(error) => return Err(error!(InternalError; error.to_string().as_str())),
-            Ok(line) => {
-                if let Err(error) = listing.load_str(&line) {
-                    return Err(error.message(&format!(
-                        "In line {} of the file. (Not BASIC line number)",
-                        index + 1
-                    )));
-                }
-            }
-        }
-    }
-    Ok(listing)
-}
-
 fn save(listing: Listing, filename: &str) -> Result<(), Error> {
     if listing.is_empty() {
         return Err(error!(InternalError; "NOTHING TO SAVE"));
@@ -305,4 +281,90 @@ fn save(listing: Listing, filename: &str) -> Result<(), Error> {
         }
     }
     Ok(())
+}
+
+fn parse_filename(filename: &str, index: usize) -> Result<String, Error> {
+    let filename = filename.trim();
+    if filename.len() < 3 || !filename.starts_with('"') || !filename.ends_with('"') {
+        return Err(error!(SyntaxError; &format!(
+            "Bad filename in line {} of the file.",
+            index + 1
+        )));
+    }
+    Ok(filename[1..filename.len() - 1].to_string())
+}
+
+fn load(filename: &str, allow_patch: bool) -> Result<Listing, Error> {
+    if filename.starts_with("http://") || filename.starts_with("http2://") {
+        let mut reader = match reqwest::blocking::get(filename) {
+            Ok(y) => BufReader::new(y),
+            Err(e) => return Err(error!(InternalError; e.to_string().as_str())),
+        };
+        load2(&mut reader, allow_patch)
+    } else {
+        let mut reader = match File::open(filename) {
+            Ok(file) => BufReader::new(file),
+            Err(error) => {
+                let msg = error.to_string();
+                match error.kind() {
+                    ErrorKind::NotFound => return Err(error!(FileNotFound; msg.as_str())),
+                    _ => return Err(error!(InternalError; msg.as_str())),
+                }
+            }
+        };
+        load2(&mut reader, allow_patch)
+    }
+}
+
+fn load2(reader: &mut dyn std::io::BufRead, allow_patch: bool) -> Result<Listing, Error> {
+    let mut listing = Listing::default();
+    let mut patching = false;
+    let mut filename = String::default();
+    for (index, line) in reader.lines().enumerate() {
+        match line {
+            Err(error) => return Err(error!(InternalError; error.to_string().as_str())),
+            Ok(line) => {
+                if allow_patch && index == 0 && (line.starts_with('"') || line.starts_with('\'')) {
+                    patching = true;
+                    println!("Patch mode.\n");
+                }
+                if patching && line.starts_with('\'') {
+                    println!("{}", line[1..].trim());
+                    continue;
+                }
+                if patching && line.starts_with('"') {
+                    let mut parts: Vec<&str> = line.split_ascii_whitespace().collect();
+                    if parts.len() == 1 {
+                        filename = parse_filename(parts.pop().unwrap(), index)?;
+                    } else if parts.len() == 3 {
+                        if !filename.is_empty() {
+                            println!("Saving to {}", filename);
+                            save(listing, &filename)?;
+                        }
+                        let url = parts.pop().unwrap();
+                        let crc = parts.pop().unwrap();
+                        filename = parse_filename(parts.pop().unwrap(), index)?;
+                        println!("Retrieving from {}", url);
+                        listing = load(url, false)?;
+                    } else {
+                        return Err(error!(SyntaxError; &format!(
+                            "Unable to parse patch info in line {} of the file.",
+                            index + 1
+                        )));
+                    }
+                    continue;
+                }
+                if let Err(error) = listing.load_str(&line) {
+                    return Err(error.message(&format!("In line {} of the file.", index + 1)));
+                }
+            }
+        }
+    }
+    if patching {
+        println!("Saving to {}", filename);
+        save(listing, &filename)?;
+        Ok(Listing::default())
+    } else {
+        Ok(listing)
+    }
 }

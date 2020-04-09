@@ -1,14 +1,14 @@
 [package]
+edition = "2018"
 name = "basic-lang"
 version = "0.4.0"
 authors = ["David Turnbull"]
 license = "Apache-2.0 OR MIT"
-readme = "README.md"
 homepage = "http://basic-lang.org/"
 repository = "https://github.com/AE9RB/basic-lang"
 description = "The BASIC programming language as it was in the 8-bit era."
-
-edition = "2018"
+readme = "README.md"
+exclude = ["games"]
 
 [profile.release]
 panic = "abort"
@@ -19,10 +19,12 @@ codegen-units = 1
 [dependencies]
 ansi_term = "0.12"
 chrono = "0.4"
+crc = "1.8"
 ctrlc = "3"
 linefeed = "0.6"
 mortal = "0.2"
 rand = "0.7"
+reqwest = {version = "0.10", features = ["blocking"]}
 
 [lib]
 name = "basic"

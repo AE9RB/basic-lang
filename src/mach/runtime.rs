@@ -78,11 +78,7 @@ impl Default for Runtime {
             cont: State::Stopped,
             cont_pc: 0,
             print_col: 0,
-            rand: (
-                rand::random::<u32>(),
-                rand::random::<u32>(),
-                rand::random::<u32>(),
-            ),
+            rand: (1, 1, 1),
             functions: HashMap::default(),
         }
     }
@@ -540,9 +536,9 @@ impl Runtime {
 
     fn r#clear(&mut self) {
         self.rand = (
-            rand::random::<u32>(),
-            rand::random::<u32>(),
-            rand::random::<u32>(),
+            (rand::random::<u32>() & 0x_00FF_FFFF) + 1,
+            (rand::random::<u32>() & 0x_00FF_FFFF) + 1,
+            (rand::random::<u32>() & 0x_00FF_FFFF) + 1,
         );
         self.program.restore_data(0);
         self.stack.clear();
@@ -726,10 +722,12 @@ impl Runtime {
     }
 
     fn r#loadrun(&mut self) -> Result<Event> {
-        match self.r#load() {
-            Ok(Event::Load(s)) => Ok(Event::Run(s)),
-            Ok(r) => Ok(r),
-            Err(e) => Err(e),
+        match self.stack.pop()? {
+            Val::String(s) => {
+                self.r#end();
+                Ok(Event::Run(s.to_string()))
+            }
+            _ => Err(error!(TypeMismatch)),
         }
     }
 
