@@ -1,9 +1,9 @@
 ' Super Star Trek puts you in command of the starship Enterprise.
 ' Its 64K mission is to destroy the fleet of Klingon warships.
 '
-"superstartrekins.bas" 00000000 http://vintage-basic.net/bcg/superstartrekins.bas
+"superstartrekins.bas" 9D342FE7 http://vintage-basic.net/bcg/superstartrekins.bas
 0 ' https://www.atariarchives.org/basicgames/showpage.php?page=157
 3000 RUN "superstartrek.bas"
-"superstartrek.bas" 00000000 http://vintage-basic.net/bcg/superstartrek.bas
+"superstartrek.bas" DD307B20 http://vintage-basic.net/bcg/superstartrek.bas
 0 ' https://www.atariarchives.org/basicgames/showpage.php?page=157
 260 CLEAR

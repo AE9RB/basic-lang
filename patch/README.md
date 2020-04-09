@@ -19,15 +19,5 @@ Saving to superstartrek.bas
 
 The program(s) will be downloaded to your local filesystem.
 A line number 0 will be patched in with a link to instructions.
-
-To avoid any copyright issues, the programs are not hosted here.
-Instead, these files contain a link and patches.
-The question mark is a shortcut to the official repository but
-you can host your own collection of patches using the long form:
-
-```
-$ basic https://example.com/games/superstartrek
-```
-
-If the URL points to a file that doesn't have patch information,
-the program is run as if it was loaded from the local filesystem.
+To avoid copyright issues, programs are not hosted here.
+These files contain only links and patches.

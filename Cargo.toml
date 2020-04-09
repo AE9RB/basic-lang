@@ -8,7 +8,7 @@ homepage = "http://basic-lang.org/"
 repository = "https://github.com/AE9RB/basic-lang"
 description = "The BASIC programming language as it was in the 8-bit era."
 readme = "README.md"
-exclude = ["games"]
+exclude = ["patch"]
 
 [profile.release]
 panic = "abort"

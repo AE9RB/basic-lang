@@ -1,4 +1,5 @@
 extern crate ansi_term;
+extern crate crc;
 extern crate ctrlc;
 extern crate linefeed;
 extern crate mortal;
@@ -6,10 +7,11 @@ extern crate reqwest;
 use crate::mach::{Event, Listing, Runtime};
 use crate::{error, lang::Error};
 use ansi_term::Style;
+use crc::Hasher32;
 use linefeed::{
     Command, Completer, Completion, Function, Interface, Prompter, ReadResult, Signal, Terminal,
 };
-use std::fs::File;
+use std::fs;
 use std::io::{BufRead, BufReader, ErrorKind, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -134,7 +136,7 @@ fn main_loop(interrupted: Arc<AtomicBool>, filename: String) -> std::io::Result<
                     Style::new().bold().paint(error.to_string())
                 ))?,
             },
-            Event::Save(s) => match save(runtime.get_listing(), &s) {
+            Event::Save(s) => match save(&runtime.get_listing(), &s) {
                 Ok(_) => {}
                 Err(error) => command.write_fmt(format_args!(
                     "{}\n",
@@ -267,11 +269,11 @@ fn decorate_list(ins: &str, columns: &[std::ops::Range<usize>]) -> String {
     out
 }
 
-fn save(listing: Listing, filename: &str) -> Result<(), Error> {
+fn save(listing: &Listing, filename: &str) -> Result<(), Error> {
     if listing.is_empty() {
         return Err(error!(InternalError; "NOTHING TO SAVE"));
     }
-    let mut file = match File::create(filename) {
+    let mut file = match fs::File::create(filename) {
         Ok(file) => file,
         Err(error) => return Err(error!(InternalError;  error.to_string().as_str())),
     };
@@ -286,23 +288,55 @@ fn save(listing: Listing, filename: &str) -> Result<(), Error> {
 fn parse_filename(filename: &str, index: usize) -> Result<String, Error> {
     let filename = filename.trim();
     if filename.len() < 3 || !filename.starts_with('"') || !filename.ends_with('"') {
-        return Err(error!(SyntaxError; &format!(
-            "Bad filename in line {} of the file.",
+        return Err(error!(BadFileName; &format!(
+            "In line {} of the patch file.",
             index + 1
         )));
     }
-    Ok(filename[1..filename.len() - 1].to_string())
+    let filename = filename[1..filename.len() - 1].to_string();
+    match fs::metadata(&filename) {
+        Ok(_metadata) => {
+            println!("Saving to {}", filename);
+            Err(error!(FileAlreadyExists; &format!(
+                "In line {} of the patch file.", index+1
+            )))
+        }
+        Err(e) => {
+            if let ErrorKind::NotFound = e.kind() {
+                Ok(filename)
+            } else {
+                Err(error!(InternalError; &e.to_string()))
+            }
+        }
+    }
 }
 
 fn load(filename: &str, allow_patch: bool) -> Result<Listing, Error> {
-    if filename.starts_with("http://") || filename.starts_with("http2://") {
-        let mut reader = match reqwest::blocking::get(filename) {
-            Ok(y) => BufReader::new(y),
+    if filename.starts_with("http://")
+        || filename.starts_with("http2://")
+        || filename.starts_with("//")
+    {
+        let filename = if filename.starts_with("//") {
+            let mut url =
+                "https://raw.githubusercontent.com/AE9RB/basic-lang/master/patch/".to_string();
+            url.push_str(&filename[2..]);
+            url
+        } else {
+            filename.to_string()
+        };
+        let mut reader = match reqwest::blocking::get(&filename) {
+            Ok(y) => {
+                if y.status().is_success() {
+                    BufReader::new(y)
+                } else {
+                    return Err(error!(FileNotFound; &format!("{}", y.status())));
+                }
+            }
             Err(e) => return Err(error!(InternalError; e.to_string().as_str())),
         };
         load2(&mut reader, allow_patch)
     } else {
-        let mut reader = match File::open(filename) {
+        let mut reader = match fs::File::open(filename) {
             Ok(file) => BufReader::new(file),
             Err(error) => {
                 let msg = error.to_string();
@@ -317,6 +351,7 @@ fn load(filename: &str, allow_patch: bool) -> Result<Listing, Error> {
 }
 
 fn load2(reader: &mut dyn std::io::BufRead, allow_patch: bool) -> Result<Listing, Error> {
+    let mut first_listing = Listing::default();
     let mut listing = Listing::default();
     let mut patching = false;
     let mut filename = String::default();
@@ -339,16 +374,39 @@ fn load2(reader: &mut dyn std::io::BufRead, allow_patch: bool) -> Result<Listing
                     } else if parts.len() == 3 {
                         if !filename.is_empty() {
                             println!("Saving to {}", filename);
-                            save(listing, &filename)?;
+                            save(&listing, &filename)?;
+                        }
+                        if first_listing.is_empty() {
+                            std::mem::swap(&mut listing, &mut first_listing)
                         }
                         let url = parts.pop().unwrap();
                         let crc = parts.pop().unwrap();
                         filename = parse_filename(parts.pop().unwrap(), index)?;
                         println!("Retrieving from {}", url);
                         listing = load(url, false)?;
+                        let crc = match u32::from_str_radix(crc, 16) {
+                            Ok(crc) => crc,
+                            Err(_) => {
+                                return Err(error!(SyntaxError; &format!(
+                                    "Unable to parse crc info in line {} of the patch file.",
+                                    index + 1
+                                )));
+                            }
+                        };
+                        let mut digest = crc::crc32::Digest::new(crc::crc32::IEEE);
+                        for line in listing.lines() {
+                            digest.write(line.to_string().as_bytes());
+                        }
+                        let digest = digest.sum32();
+                        if digest != crc {
+                            return Err(error!(SyntaxError; &format!(
+                                "Expected CRC {:08X} got {:08X} in line {} of the patch file.",
+                                crc, digest, index + 1
+                            )));
+                        }
                     } else {
                         return Err(error!(SyntaxError; &format!(
-                            "Unable to parse patch info in line {} of the file.",
+                            "Unable to parse info in line {} of the patch file.",
                             index + 1
                         )));
                     }
@@ -362,8 +420,12 @@ fn load2(reader: &mut dyn std::io::BufRead, allow_patch: bool) -> Result<Listing
     }
     if patching {
         println!("Saving to {}", filename);
-        save(listing, &filename)?;
-        Ok(Listing::default())
+        save(&listing, &filename)?;
+        if !first_listing.is_empty() {
+            Ok(first_listing)
+        } else {
+            Ok(Listing::default())
+        }
     } else {
         Ok(listing)
     }

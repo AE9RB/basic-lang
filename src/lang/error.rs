@@ -132,6 +132,8 @@ pub enum ErrorCode {
     WendWithoutWhile = 30,
     InternalError = 51,
     FileNotFound = 53,
+    FileAlreadyExists = 58,
+    BadFileName = 64,
     DirectStatementInFile = 66,
 }
 
