@@ -21,3 +21,8 @@ The program(s) will be downloaded to your local filesystem.
 A line number 0 will be patched in with a link to instructions.
 To avoid copyright issues, programs are not hosted here.
 These files contain only links and patches.
+
+[The wiki](https://github.com/AE9RB/basic-lang/wiki) contains links and
+information about more programs that you can run on 64K BASIC.
+If you find something interesting, consider submitting a patch or
+editing the wiki.

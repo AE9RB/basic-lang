@@ -1,0 +1,31 @@
+' This program simulates a trip over the Oregon Trail from
+' Independence, Missouri to Oregon City, Oregon in 1847.
+'
+"oregontrail.bas" 5282C196 https://raw.githubusercontent.com/LiquidFox1776/oregon-trail-1978-basic/master/oregon-trail-1978.bas
+
+0 ' https://github.com/LiquidFox1776/oregon-trail-1978-basic
+6 REM
+7 REM
+8 REM
+9 REM
+230 REM ***INSTRUCTIONS***
+800 REM *** INITIAL PURCHASES***
+2280 REM ***STOPPING AT FORT***
+2530 REM ***HUNTING***
+2650 REM **BELLS IN LINE 2660**
+2740 REM ***EATING***
+2880 REM ***RIDERS ATTACK***
+3540 REM ***SELECTION OF EVENTS***
+5050 REM ***DYING***
+5420 REM ***FINAL TURN***
+5460 REM **BELLS IN LINES 5470, 5480**\
+6130 REM ***SHOOTING SUB-ROUTINE***
+6290 REM ***ILLNESS SUB-ROUTINE***
+6470 REM ***IDENTIFICATION OF VARIABLES IN THE PROGRAM***
+
+157 INPUT "DO YOU NEED INSTRUCTIONS  (Y/N)"; C$
+200 IF C$="N" THEN 690
+6150 LET S$(1)="BANG"
+6160 LET S$(2)="BLAM"
+6170 LET S$(3)="POW"
+6180 LET S$(4)="WHAM"

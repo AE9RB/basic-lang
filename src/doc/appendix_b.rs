@@ -5,7 +5,7 @@
 
 |Code| Message | Description |
 |----| :--- | --- |
-| 1  | `NEXT WITHOUT FOR` | The variable specified in `NEXT` does not match any previously executed `FOR` statement. |
+| 1  | `NEXT WITHOUT FOR` |
 | 2  | `SYNTAX ERROR` |
 | 3  | `RETURN WITHOUT GOSUB` |
 | 4  | `OUT OF DATA` |

@@ -7,14 +7,22 @@
 //! █
 //! ```
 //!
+//! ## Installation
+//!
 //! Binaries for Windows and MacOS are available
 //! [on GitHub.](https://github.com/AE9RB/basic-lang/releases)
 //!
 //! Linux requires [Rust](https://www.rust-lang.org/tools/install) then
 //! the command `cargo install basic-lang`.
 //!
-//! [The wiki](https://github.com/AE9RB/basic-lang/wiki) contains links and
-//! information about programs (mostly games) that you can run on 64K BASIC.
+//! ## Getting Started
+//!
+//! [The patch repository](https://github.com/AE9RB/basic-lang/tree/master/patch)
+//! contains many programs that can be automatically downloaded and patched.
+//!
+//! This is the manual. Every type, statement, operation, and function is documented.
+//! 64K BASIC is designed to capture and preserve the best parts of the BASIC experience.
+//! Getting a programming manual with your computer was definitely best.
 //!
 
 #[path = "doc/introduction.rs"]

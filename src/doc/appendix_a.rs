@@ -46,11 +46,10 @@ A$ = INKEY$
 
 This is probably a GW-BASIC program so it might use graphics and sound.
 However, in many cases it is simply used to center text on the screen.
-Use a `PRINT` statement for each row you want to move down and `TAB(-X)`
-to move to the column.
+Use `STRING$` to get a bunch of newlines and `SPC(X)` to move to the column.
 ```text
-REM CLS:LOCATE 3,20:PRINT "TITLE"
-CLS:PRINT:PRINT:PRINT TAB(-20) "TITLE"
+REM CLS:LOCATE 5,20:PRINT "TITLE"
+CLS:PRINT STRING$(5,10)SPC(20)"TITLE"
 ```
 
 ## `SOUND` and `BEEP`

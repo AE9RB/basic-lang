@@ -49,7 +49,7 @@ fn main_loop(interrupted: Arc<AtomicBool>, filename: String) -> std::io::Result<
     CapsFunction::install(&input_caps);
 
     if !filename.is_empty() {
-        match load(&filename, true) {
+        match load(&filename, true, false) {
             Ok(listing) => {
                 if listing.is_empty() {
                     return Ok(());
@@ -99,7 +99,7 @@ fn main_loop(interrupted: Arc<AtomicBool>, filename: String) -> std::io::Result<
                     }
                     ReadResult::Signal(Signal::Interrupt) => {
                         input.set_buffer("")?;
-                        // We need the cancel_read_line because ?"Why";:INPUTY
+                        // We need the cancel_read_line because ?"Why";:INPUT Y
                         // doesn't print the "Why" after you interrupt input.
                         input.lock_reader().cancel_read_line()?;
                         runtime.interrupt();
@@ -122,14 +122,14 @@ fn main_loop(interrupted: Arc<AtomicBool>, filename: String) -> std::io::Result<
             Event::List((s, columns)) => {
                 command.write_fmt(format_args!("{}\n", decorate_list(&s, &columns)))?;
             }
-            Event::Load(s) => match load(&s, false) {
+            Event::Load(s) => match load(&s, false, false) {
                 Ok(listing) => runtime.set_listing(listing, false),
                 Err(error) => command.write_fmt(format_args!(
                     "{}\n",
                     Style::new().bold().paint(error.to_string())
                 ))?,
             },
-            Event::Run(s) => match load(&s, false) {
+            Event::Run(s) => match load(&s, false, false) {
                 Ok(listing) => runtime.set_listing(listing, true),
                 Err(error) => command.write_fmt(format_args!(
                     "{}\n",
@@ -311,9 +311,9 @@ fn parse_filename(filename: &str, index: usize) -> Result<String, Error> {
     }
 }
 
-fn load(filename: &str, allow_patch: bool) -> Result<Listing, Error> {
+fn load(filename: &str, allow_patch: bool, ignore_errors: bool) -> Result<Listing, Error> {
     if filename.starts_with("http://")
-        || filename.starts_with("http2://")
+        || filename.starts_with("https://")
         || filename.starts_with("//")
     {
         let filename = if filename.starts_with("//") {
@@ -334,7 +334,7 @@ fn load(filename: &str, allow_patch: bool) -> Result<Listing, Error> {
             }
             Err(e) => return Err(error!(InternalError; e.to_string().as_str())),
         };
-        load2(&mut reader, allow_patch)
+        load2(&mut reader, allow_patch, ignore_errors)
     } else {
         let mut reader = match fs::File::open(filename) {
             Ok(file) => BufReader::new(file),
@@ -346,11 +346,15 @@ fn load(filename: &str, allow_patch: bool) -> Result<Listing, Error> {
                 }
             }
         };
-        load2(&mut reader, allow_patch)
+        load2(&mut reader, allow_patch, ignore_errors)
     }
 }
 
-fn load2(reader: &mut dyn std::io::BufRead, allow_patch: bool) -> Result<Listing, Error> {
+fn load2(
+    reader: &mut dyn std::io::BufRead,
+    allow_patch: bool,
+    ignore_errors: bool,
+) -> Result<Listing, Error> {
     let mut first_listing = Listing::default();
     let mut listing = Listing::default();
     let mut patching = false;
@@ -375,6 +379,7 @@ fn load2(reader: &mut dyn std::io::BufRead, allow_patch: bool) -> Result<Listing
                         if !filename.is_empty() {
                             println!("Saving to {}", filename);
                             save(&listing, &filename)?;
+                            println!();
                         }
                         if first_listing.is_empty() {
                             std::mem::swap(&mut listing, &mut first_listing)
@@ -383,7 +388,7 @@ fn load2(reader: &mut dyn std::io::BufRead, allow_patch: bool) -> Result<Listing
                         let crc = parts.pop().unwrap();
                         filename = parse_filename(parts.pop().unwrap(), index)?;
                         println!("Retrieving from {}", url);
-                        listing = load(url, false)?;
+                        listing = load(url, false, true)?;
                         let crc = match u32::from_str_radix(crc, 16) {
                             Ok(crc) => crc,
                             Err(_) => {
@@ -413,7 +418,9 @@ fn load2(reader: &mut dyn std::io::BufRead, allow_patch: bool) -> Result<Listing
                     continue;
                 }
                 if let Err(error) = listing.load_str(&line) {
-                    return Err(error.message(&format!("In line {} of the file.", index + 1)));
+                    if !ignore_errors {
+                        return Err(error.message(&format!("In line {} of the file.", index + 1)));
+                    }
                 }
             }
         }
@@ -421,10 +428,11 @@ fn load2(reader: &mut dyn std::io::BufRead, allow_patch: bool) -> Result<Listing
     if patching {
         println!("Saving to {}", filename);
         save(&listing, &filename)?;
+        println!();
         if !first_listing.is_empty() {
             Ok(first_listing)
         } else {
-            Ok(Listing::default())
+            Ok(listing)
         }
     } else {
         Ok(listing)

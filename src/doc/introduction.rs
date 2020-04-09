@@ -4,13 +4,12 @@
 Begin by opening a terminal and running the executable. Double clicking
 the executable from a GUI desktop often works as well. If you get the
 following, you have achieved success and are ready for this tutorial.
-Type CTRL-D top exit 64K BASIC.
 <pre><code>&nbsp;  64K BASIC
 &nbsp;  READY.
 &nbsp;> █
 </code></pre>
 
- Stop a running program with CTRL-C.
+Type CTRL-D to exit 64K BASIC. Stop a running program with CTRL-C.
 
 64K BASIC is interactive just like it was back in 1964 when the idea of an
 ordinary person sitting in front of a terminal and directly interacting
@@ -21,7 +20,7 @@ a modern input system.
 When you see the `READY.` prompt, 64K BASIC is ready to accept a statement.
 A statement describes the work you want the computer to do. Let's tell the
 computer to print something. For this tutorial, I'll mark lines that you
-type with a "`>`". I'll also not include the `READY.` every time after this.
+type with a "`>`". I'll may not include every `READY.` every time after this.
 Go ahead and try your first statement. Type in the marked line followed by
 ENTER.
 
@@ -41,7 +40,8 @@ with any decimal integer between 0 and 65529 inclusive.
 </code></pre>
 
 Nothing happens. This is called indirect mode. The statement is saved to
-be executed later. Let's try a couple new statements.
+be executed later. Let's try a couple new statements. `LIST` will list the
+program. `RUN` will run the program.
 
 <pre><code>&nbsp;> LIST
 &nbsp;  10 PRINT "Hello World"
@@ -55,7 +55,7 @@ lines. To edit a line, type the line number and press TAB. The line will
 be loaded into the input buffer for you to edit.
 
 <pre><code>&nbsp;> 10<i>{TAB}</i>
-&nbsp;> 10 PRINT "Hello World"
+&nbsp;> 10 PRINT "Hello World"█
 </code></pre>
 
 Linux users may have already noticed the input system is based on readline
@@ -68,7 +68,7 @@ first try. You can access a history of direct mode statements with the up/down a
 <pre><code>&nbsp;> PAINT "Hello World"
 &nbsp;  <b>?SYNTAX ERROR</b>
 &nbsp;> <i>{UP}</i>
-&nbsp;> PAINT "Hello World"
+&nbsp;> PAINT "Hello World"█
 </code></pre>
 
 You can `SAVE` a program to the filesystem or `LOAD` one that you previously
@@ -86,7 +86,7 @@ The `NEW` command erases the program in memory.
 &nbsp;> load "hello.bas
 &nbsp;  READY.
 &nbsp;> list
-&nbsp;> 10 PRINT "Hello World"
+&nbsp;  10 PRINT "Hello World"
 </code></pre>
 
 Let's create a multi-line program for the last example of this tutorial.
@@ -102,13 +102,13 @@ or until it's interrupted. Typing CTRL-C interrupts a program.
 &nbsp;> list 30
 &nbsp;> 30 GOTO <u>100</u>
 &nbsp;  READY.
-&nbsp;> 30 GOTO 10 <i>{Remember to use TAB here}</i>
+&nbsp;> 30 GOTO 10 <i>{Remember you can use TAB here}</i>
 &nbsp;> run
-&nbsp;> Your number? -8
+&nbsp;  Your number? -8
 &nbsp;  The square root of-8 is NaN
-&nbsp;> Your number? 9
+&nbsp;  Your number? 9
 &nbsp;  The square root of 9 is 3
-&nbsp;> Your number?<i>{CTRL-C}</i>
+&nbsp;  Your number? <i>{CTRL-C}</i>
 &nbsp;  <b>?BREAK IN 10</b>
 &nbsp;  READY.
 </code></pre>
