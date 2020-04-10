@@ -21,20 +21,21 @@ Newer versions of BASIC may skip the first iteration.
 
 ## Example 1
 ```text
-10 I=9
-20 FOR I=1 TO 10 STEP I
-30 PRINT "HELLO WORLD";i
-40 NEXT I
+10 FOR I=1 TO 7 STEP 2
+20 PRINT "HELLO WORLD";i
+30 NEXT I
 RUN
 HELLO WORLD 1
-HELLO WORLD 10
+HELLO WORLD 3
+HELLO WORLD 5
+HELLO WORLD 7
 ```
 
 ## Example 2
 ```text
 10 FOR X=1 TO 2
 20 FOR Y=5 TO 6
-30 PRINT x,y
+30 PRINT X;Y
 40 NEXT Y,X
 RUN
  1  5

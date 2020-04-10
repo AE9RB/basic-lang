@@ -5,7 +5,7 @@
 Part of that experience was a slightly different version of BASIC for
 each model of computer. BASIC was usually on ROM which wasn't trivial to
 update like modern storage, so you were stuck with the same version for
-the entire life of the computer. So instead of keeping your compiler up
+the entire life of the computer. Instead of keeping your compiler up
 to date as we do today, you would know how to adjust programs written
 on another platform. Most books with program listings would include a page
 or two about the dialect the code was written for. This is that page.
@@ -58,5 +58,10 @@ CLS:PRINT STRING$(5,10)SPC(20)"TITLE"
 ```text
 PRINT CHR$(7)
 ```
+
+## `KEY OFF/ON`
+
+This controls display of the status line in GW-BASIC. Usually a program turns
+it off at the start and back on at the end. You can delete these.
 
 */

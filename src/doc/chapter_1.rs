@@ -94,8 +94,8 @@ errors. Only regular division has this quirky behavior.
 Arrays are an extension of variables. You can make single dimension arrays
 (vectors) or multi dimensional arrays (matrices). Arrays are dimensioned
 before they are used. If you use an array before it is dimensioned, it will be
-automatically set to a single dimension of 10 values. Dimensions must be
-valid Integers (0 to 32767). A dimension of 10 is actually 11 values (0 to 10)
+automatically set to a dimension of 10 values. Dimensions must be positive
+Integers (0 to 32767). A dimension of 10 is actually 11 values (0 to 10)
 and a dimension of 0 is a single value numbered 0.
 
 ```text

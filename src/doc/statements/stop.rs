@@ -2,7 +2,7 @@
 # `STOP`
 
 ## Purpose
-Interrupt the program with a `BREAK` error.
+Interrupt the program with a `?BREAK` error.
 
 ## Remarks
 Typically used for debugging.

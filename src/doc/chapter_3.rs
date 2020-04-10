@@ -294,7 +294,7 @@ pub mod STR {
     ## `STR$(X)` Returns the number X as a string.
     ```text
     PRINT STR$(-3.14) + "!"
-     -3.14!
+    -3.14!
     ```
     */
 }

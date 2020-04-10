@@ -5,7 +5,7 @@
 Immediately and unconditionally move execution to the specified line number.
 
 ## Remarks
-If `<line number>` doesn't exist an `UNDEFINED LINE` error will occur.
+If `<line number>` doesn't exist an `?UNDEFINED LINE` error will occur.
 
 ## Example
 ```text

@@ -9,7 +9,7 @@ Arrays are sparse. You can, for example, define a 32767 by 32767 array
 of 1073676300 elements. The number of values that can be stored is 64K
 for all variables combined. Index values are integers in the range of
 0-32767. Accessing an array before it is dimensioned automatically defines
-it with a single dimension of 10. The index is inclusive so `DIM X(10)`
+it with a dimension of 10. The index is inclusive so `DIM X(10)`
 allows the use of `X(0)` to `X(10)`
 
 ## Example

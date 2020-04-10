@@ -5,7 +5,7 @@
 Reads the information defined in `DATA` statements.
 
 ## Remarks
-An `OUT OF DATA` error will occur when reading past the end.
+An `?OUT OF DATA` error will occur when reading past the end.
 
 ## Example
 ```text
