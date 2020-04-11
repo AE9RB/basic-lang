@@ -65,14 +65,20 @@ impl Var {
                 for idx in (from as usize - 'A' as usize)..=(to as usize - 'A' as usize) {
                     self.types[idx] = var_type.clone();
                 }
-                self.vars.retain(|_, v| match v {
-                    Val::Integer(_) => var_type == VarType::Integer,
-                    Val::Single(_) => var_type == VarType::Single,
-                    Val::Double(_) => var_type == VarType::Double,
-                    Val::String(_) => var_type == VarType::String,
-                    Val::Next(_) | Val::Return(_) => {
-                        debug_assert!(false);
+                self.vars.retain(|k, v| {
+                    if !k.chars().last().unwrap_or('-').is_ascii_alphabetic() {
                         true
+                    } else {
+                        match v {
+                            Val::Integer(_) => var_type == VarType::Integer,
+                            Val::Single(_) => var_type == VarType::Single,
+                            Val::Double(_) => var_type == VarType::Double,
+                            Val::String(_) => var_type == VarType::String,
+                            Val::Next(_) | Val::Return(_) => {
+                                debug_assert!(false);
+                                true
+                            }
+                        }
                     }
                 });
                 return Ok(());

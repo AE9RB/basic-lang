@@ -219,8 +219,12 @@ fn test_while_wend_not_nested() {
 #[test]
 fn test_deftype() {
     let mut r = Runtime::default();
+    r.enter(r#"s$="ess":?s$"#);
+    assert_eq!(exec(&mut r), "ess\n");
     r.enter(r#"DEFSTR s:s="foo":?s"#);
     assert_eq!(exec(&mut r), "foo\n");
+    r.enter(r#"?s$"#);
+    assert_eq!(exec(&mut r), "ess\n");
     r.enter(r#"DEFSTR t:?t"#);
     assert_eq!(exec(&mut r), "\n");
     r.enter(r#"DEFINT i-"#);
