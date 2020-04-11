@@ -1,0 +1,12 @@
+' This is a simulation of a lunar landing.
+'
+"rocket.bas" 8EBE9A7E http://www.vintage-basic.net/bcg/rocket.bas
+0 ' http://www.atariarchives.org/basicgames/showpage.php?page=109
+220 PRINT "WARD VELOCITY OF 50 FEET/SEC. 120 UNITS OF FUEL REMAIN."
+230 PRINT "HERE ARE THE RULES THAT GOVERN YOUR SPACE VEHICLE:": PRINT
+250 PRINT "    WILL BE REPORTED."
+260 PRINT "(2) AFTER THE REPORT A '?' WILL BE TYPED.  ENTER THE NUMBER"
+400 PRINT "G O O D   L U C K ! ! !"
+430 PRINT "SEC  FEET   SPEED   FUEL     PLOT OF DISTANCE"
+455 T=0:H=500:V=50:F=120
+490 PRINT T;TAB(4);H;TAB(12);V;TAB(20);F;TAB(29);"I";TAB(H/12+29);"*"

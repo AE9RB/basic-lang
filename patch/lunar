@@ -1,0 +1,5 @@
+' This is a simulation of a lunar landing.
+'
+"lunar.bas" 3BE12810 http://www.vintage-basic.net/bcg/lunar.bas
+0 ' http://www.atariarchives.org/basicgames/showpage.php?page=106
+300 PRINT "SORRY THERE NERE NO SURVIVORS. YOU BLEW IT!"

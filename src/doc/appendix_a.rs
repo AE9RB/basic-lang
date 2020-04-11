@@ -64,4 +64,9 @@ PRINT CHR$(7)
 This controls display of the status line in GW-BASIC. Usually a program turns
 it off at the start and back on at the end. You can delete these.
 
+## `OPTION BASE`
+
+This selects if arrays start at 0 or 1. This isn't needed since memory isn't scarce.
+Also, 64K BASIC arrays are sparse so by simply not using 0 it won't be allocated.
+
 */
