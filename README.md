@@ -15,6 +15,6 @@ the command `cargo install basic-lang`.
 [The patch repository](https://github.com/AE9RB/basic-lang/tree/master/patch)
 contains many programs that can be automatically downloaded and patched.
 
-[The manual](https://github.com/AE9RB/basic-lang/tree/master/patch)
+[The manual](https://docs.rs/basic-lang)
 includes a BASIC tutorial and documents every type, statement,
 operation, and function of the 64K BASIC dialect.
