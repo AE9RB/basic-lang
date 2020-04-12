@@ -247,3 +247,10 @@ fn test_indirect() {
     assert_eq!(&l.to_string(), "100 END");
     assert_eq!(l.number(), Some(100));
 }
+
+#[test]
+fn test_dangling_exponent() {
+    let l = Line::new("10if10then10else10");
+    assert_eq!(&l.to_string(), "10 IF 10 THEN 10 ELSE 10");
+    assert_eq!(l.number(), Some(10));
+}

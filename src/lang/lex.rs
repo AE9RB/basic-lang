@@ -17,22 +17,22 @@ fn is_basic_alphabetic(c: char) -> bool {
     c.is_ascii_alphabetic()
 }
 
-struct BasicLexer<'a> {
-    chars: std::iter::Peekable<std::str::Chars<'a>>,
+struct BasicLexer {
+    chars: VecDeque<char>,
     pending: VecDeque<Token>,
     remark: bool,
 }
 
-impl<'a> Iterator for BasicLexer<'a> {
+impl<'a> Iterator for BasicLexer {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(t) = self.pending.pop_front() {
             return Some(t);
         }
-        let pk = self.chars.peek()?;
+        let pk = self.chars.front()?;
         if self.remark {
-            return Some(Token::Unknown(self.chars.by_ref().collect::<String>()));
+            return Some(Token::Unknown(self.chars.drain(..).collect::<String>()));
         }
         if is_basic_whitespace(*pk) {
             return self.whitespace();
@@ -61,7 +61,7 @@ impl<'a> Iterator for BasicLexer<'a> {
     }
 }
 
-impl<'a> BasicLexer<'a> {
+impl BasicLexer {
     fn lex(mut source_line: &str) -> (LineNumber, Vec<Token>) {
         let mut line_number = None;
         let mut line_str_pos: usize = 0;
@@ -91,7 +91,7 @@ impl<'a> BasicLexer<'a> {
             }
         }
         let mut tokens = BasicLexer {
-            chars: source_line.chars().peekable(),
+            chars: source_line.chars().collect(),
             pending: VecDeque::default(),
             remark: false,
         }
@@ -218,9 +218,9 @@ impl<'a> BasicLexer<'a> {
     fn whitespace(&mut self) -> Option<Token> {
         let mut len = 0;
         loop {
-            self.chars.next();
+            self.chars.pop_front();
             len += 1;
-            if let Some(pk) = self.chars.peek() {
+            if let Some(pk) = self.chars.front() {
                 if is_basic_whitespace(*pk) {
                     continue;
                 }
@@ -234,7 +234,7 @@ impl<'a> BasicLexer<'a> {
         let mut digits = 0;
         let mut decimal = false;
         let mut exp = false;
-        while let Some(mut ch) = self.chars.next() {
+        while let Some(mut ch) = self.chars.pop_front() {
             if ch == 'e' {
                 ch = 'E'
             }
@@ -260,23 +260,28 @@ impl<'a> BasicLexer<'a> {
             if ch == '%' {
                 return Some(Token::Literal(Literal::Integer(s)));
             }
-            if let Some(pk) = self.chars.peek() {
+            if let Some(pk) = self.chars.front().cloned() {
                 if ch == 'E' || ch == 'D' {
                     exp = true;
-                    if *pk == '+' || *pk == '-' {
+                    if pk == '+' || pk == '-' {
                         continue;
                     }
+                    if !is_basic_digit(pk) {
+                        exp = false;
+                        s.pop();
+                        self.chars.push_front(ch);
+                    }
                 }
-                if is_basic_digit(*pk) {
+                if is_basic_digit(pk) {
                     continue;
                 }
-                if !decimal && *pk == '.' {
+                if !exp && !decimal && pk == '.' {
                     continue;
                 }
-                if !exp && *pk == 'E' || *pk == 'e' || *pk == 'D' || *pk == 'd' {
+                if !exp && pk == 'E' || pk == 'e' || pk == 'D' || pk == 'd' {
                     continue;
                 }
-                if *pk == '!' || *pk == '#' || *pk == '%' {
+                if pk == '!' || pk == '#' || pk == '%' {
                     continue;
                 }
             }
@@ -293,8 +298,8 @@ impl<'a> BasicLexer<'a> {
 
     fn string(&mut self) -> Option<Token> {
         let mut s = String::new();
-        self.chars.next();
-        while let Some(ch) = self.chars.next() {
+        self.chars.pop_front();
+        while let Some(ch) = self.chars.pop_front() {
             if ch == '"' {
                 break;
             }
@@ -306,7 +311,7 @@ impl<'a> BasicLexer<'a> {
     fn alphabetic(&mut self) -> Option<Token> {
         let mut s = String::new();
         let mut digit = false;
-        while let Some(ch) = self.chars.next() {
+        while let Some(ch) = self.chars.pop_front() {
             let ch = ch.to_ascii_uppercase();
             s.push(ch);
             if is_basic_digit(ch) {
@@ -325,15 +330,15 @@ impl<'a> BasicLexer<'a> {
                 self.pending.push_back(Token::Ident(Ident::Integer(s)));
                 break;
             }
-            if let Some(pk) = self.chars.peek() {
-                if is_basic_alphabetic(*pk) {
+            if let Some(pk) = self.chars.front().cloned() {
+                if is_basic_alphabetic(pk) {
                     if digit {
                         self.pending.push_back(Token::Ident(Ident::Plain(s)));
                         break;
                     }
                     continue;
                 }
-                if is_basic_digit(*pk) || *pk == '$' || *pk == '!' || *pk == '#' || *pk == '%' {
+                if is_basic_digit(pk) || pk == '$' || pk == '!' || pk == '#' || pk == '%' {
                     s = Token::scan_alphabetic(&mut self.pending, &s);
                     if s.is_empty() {
                         break;
@@ -351,15 +356,15 @@ impl<'a> BasicLexer<'a> {
     }
 
     fn radix(&mut self) -> Option<Token> {
-        self.chars.next();
-        let is_hex = if matches!(self.chars.peek(), Some('H') | Some('h')) {
-            self.chars.next();
+        self.chars.pop_front();
+        let is_hex = if matches!(self.chars.front(), Some('H') | Some('h')) {
+            self.chars.pop_front();
             true
         } else {
             false
         };
         let mut s = String::new();
-        while let Some(ch) = self.chars.next() {
+        while let Some(ch) = self.chars.pop_front() {
             let ch = ch.to_ascii_uppercase();
             if ('0'..='7').contains(&ch)
                 || (is_hex && (('8'..='9').contains(&ch) || ('A'..='F').contains(&ch)))
@@ -378,12 +383,12 @@ impl<'a> BasicLexer<'a> {
 
     fn minutia(&mut self) -> Option<Token> {
         let mut s = String::new();
-        while let Some(ch) = self.chars.next() {
+        while let Some(ch) = self.chars.pop_front() {
             s.push(ch);
             if let Some(token) = Token::match_minutia(&s) {
                 return Some(token);
             }
-            if let Some(pk) = self.chars.peek() {
+            if let Some(pk) = self.chars.front() {
                 if is_basic_alphabetic(*pk) {
                     break;
                 }
