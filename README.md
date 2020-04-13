@@ -19,7 +19,7 @@ contains many games, ready to play.
 includes a BASIC programming tutorial and full manual.
 
 ## Sample Run
-Play this game with: `basic.exe //superstartrek`
+Play this game with: `basic //superstartrek`
 
 ```
                                     ,------*------,
