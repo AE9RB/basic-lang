@@ -1,4 +1,4 @@
-# Ready to play on 64K
+# Ready to play on 64K BASIC
 
 The programs in this folder are retrieved by passing their name,
 preceded by two slashes, to the 64K BASIC executable.

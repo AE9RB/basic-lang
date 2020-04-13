@@ -1,10 +1,8 @@
-# 64K BASIC
-
-The BASIC programming language as it was in the 8-bit era.
+The BASIC programming language as it was in the beginning.
 ```
 64K BASIC
 READY.
 █
 ```
 
-Start here: <https://docs.rs/basic-lang>
+Start here: <http://basic-lang.org>
