@@ -63,6 +63,8 @@ pub enum Opcode {
     Save,
     Stop,
     Swap,
+    Troff,
+    Tron,
 
     // *** Expression operations
     Neg,
@@ -169,6 +171,8 @@ impl std::fmt::Display for Opcode {
             Save => write!(f, "SAVE"),
             Stop => write!(f, "STOP"),
             Swap => write!(f, "SWAP"),
+            Troff => write!(f, "TROFF"),
+            Tron => write!(f, "TRON"),
 
             Neg => write!(f, "NEG"),
             Pow => write!(f, "POW"),

@@ -37,6 +37,8 @@ pub enum Statement {
     Save(Column, Expression),
     Stop(Column),
     Swap(Column, Variable, Variable),
+    Troff(Column),
+    Tron(Column),
     Wend(Column),
     While(Column, Expression),
 }
@@ -114,7 +116,8 @@ impl AcceptVisitor for Statement {
     fn accept<V: Visitor>(&self, visitor: &mut V) {
         use Statement::*;
         match self {
-            Clear(_) | Cls(_) | Cont(_) | End(_) | New(_) | Stop(_) | Return(_) | Wend(_) => {}
+            Clear(_) | Cls(_) | Cont(_) | End(_) | New(_) | Stop(_) | Troff(_) | Tron(_)
+            | Return(_) | Wend(_) => {}
             Data(_, vec_expr) | Print(_, vec_expr) => {
                 for v in vec_expr {
                     v.accept(visitor);

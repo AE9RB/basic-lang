@@ -122,6 +122,10 @@ pub mod STOP;
 #[allow(non_snake_case)]
 pub mod SWAP;
 
+#[path = "statements/tron.rs"]
+#[allow(non_snake_case)]
+pub mod TRON;
+
 #[path = "statements/while.rs"]
 #[allow(non_snake_case)]
 pub mod WHILE;

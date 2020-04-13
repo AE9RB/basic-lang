@@ -571,6 +571,8 @@ impl Statement {
                     Save => return Ok(Self::r#save(parse)?),
                     Stop => return Ok(Self::r#stop(parse)?),
                     Swap => return Ok(Self::r#swap(parse)?),
+                    Troff => return Ok(Self::r#troff(parse)?),
+                    Tron => return Ok(Self::r#tron(parse)?),
                     Wend => return Ok(Self::r#wend(parse)?),
                     While => return Ok(Self::r#while(parse)?),
                     Else | Rem1 | Rem2 | Step | Then | To => {}
@@ -931,6 +933,14 @@ impl Statement {
             var_list.pop().unwrap(),
             var_list.pop().unwrap(),
         ))
+    }
+
+    fn r#troff(parse: &mut BasicParser) -> Result<Statement> {
+        Ok(Statement::Troff(parse.col.clone()))
+    }
+
+    fn r#tron(parse: &mut BasicParser) -> Result<Statement> {
+        Ok(Statement::Tron(parse.col.clone()))
     }
 
     fn r#wend(parse: &mut BasicParser) -> Result<Statement> {

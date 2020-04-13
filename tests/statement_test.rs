@@ -285,3 +285,18 @@ fn test_let_mid_statement() {
     r.enter(r#"A$(5)="PORTLAND, ME":MID$(A$(5),11)="OR":?A$(5)"#);
     assert_eq!(exec(&mut r), "PORTLAND, OR\n");
 }
+
+#[test]
+fn test_tron_troff() {
+    let mut r = Runtime::default();
+    r.enter(r#"10 FOR I = 1 TO 5"#);
+    r.enter(r#"20 IF I = 2 THEN TRON"#);
+    r.enter(r#"30 IF I = 4 THEN TROFF"#);
+    r.enter(r#"40 PRINT I"#);
+    r.enter(r#"50 NEXT I"#);
+    r.enter(r#"run"#);
+    assert_eq!(
+        exec(&mut r),
+        " 1 \n[30][40] 2 \n[50][20][30][40] 3 \n[50][20][30] 4 \n 5 \n"
+    );
+}

@@ -21,6 +21,8 @@ pub struct Runtime {
     dirty: bool,
     program: Program,
     pc: Address,
+    tr: LineNumber,
+    tron: bool,
     entry_address: Address,
     stack: RuntimeStack,
     vars: Var,
@@ -71,6 +73,8 @@ impl Default for Runtime {
             dirty: false,
             program: Program::default(),
             pc: 0,
+            tr: None,
+            tron: false,
             entry_address: 1,
             stack: Stack::new("STACK OVERFLOW"),
             vars: Var::new(),
@@ -125,6 +129,7 @@ impl Runtime {
         self.program.compile(&line);
         let (pc, indirect_errors, direct_errors) = self.program.link();
         self.pc = pc;
+        self.tr = None;
         self.entry_address = pc;
         self.source.indirect_errors = indirect_errors;
         self.source.direct_errors = direct_errors;
@@ -378,6 +383,17 @@ impl Runtime {
     fn execute_loop(&mut self, iterations: usize) -> Result<Event> {
         let has_indirect_errors = !self.source.indirect_errors.is_empty();
         for _ in 0..iterations {
+            if self.tron {
+                let tr = self.program.line_number_for(self.pc);
+                if tr != self.tr {
+                    self.tr = tr;
+                    if let Some(num) = self.tr {
+                        let num = format!("[{}]", num);
+                        self.print_col += num.len();
+                        return Ok(Event::Print(num.into()));
+                    }
+                }
+            }
             let op = match self.program.get(self.pc) {
                 Some(v) => v,
                 None => return Err(error!(InternalError; "INVALID PC ADDRESS")),
@@ -456,6 +472,8 @@ impl Runtime {
                 Opcode::Save => return self.r#save(),
                 Opcode::Stop => return Err(error!(Break)),
                 Opcode::Swap => self.r#swap()?,
+                Opcode::Troff => self.r#troff(),
+                Opcode::Tron => self.r#tron(),
 
                 Opcode::Neg => self.stack.pop_1_push(&Operation::negate)?,
                 Opcode::Pow => self.stack.pop_2_push(&Operation::power)?,
@@ -736,6 +754,7 @@ impl Runtime {
         self.source.clear();
         self.dirty = true;
         self.state = State::Stopped;
+        self.tron = false;
         Event::Stopped
     }
 
@@ -873,6 +892,15 @@ impl Runtime {
         self.stack.push(val1)?;
         self.stack.push(val2)?;
         Ok(())
+    }
+
+    fn r#troff(&mut self) {
+        self.tron = false;
+    }
+
+    fn r#tron(&mut self) {
+        self.tron = true;
+        self.tr = self.program.line_number_for(self.pc - 1);
     }
 }
 

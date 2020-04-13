@@ -311,6 +311,8 @@ impl Compiler {
             Statement::Save(col, ..) => self.r#save(link, col),
             Statement::Stop(col, ..) => self.r#stop(link, col),
             Statement::Swap(col, ..) => self.r#swap(link, col),
+            Statement::Troff(col, ..) => self.r#troff(link, col),
+            Statement::Tron(col, ..) => self.r#tron(link, col),
             Statement::Wend(col, ..) => self.r#wend(link, col),
             Statement::While(col, ..) => self.r#while(link, col),
         }
@@ -650,6 +652,16 @@ impl Compiler {
         link.push(Opcode::Swap)?;
         var1.push_as_pop(link)?;
         var2.push_as_pop(link)?;
+        Ok(col.clone())
+    }
+
+    fn r#troff(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
+        link.push(Opcode::Troff)?;
+        Ok(col.clone())
+    }
+
+    fn r#tron(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
+        link.push(Opcode::Tron)?;
         Ok(col.clone())
     }
 
