@@ -17,7 +17,7 @@ const PROMPT: &str = "READY.";
 
 pub struct Runtime {
     prompt: String,
-    source: Listing,
+    listing: Listing,
     dirty: bool,
     program: Program,
     pc: Address,
@@ -69,7 +69,7 @@ impl Default for Runtime {
     fn default() -> Self {
         Runtime {
             prompt: PROMPT.into(),
-            source: Listing::default(),
+            listing: Listing::default(),
             dirty: false,
             program: Program::default(),
             pc: 0,
@@ -123,7 +123,7 @@ impl Runtime {
     fn enter_direct(&mut self, line: Line) {
         if self.dirty {
             self.program.clear();
-            self.program.compile(self.source.lines());
+            self.program.compile(self.listing.lines());
             self.dirty = false;
         }
         self.program.compile(&line);
@@ -131,17 +131,17 @@ impl Runtime {
         self.pc = pc;
         self.tr = None;
         self.entry_address = pc;
-        self.source.indirect_errors = indirect_errors;
-        self.source.direct_errors = direct_errors;
+        self.listing.indirect_errors = indirect_errors;
+        self.listing.direct_errors = direct_errors;
         self.state = State::Running;
     }
 
     fn enter_indirect(&mut self, line: Line) {
         self.cont = State::Stopped;
         if line.is_empty() {
-            self.dirty = self.source.remove(line.number()).is_some();
+            self.dirty = self.listing.remove(line.number()).is_some();
         } else {
-            self.source.insert(line);
+            self.listing.insert(line);
             self.dirty = true;
         }
     }
@@ -225,13 +225,13 @@ impl Runtime {
 
     /// Obtain a thread-safe Listing for saving and line completion.
     pub fn get_listing(&self) -> Listing {
-        self.source.clone()
+        self.listing.clone()
     }
 
     /// Set a new listing. Used to load a program.
     pub fn set_listing(&mut self, listing: Listing, run: bool) {
         self.r#new_();
-        self.source = listing;
+        self.listing = listing;
         if run {
             self.enter("RUN");
         }
@@ -285,7 +285,7 @@ impl Runtime {
             }
             State::Listing(range) => {
                 let mut range = range.clone();
-                if let Some((string, columns)) = self.source.list_line(&mut range) {
+                if let Some((string, columns)) = self.listing.list_line(&mut range) {
                     self.state = State::Listing(range);
                     return Event::List((string, columns));
                 } else {
@@ -303,9 +303,9 @@ impl Runtime {
                 return Event::Errors(Arc::new(vec![error!(RedoFromStart)]));
             }
             State::InputRunning | State::Running => {
-                if !self.source.direct_errors.is_empty() {
+                if !self.listing.direct_errors.is_empty() {
                     self.state = State::Stopped;
-                    return Event::Errors(Arc::clone(&self.source.direct_errors));
+                    return Event::Errors(Arc::clone(&self.listing.direct_errors));
                 }
             }
             State::Inkey | State::RuntimeError(_) => {}
@@ -381,7 +381,7 @@ impl Runtime {
 
     #[allow(clippy::cognitive_complexity)]
     fn execute_loop(&mut self, iterations: usize) -> Result<Event> {
-        let has_indirect_errors = !self.source.indirect_errors.is_empty();
+        let has_indirect_errors = !self.listing.indirect_errors.is_empty();
         for _ in 0..iterations {
             if self.tron {
                 let tr = self.program.line_number_for(self.pc);
@@ -390,7 +390,7 @@ impl Runtime {
                     if let Some(num) = self.tr {
                         let num = format!("[{}]", num);
                         self.print_col += num.len();
-                        return Ok(Event::Print(num.into()));
+                        return Ok(Event::Print(num));
                     }
                 }
             }
@@ -435,7 +435,7 @@ impl Runtime {
                     if has_indirect_errors && self.pc < self.entry_address {
                         self.state = State::Stopped;
                         self.cont = State::Stopped;
-                        return Ok(Event::Errors(Arc::clone(&self.source.indirect_errors)));
+                        return Ok(Event::Errors(Arc::clone(&self.listing.indirect_errors)));
                     }
                 }
                 Opcode::Clear => self.r#clear(),
@@ -626,7 +626,7 @@ impl Runtime {
         if from == Some(0) && to == Some(LineNumber::max_value()) {
             return Err(error!(IllegalFunctionCall));
         }
-        if self.source.remove_range(from..=to) {
+        if self.listing.remove_range(from..=to) {
             self.dirty = true;
             self.state = State::Stopped;
         }
@@ -752,7 +752,7 @@ impl Runtime {
 
     fn r#new_(&mut self) -> Event {
         self.r#clear();
-        self.source.clear();
+        self.listing.clear();
         self.dirty = true;
         self.state = State::Stopped;
         self.tron = false;
@@ -830,12 +830,19 @@ impl Runtime {
     }
 
     fn r#renum(&mut self) -> Result<Event> {
-        let step = LineNumber::try_from(self.stack.pop()?)?;
-        let old_start = LineNumber::try_from(self.stack.pop()?)?;
-        let new_start = LineNumber::try_from(self.stack.pop()?)?;
-        Ok(Event::Print(
-            format!(">>WIP>>RENUM {:?},{:?},{:?}\n", new_start, old_start, step).into(),
-        ))
+        if self.pc < self.entry_address {
+            return Err(error!(IllegalDirect));
+        }
+        if !self.listing.indirect_errors.is_empty() {
+            return Ok(Event::Errors(Arc::clone(&self.listing.indirect_errors)));
+        }
+        let step = u16::try_from(self.stack.pop()?)?;
+        let old_start = u16::try_from(self.stack.pop()?)?;
+        let new_start = u16::try_from(self.stack.pop()?)?;
+        self.listing.renum(new_start, old_start, step)?;
+
+        self.state = State::Stopped;
+        return Ok(self.r#end());
     }
 
     fn r#restore(&mut self, addr: Address) -> Result<()> {

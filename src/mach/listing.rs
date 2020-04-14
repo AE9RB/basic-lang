@@ -1,7 +1,7 @@
 use super::MAX_LINE_LEN;
 use crate::error;
 use crate::lang::{Column, Error, Line, LineNumber, MaxValue};
-use std::collections::{btree_map::Values, BTreeMap};
+use std::collections::{btree_map::Values, BTreeMap, HashMap};
 use std::ops::{Range, RangeInclusive};
 use std::sync::Arc;
 
@@ -109,5 +109,39 @@ impl Listing {
             return Some((line.to_string(), columns));
         }
         None
+    }
+
+    pub fn renum(&mut self, new_start: u16, old_start: u16, step: u16) -> Result<(), Error> {
+        let mut changes: HashMap<u16, u16> = HashMap::default();
+        let mut old_end: u16 = LineNumber::max_value() + 1;
+        let mut new_num = new_start;
+        for (&ln, _) in self.source.iter() {
+            let ln = match ln {
+                Some(ln) => ln,
+                None => return Err(error!(InternalError)),
+            };
+            if ln >= old_start {
+                if old_end <= LineNumber::max_value() && old_end >= new_start {
+                    return Err(error!(IllegalFunctionCall));
+                }
+                if new_num > LineNumber::max_value() {
+                    return Err(error!(Overflow));
+                }
+                changes.insert(ln, new_num);
+                new_num = match new_num.checked_add(step) {
+                    Some(num) => num,
+                    None => return Err(error!(Overflow)),
+                };
+            } else {
+                old_end = ln;
+            }
+        }
+        let mut new_source: BTreeMap<LineNumber, Line> = BTreeMap::default();
+        for line in self.lines() {
+            let line = line.renum(&changes);
+            new_source.insert(line.number(), line);
+        }
+        self.source = Arc::from(new_source);
+        Ok(())
     }
 }

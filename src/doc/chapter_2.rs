@@ -102,6 +102,10 @@ pub mod READ;
 #[allow(non_snake_case)]
 pub mod REM;
 
+#[path = "statements/renum.rs"]
+#[allow(non_snake_case)]
+pub mod RENUM;
+
 #[path = "statements/restore.rs"]
 #[allow(non_snake_case)]
 pub mod RESTORE;
