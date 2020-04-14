@@ -31,6 +31,7 @@ pub enum Statement {
     OnGosub(Column, Expression, Vec<Expression>),
     Print(Column, Vec<Expression>),
     Read(Column, Vec<Variable>),
+    Renum(Column, Expression, Expression, Expression),
     Restore(Column, Expression),
     Return(Column),
     Run(Column, Expression),
@@ -182,6 +183,11 @@ impl AcceptVisitor for Statement {
                 for expr in vec_expr {
                     expr.accept(visitor);
                 }
+            }
+            Renum(_, expr1, expr2, expr3) => {
+                expr1.accept(visitor);
+                expr2.accept(visitor);
+                expr3.accept(visitor);
             }
             Dim(_, vec_var) | Erase(_, vec_var) | Next(_, vec_var) | Read(_, vec_var) => {
                 for var in vec_var {

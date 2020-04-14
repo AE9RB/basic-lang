@@ -467,6 +467,7 @@ impl Runtime {
                 Opcode::Next(var_name) => self.r#next(var_name)?,
                 Opcode::Print => return self.r#print(),
                 Opcode::Read => self.r#read()?,
+                Opcode::Renum => return self.r#renum(),
                 Opcode::Restore(addr) => self.r#restore(addr)?,
                 Opcode::Return => self.r#return()?,
                 Opcode::Save => return self.r#save(),
@@ -826,6 +827,15 @@ impl Runtime {
     fn r#read(&mut self) -> Result<()> {
         let val = self.program.read_data()?;
         self.stack.push(val)
+    }
+
+    fn r#renum(&mut self) -> Result<Event> {
+        let step = LineNumber::try_from(self.stack.pop()?)?;
+        let old_start = LineNumber::try_from(self.stack.pop()?)?;
+        let new_start = LineNumber::try_from(self.stack.pop()?)?;
+        Ok(Event::Print(
+            format!(">>WIP>>RENUM {:?},{:?},{:?}\n", new_start, old_start, step).into(),
+        ))
     }
 
     fn r#restore(&mut self, addr: Address) -> Result<()> {

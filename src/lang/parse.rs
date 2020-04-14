@@ -565,6 +565,7 @@ impl Statement {
                     On => return Ok(Self::r#on(parse)?),
                     Print => return Ok(Self::r#print(parse)?),
                     Read => return Ok(Self::r#read(parse)?),
+                    Renum => return Ok(Self::r#renum(parse)?),
                     Restore => return Ok(Self::r#restore(parse)?),
                     Return => return Ok(Self::r#return(parse)?),
                     Run => return Ok(Self::r#run(parse)?),
@@ -871,6 +872,35 @@ impl Statement {
 
     fn r#read(parse: &mut BasicParser) -> Result<Statement> {
         Ok(Statement::Read(parse.col.clone(), parse.expect_var_list()?))
+    }
+
+    fn r#renum(parse: &mut BasicParser) -> Result<Statement> {
+        fn parse_start(parse: &mut BasicParser, default: f32) -> Result<Expression> {
+            if parse.maybe(Token::Comma) {
+                Ok(Expression::Single(parse.col.clone(), default))
+            } else {
+                match parse.peek() {
+                    None | Some(Token::Colon) | Some(Token::Word(Word::Else)) => Ok(
+                        Expression::Single(parse.col.start..parse.col.start, default),
+                    ),
+                    _ => {
+                        let ln = parse.expect_line_number()?;
+                        parse.maybe(Token::Comma);
+                        Ok(ln)
+                    }
+                }
+            }
+        }
+        let column = parse.col.clone();
+        let new_start = parse_start(parse, 10.0)?;
+        let old_start = parse_start(parse, 0.0)?;
+        let step = match parse.peek() {
+            None | Some(Token::Colon) | Some(Token::Word(Word::Else)) => {
+                Expression::Single(parse.col.start..parse.col.start, 10.0)
+            }
+            _ => parse.expect_line_number()?,
+        };
+        Ok(Statement::Renum(column, new_start, old_start, step))
     }
 
     fn r#restore(parse: &mut BasicParser) -> Result<Statement> {

@@ -305,6 +305,7 @@ impl Compiler {
             Statement::OnGosub(col, _, v) => self.r#on(link, col, v.len(), true),
             Statement::Print(col, v) => self.r#print(link, col, v.len()),
             Statement::Read(col, v) => self.r#read(link, col, v.len()),
+            Statement::Renum(col, ..) => self.r#renum(link, col),
             Statement::Restore(col, ..) => self.r#restore(link, col),
             Statement::Return(col, ..) => self.r#return(link, col),
             Statement::Run(col, ..) => self.r#run(link, col),
@@ -597,6 +598,23 @@ impl Compiler {
         for var in self.var.pop_n(len)? {
             link.push(Opcode::Read)?;
             var.push_as_pop(link)?;
+        }
+        Ok(col.clone())
+    }
+
+    fn r#renum(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
+        let (_col_step, step) = self.expr_pop_line_number()?;
+        let (_col_old_start, old_start) = self.expr_pop_line_number()?;
+        let (_col_new_start, new_start) = self.expr_pop_line_number()?;
+        if let Some(new_start) = new_start {
+            if let Some(old_start) = old_start {
+                if let Some(step) = step {
+                    link.push(Opcode::Literal(Val::Single(new_start as f32)))?;
+                    link.push(Opcode::Literal(Val::Single(old_start as f32)))?;
+                    link.push(Opcode::Literal(Val::Single(step as f32)))?;
+                    link.push(Opcode::Renum)?;
+                }
+            }
         }
         Ok(col.clone())
     }
