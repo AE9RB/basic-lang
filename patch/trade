@@ -1,0 +1,7 @@
+' Star Trader is a game of interstellar trading.
+'
+"trade.bas" 701055C1 https://ftp.zap.org.au/pub/trader/historical/mbasic/src/trade-orig.bas
+0 ' https://en.wikipedia.org/wiki/Star_Trader
+2
+120 PRINT:PRINT:REM CLS
+1170 PRINT "THAT SPACE WAS NOT INCLUDED IN THE LIST..."
