@@ -416,12 +416,15 @@ impl Function {
 
     pub fn val(val: Val) -> Result<Val> {
         if let Val::String(s) = val {
-            let v = Val::from(s.trim());
-            if !matches!(v, Val::String(_)) {
-                Ok(v)
-            } else {
-                Ok(Val::Integer(0))
+            let mut s = s.trim();
+            while let Some((idx, _)) = s.char_indices().last() {
+                let v = Val::from(s);
+                if !matches!(v, Val::String(_)) {
+                    return Ok(v);
+                }
+                s = &s[0..idx];
             }
+            Ok(Val::Integer(0))
         } else {
             Err(error!(TypeMismatch))
         }

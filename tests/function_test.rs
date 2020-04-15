@@ -275,4 +275,8 @@ fn test_fn_val() {
     assert_eq!(exec(&mut r), " 0 \n");
     r.enter(r#"?val("    42  ")"#);
     assert_eq!(exec(&mut r), " 42 \n");
+    r.enter(r#"?val("4two")"#);
+    assert_eq!(exec(&mut r), " 4 \n");
+    r.enter(r#"?val("")"#);
+    assert_eq!(exec(&mut r), " 0 \n");
 }

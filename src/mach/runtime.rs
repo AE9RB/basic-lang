@@ -842,7 +842,7 @@ impl Runtime {
         self.listing.renum(new_start, old_start, step)?;
 
         self.state = State::Stopped;
-        return Ok(self.r#end());
+        Ok(self.r#end())
     }
 
     fn r#restore(&mut self, addr: Address) -> Result<()> {
