@@ -1,7 +1,7 @@
 [package]
 edition = "2018"
 name = "basic-lang"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["David Turnbull"]
 license = "Apache-2.0 OR MIT"
 homepage = "http://basic-lang.org/"
