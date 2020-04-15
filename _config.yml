@@ -6,5 +6,5 @@ github:
   is_project_page: true
 show_downloads: true
 download:
-  windows: https://github.com/AE9RB/basic-lang/releases/download/0.5.0/basic-win64.zip
-  macos: https://github.com/AE9RB/basic-lang/releases/download/0.5.0/basic-macos.zip
+  windows: https://github.com/AE9RB/basic-lang/releases/download/0.6.0/basic-win64.zip
+  macos: https://github.com/AE9RB/basic-lang/releases/download/0.6.0/basic-macos.zip
