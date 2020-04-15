@@ -248,14 +248,7 @@ impl From<&str> for Val {
             _ => {}
         };
         if let Ok(num) = s.parse::<f64>() {
-            if num.fract() < std::f64::EPSILON
-                && num <= i16::max_value() as f64
-                && num >= i16::min_value() as f64
-            {
-                Val::Integer(num as i16)
-            } else {
-                Val::Double(num)
-            }
+            Val::Double(num)
         } else {
             Val::String(string.into())
         }

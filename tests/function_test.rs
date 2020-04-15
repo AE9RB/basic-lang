@@ -279,4 +279,6 @@ fn test_fn_val() {
     assert_eq!(exec(&mut r), " 4 \n");
     r.enter(r#"?val("")"#);
     assert_eq!(exec(&mut r), " 0 \n");
+    r.enter(r#"?val("1")/3"#);
+    assert_eq!(exec(&mut r), " 0.3333333333333333 \n");
 }
