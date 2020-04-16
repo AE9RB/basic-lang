@@ -2,8 +2,15 @@
 # Conversions and Compatibility
 
 64K BASIC aims for compatibility with a time when BASIC usually came on ROM.
-Instead of keeping your compiler up to date as we do today, you would adjust
-the source code. Here's some tips.
+There was an attempt to standardize BASIC in 1978 but it wouldn't succeed
+until ten years later. The lack of an accepted standard and the challenge
+of upgrading created many dialects of BASIC.
+
+There's a lot of programs which will run without modification because
+64K BASIC has all the quirks of the most popular ROM BASICs. This appendix
+covers the most common problems you may come across when running an old
+program. Mostly, there were multiple ways to do the same things. 64 BASIC
+always implements the method that uses the least keywords.
 
 ## RANDOMIZE X
 Old computers often didn't have useful entropy, not even a real-time clock.
@@ -56,17 +63,17 @@ REM CLS:LOCATE 5,20:PRINT "TITLE"
 CLS:PRINT STRING$(5,10)SPC(20)"TITLE"
 ```
 
+## KEY OFF/ON
+
+This controls display of the status line in GW-BASIC. Usually a program turns
+it off at the start and back on at the end. You can delete these.
+
 ## SOUND and BEEP
 
 64K BASIC does not support sound. Your terminal might beep with:
 ```text
 PRINT CHR$(7)
 ```
-
-## KEY OFF/ON
-
-This controls display of the status line in GW-BASIC. Usually a program turns
-it off at the start and back on at the end. You can delete these.
 
 ## OPTION BASE
 

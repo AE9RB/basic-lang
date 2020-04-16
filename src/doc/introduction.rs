@@ -1,28 +1,32 @@
 /*!
 # Introductory Tutorial
 
-Begin by opening a terminal and running the executable. Double clicking
-the executable from a GUI desktop often works as well. If you get the
-following, you have achieved success and are ready for this tutorial.
-<pre><code>&nbsp;  64K BASIC
-&nbsp;  READY.
-&nbsp;> █
-</code></pre>
-
-Type CTRL-D to exit 64K BASIC. Stop a running program with CTRL-C.
-
 64K BASIC is interactive just like it was back in 1964 when the idea of an
 ordinary person sitting in front of a terminal and directly interacting
 with a computer was revolutionary. A primary design goal for 64K BASIC
 is to capture that experience. Except with better error reporting and
 a modern input system.
 
+Begin by opening a terminal and running the executable. Double clicking
+the executable from a GUI desktop often works as well. If you get the
+following, you are ready for this tutorial.
+
+<pre><code>&nbsp;  64K BASIC
+&nbsp;  READY.
+&nbsp;> █
+</code></pre>
+
+Type CTRL-D to exit 64K BASIC. Stop a running BASIC program with CTRL-C.
+
+How to run command line programs on every operating system 64K BASIC
+supports is beyond the scope of this documentation. If you'e never done
+this before, the information is easily found on the internet.
+
 When you see the `READY.` prompt, 64K BASIC is ready to accept a statement.
 A statement describes the work you want the computer to do. Let's tell the
 computer to print something. For this tutorial, I'll mark lines that you
-type with a "`>`". I'll may not include every `READY.` every time after this.
-Go ahead and try your first statement. Type in the marked line followed by
-ENTER.
+type with a "`>`". Go ahead and try your first statement. Type in the
+marked line followed by ENTER.
 
 <pre><code>&nbsp;  READY.
 &nbsp;> print "Hello World"
@@ -31,8 +35,8 @@ ENTER.
 </code></pre>
 
 Entering a statement which executes immediately is called direct mode.
-To make more interesting programs, we'll have to assemble many statements
-together into a program. Next, we'll put the same statement into a program
+To solve interesting problems, you'll have to assemble many statements
+together into a program. You can put the same statement into a program
 by assigning it to a line number. To do this, simply preceed the statement
 with any decimal integer between 0 and 65529 inclusive.
 
@@ -40,8 +44,8 @@ with any decimal integer between 0 and 65529 inclusive.
 </code></pre>
 
 Nothing happens. This is called indirect mode. The statement is saved to
-be executed later. Let's try a couple new statements. `LIST` will list the
-program. `RUN` will run the program.
+be executed later. Let's try a couple new statements that you'll use a lot.
+`LIST` will list the program. `RUN` will run the program.
 
 <pre><code>&nbsp;> LIST
 &nbsp;  10 PRINT "Hello World"
@@ -58,9 +62,10 @@ be loaded into the input buffer for you to edit.
 &nbsp;> 10 PRINT "Hello World"█
 </code></pre>
 
-Linux users may have already noticed the input system is based on readline
-and even reads your `inputrc` file. Feel free to explore these capabilities,
-but for now you only need the basics like TAB, BACKSPACE, and the arrow keys.
+Linux users may have already noticed the input system is similar to readline
+and even uses your `inputrc` file. Feel free to explore these capabilities,
+but for now you only need the basics: TAB, BACKSPACE, CRTL-C, CTRL-D,
+and the arrow keys.
 
 You may be working out a problem in direct mode which doesn't succeed on the
 first try. You can access a history of direct mode statements with the up/down arrows.
@@ -72,9 +77,9 @@ first try. You can access a history of direct mode statements with the up/down a
 </code></pre>
 
 You can `SAVE` a program to the filesystem or `LOAD` one that you previously
-saved or downloaded. Filenames are specified absolute or relative to the
-current directory of your operating system when 64K BASIC was started.
-The `NEW` command erases the program in memory.
+saved or downloaded. Filenames are relative to the current directory of your
+operating system when 64K BASIC was started. The `NEW` command erases the
+program in memory.
 
 <pre><code>&nbsp;> 10 print "Hello World
 &nbsp;> save "hello.bas
@@ -87,6 +92,7 @@ The `NEW` command erases the program in memory.
 &nbsp;  READY.
 &nbsp;> list
 &nbsp;  10 PRINT "Hello World"
+&nbsp;  READY.
 </code></pre>
 
 Let's create a multi-line program for the last example of this tutorial.
@@ -120,9 +126,6 @@ offending section when listing a program. Runtime errors will only display
 the line number.
 
 This concludes the introductory tutorial. The remainder of this manual is
-reference material covering everything 64K BASIC can do. There's a lot of
-programs which will run without modification, but every implementation of
-BASIC has quirks. Appendix A has information about these quirks and
-suggestions for converting them to the 64K BASIC dialect.
+reference material covering everything 64K BASIC can do.
 
 */
