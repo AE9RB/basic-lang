@@ -1,5 +1,5 @@
 /*!
-# `DELETE [<from line number>][-<to line number>]`
+# `DELETE [<line number range>]`
 
 ## Purpose
 Delete lines from the BASIC program currently in memory.

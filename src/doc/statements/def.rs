@@ -1,5 +1,5 @@
 /*!
-# `DEF FN<name>(<argument variables>) = <expression>`
+# `DEF FN<name>(<argument>[,<argument>...]) = <expression>`
 
 ## Purpose
 Define a custom user function for use in other expressions.

@@ -1,5 +1,5 @@
 /*!
-# `[LET] MID$(<string>,n[,m])=<expr> `
+# `[LET] MID$(<string>,n[,m])=<expression> `
 
 ## Purpose
 Assign the result of expression to variable.

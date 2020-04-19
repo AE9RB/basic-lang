@@ -1,5 +1,5 @@
 /*!
-# `ON expression <GOTO|GOSUB> line[,line]`
+# `ON expression <GOTO|GOSUB> <line>[,<line>...]`
 
 ## Purpose
 Branches to a line based on the value of expression.

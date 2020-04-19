@@ -1,5 +1,5 @@
 /*!
-# `DATA <literal>[,<literal>]`
+# `DATA <literal>[,<literal>...]`
 
 ## Purpose
 `DATA` defines a list of constants to be read in sequentially.

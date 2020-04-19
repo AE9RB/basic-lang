@@ -1,5 +1,5 @@
 /*!
-# `INPUT [,][<"prompt string">;]<list of variables>`
+# `INPUT [,]["<prompt string>";]<variable>[,<variable>...]`
 
 ## Purpose
 Suspends execution and awaits a response from the terminal.

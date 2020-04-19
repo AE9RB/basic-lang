@@ -1,5 +1,5 @@
 /*!
-# `REM <anything>` or `' <anything>`
+# `REM [<anything>]` or `' [<anything>]`
 
 ## Purpose
 Embeds non-executing remarks into the program source code.

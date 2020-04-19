@@ -1,5 +1,5 @@
 /*!
-# `FOR <variable>=x TO y [STEP z]`
+# `FOR <variable>=<x> TO <y> [STEP <z>]`
 Where x, y, and z are expressions.
 ## Purpose
 Used with `NEXT` to repeat execution of statements

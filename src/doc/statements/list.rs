@@ -1,5 +1,5 @@
 /*!
-# `LIST [<from line number>][-<to line number>]`
+# `LIST [<line number range>]`
 
 ## Purpose
 Show the BASIC program currently in memory.

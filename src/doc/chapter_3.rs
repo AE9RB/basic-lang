@@ -1,5 +1,10 @@
 /*!
 # Functions
+
+Functions convert various inputs to an output value. Most functions convert
+a value to a value but some get their input from the operating system.
+For example, `TIME$` gets the local system time. You might be wondering why
+`TIME$` is a function and not a variable. You can use `TIME$()` if you prefer.
 */
 
 pub mod ABS {

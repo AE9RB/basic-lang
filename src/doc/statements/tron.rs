@@ -1,5 +1,5 @@
 /*!
-# `TRON` and `TROFF`
+# `TRON | TROFF`
 
 ## Purpose
 Enable and disable trace printing.

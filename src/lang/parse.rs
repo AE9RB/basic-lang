@@ -534,7 +534,7 @@ impl Statement {
     #[allow(clippy::cognitive_complexity)]
     fn expect(parse: &mut BasicParser) -> Result<Statement> {
         match parse.peek() {
-            Some(Token::Ident(_)) => return Ok(Self::r#let(parse)?),
+            Some(Token::Ident(_)) => return Ok(Self::r#let(parse, true)?),
             Some(Token::Word(word)) => {
                 parse.next();
                 use Word::*;
@@ -557,7 +557,7 @@ impl Statement {
                     Goto => return Ok(Self::r#goto(parse)?),
                     If => return Ok(Self::r#if(parse)?),
                     Input => return Ok(Self::r#input(parse)?),
-                    Let => return Ok(Self::r#let(parse)?),
+                    Let => return Ok(Self::r#let(parse, false)?),
                     List => return Ok(Self::r#list(parse)?),
                     Load => return Ok(Self::r#load(parse)?),
                     New => return Ok(Self::r#new(parse)?),
@@ -722,17 +722,20 @@ impl Statement {
     fn r#if(parse: &mut BasicParser) -> Result<Statement> {
         let column = parse.col.clone();
         let predicate = parse.expect_expression()?;
-        if parse.maybe(Token::Word(Word::Goto)) {
-            let stmt = Statement::Goto(parse.col.clone(), parse.expect_line_number()?);
-            return Ok(Statement::If(column, predicate, vec![stmt], vec![]));
-        }
-        parse.expect(Token::Word(Word::Then))?;
-        let then_stmt = match parse.maybe_line_number()? {
-            Some(n) => vec![Statement::Goto(
-                column.clone(),
-                Expression::Single(parse.col.clone(), n as f32),
-            )],
-            None => parse.expect_statements()?,
+        let then_stmt = if parse.maybe(Token::Word(Word::Goto)) {
+            vec![Statement::Goto(
+                parse.col.clone(),
+                parse.expect_line_number()?,
+            )]
+        } else {
+            parse.expect(Token::Word(Word::Then))?;
+            match parse.maybe_line_number()? {
+                Some(n) => vec![Statement::Goto(
+                    column.clone(),
+                    Expression::Single(parse.col.clone(), n as f32),
+                )],
+                None => parse.expect_statements()?,
+            }
         };
         let else_stmt = if parse.maybe(Token::Word(Word::Else)) {
             match parse.maybe_line_number()? {
@@ -783,7 +786,7 @@ impl Statement {
         ))
     }
 
-    fn r#let(parse: &mut BasicParser) -> Result<Statement> {
+    fn r#let(parse: &mut BasicParser, is_shortcut: bool) -> Result<Statement> {
         let column = parse.col.clone();
         if let Some(Token::Ident(token::Ident::String(s))) = parse.peek() {
             if s == "MID$" {
@@ -808,7 +811,13 @@ impl Statement {
             Some(Token::Operator(Operator::Equal)) => {
                 Ok(Statement::Let(column, var, parse.expect_expression()?))
             }
-            _ => Err(error!(SyntaxError, ..&column; "UNKNOWN STATEMENT")),
+            _ => {
+                if is_shortcut {
+                    Err(error!(SyntaxError, ..&column; "UNKNOWN STATEMENT"))
+                } else {
+                    Err(error!(SyntaxError, ..&parse.col; "EXPECTED EQUALS SIGN"))
+                }
+            }
         }
     }
 

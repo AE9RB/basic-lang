@@ -1,5 +1,35 @@
 /*!
 # Statements
+
+Statements describe what the program does. The original Dartmouth BASIC
+was separated into a compiler and operating system with statements like `GOTO`
+and `PRINT` for the compiled language and commands like `SAVE` and `LIST`
+for controlling the system. 64K BASIC is a unique implementation where
+everything is compiled and executed by a virtual machine. There are no
+commands, everything is a statement.
+
+Statements tend to be short and it's common to put multiple statements on a
+single line. Use a colon `:` to separate statements. This works in both
+direct and indirect modes.
+
+```text
+FOR I = 1 TO 10 : PRINT I : NEXT I
+```
+
+Statement words can never be used in variable names. 64K BASIC will insert
+spaces to help you when you accidentally include a word in a variable name.
+
+```text
+LET BONK = 1
+10 LET B ON K = 1
+```
+
+Statements need to be properly formatted with the information they need.
+Angled brackets `<>` are used to indicate required items.
+Square brackets `[]` are used to indicate optional items.
+Ellipsis `...` indicate items that may repeat.
+Vertical bars `|` separate mutually exclusive options.
+All letters and punctuation not in brackets are required.
 */
 
 #[path = "statements/clear.rs"]

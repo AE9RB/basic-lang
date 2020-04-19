@@ -1,5 +1,5 @@
 /*!
-# `RUN [<line number> | <filename>]`
+# `RUN [<line number>|<filename>]`
 
 ## Purpose
 Clear memory and start the program.

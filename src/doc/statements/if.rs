@@ -1,6 +1,6 @@
 /*!
-# `IF expression THEN statements [ELSE statements]`
-Also `IF expression GOTO line`.
+# `IF <expression> THEN <statements> [ELSE <statements>]`
+Also `IF <expression> GOTO <line>`.
 
 ## Purpose
 Do something contingent on a predicate.

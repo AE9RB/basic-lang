@@ -21,13 +21,12 @@ The program is not compiled for every direct mode statement, instead
 the opcodes from previous direct mode statements are dropped and
 the new opcodes are linked to the end of the existing program.
 
+Each of the following is its own independent memory pool. Since
+ROM BASIC typically has about 40K bytes for everything, old programs
+will never come close to a limit in 64K BASIC.
+
 Source code is UTF-8. There is a maximum of 65530 lines (0-65529).
 Each line is limited to 1024 characters (not bytes).
-
-Each of the following is its own independent memory block. Since
-ROM BASIC typically has about 40K bytes for everything, you will
-never hit a limit in 64K BASIC unless there's a bug in the BASIC
-program.
 
 Compiled code is limited to 64K instructions (not bytes).
 This is what the virtual machine executes.

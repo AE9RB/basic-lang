@@ -1,5 +1,5 @@
 /*!
-# `READ <variable>[,<variable>]`
+# `READ <variable>[,<variable>...]`
 
 ## Purpose
 Reads the information defined in `DATA` statements.
