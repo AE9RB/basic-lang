@@ -9,20 +9,17 @@ a modern input system.
 
 Begin by opening a terminal and running the executable. Double clicking
 the executable from a GUI desktop often works as well. If you get the
-following, you are ready for this tutorial.
+following, you are ready for this tutorial. If not, ask the internet
+how to run command-line programs on your particular operating system.
 
 <pre><code>&nbsp;  64K BASIC
 &nbsp;  READY.
-&nbsp;> █
+&nbsp;  █
 </code></pre>
 
-Type CTRL-D to exit 64K BASIC. Stop a running BASIC program with CTRL-C.
+Type CTRL-D to exit 64K BASIC.
 
-How to run command line programs on every operating system 64K BASIC
-supports is beyond the scope of this documentation. If you'e never done
-this before, the information is easily found on the internet.
-
-When you see the `READY.` prompt, 64K BASIC is ready to accept a statement.
+When you see the `READY` prompt, 64K BASIC is ready to accept a statement.
 A statement describes the work you want the computer to do. Let's tell the
 computer to print something. For this tutorial, I'll mark lines that you
 type with a "`>`". Go ahead and try your first statement. Type in the
@@ -36,9 +33,9 @@ marked line followed by ENTER.
 
 Entering a statement which executes immediately is called direct mode.
 To solve interesting problems, you'll have to assemble many statements
-together into a program. You can put the same statement into a program
-by assigning it to a line number. To do this, simply preceed the statement
-with any decimal integer between 0 and 65529 inclusive.
+together into a program. You put a statement into a program by assigning
+it a line number. To do this, simply precede the statement with any
+decimal integer between 0 and 65529 inclusive.
 
 <pre><code>&nbsp;> 10 print "Hello World"
 </code></pre>
@@ -55,7 +52,7 @@ be executed later. Let's try a couple new statements that you'll use a lot.
 </code></pre>
 
 Now that we have a program in memory, we can add more lines or edit existing
-lines. To edit a line, type the line number and press TAB. The line will
+lines. To edit a line, type the line number then press TAB. The line will
 be loaded into the input buffer for you to edit.
 
 <pre><code>&nbsp;> 10<i>{TAB}</i>
@@ -64,7 +61,7 @@ be loaded into the input buffer for you to edit.
 
 Linux users may have already noticed the input system is similar to readline
 and even uses your `inputrc` file. Feel free to explore these capabilities,
-but for now you only need the basics: TAB, BACKSPACE, CRTL-C, CTRL-D,
+but for now you only need the basics: TAB, BACKSPACE, CTRL-C, CTRL-D,
 and the arrow keys.
 
 You may be working out a problem in direct mode which doesn't succeed on the

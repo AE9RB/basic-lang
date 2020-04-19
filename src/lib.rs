@@ -34,5 +34,9 @@ pub mod ___Appendix_A;
 #[allow(non_snake_case)]
 pub mod ___Appendix_B;
 
+#[path = "doc/appendix_c.rs"]
+#[allow(non_snake_case)]
+pub mod ___Appendix_C;
+
 pub mod lang;
 pub mod mach;
