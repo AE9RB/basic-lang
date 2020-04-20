@@ -98,17 +98,17 @@ impl VarItem {
         }
     }
 
-    fn test_for_built_in(&self) -> Result<()> {
+    fn test_for_built_in(&self, strict: bool) -> Result<()> {
         match Function::opcode_and_arity(&self.name) {
-            Some((_, range)) if range == (0..=0) && self.arg_len.is_some() => Ok(()),
-            Some((_, range)) if range != (0..=0) && self.arg_len.is_none() => Ok(()),
+            Some((_, range)) if range == (0..=0) && self.arg_len.is_some() && !strict => Ok(()),
+            Some((_, range)) if range != (0..=0) && self.arg_len.is_none() && !strict => Ok(()),
             Some(_) => Err(error!(SyntaxError, ..&self.col; "RESERVED FOR BUILT-IN")),
             None => Ok(()),
         }
     }
 
     fn push_as_dim(self, link: &mut Link) -> Result<Column> {
-        self.test_for_built_in()?;
+        self.test_for_built_in(true)?;
         if let Some(len) = self.arg_len {
             if len > 0 {
                 link.append(self.link)?;
@@ -121,7 +121,7 @@ impl VarItem {
     }
 
     fn push_as_pop_unary(self, link: &mut Link) -> Result<Column> {
-        self.test_for_built_in()?;
+        self.test_for_built_in(false)?;
         debug_assert!(self.arg_len.is_none());
         debug_assert!(self.link.is_empty());
         link.push(Opcode::Pop(self.name))?;
@@ -129,7 +129,7 @@ impl VarItem {
     }
 
     fn push_as_pop(self, link: &mut Link) -> Result<Column> {
-        self.test_for_built_in()?;
+        self.test_for_built_in(false)?;
         if let Some(len) = self.arg_len {
             if len > 0 {
                 link.append(self.link)?;
@@ -549,7 +549,7 @@ impl Compiler {
 
     fn r#next(&mut self, link: &mut Link, col: &Column, len: usize) -> Result<Column> {
         for var in self.var.pop_n(len)? {
-            var.test_for_built_in()?;
+            var.test_for_built_in(false)?;
             link.push(Opcode::Next(var.name))?;
         }
         Ok(col.clone())
@@ -663,8 +663,8 @@ impl Compiler {
     fn r#swap(&mut self, link: &mut Link, col: &Column) -> Result<Column> {
         let var1 = self.var.pop()?;
         let var2 = self.var.pop()?;
-        var1.test_for_built_in()?;
-        var2.test_for_built_in()?;
+        var1.test_for_built_in(false)?;
+        var2.test_for_built_in(false)?;
         var1.clone().push_as_expression(link)?;
         var2.clone().push_as_expression(link)?;
         link.push(Opcode::Swap)?;

@@ -3,7 +3,97 @@ use basic::mach::Runtime;
 use common::*;
 
 #[test]
-fn test_breaking_out_of_for_loop_with_goto() {
+fn test_indirect_error() {
+    let mut r = Runtime::default();
+    r.enter(r#"10 GOTO 100"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), "?UNDEFINED LINE IN 10:9\n");
+}
+
+#[test]
+fn test_cont_after_end() {
+    let mut r = Runtime::default();
+    r.enter(r#"10 A=1"#);
+    r.enter(r#"20 END"#);
+    r.enter(r#"30 PRINT A"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), "");
+    r.enter(r#"CONT"#);
+    assert_eq!(exec(&mut r), " 1 \n");
+}
+#[test]
+fn test_cont_after_stop() {
+    let mut r = Runtime::default();
+    r.enter(r#"10 A=1"#);
+    r.enter(r#"20 STOP"#);
+    r.enter(r#"30 PRINT A"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), "?BREAK IN 20\n");
+    r.enter(r#"CONT"#);
+    assert_eq!(exec(&mut r), " 1 \n");
+}
+
+#[test]
+fn test_dim() {
+    let mut r = Runtime::default();
+    r.enter(r#"DIM INKEY$(10,10)"#);
+    assert_eq!(exec(&mut r), "?SYNTAX ERROR; RESERVED FOR BUILT-IN\n");
+    r.enter(r#"DIM LEN(10,10)"#);
+    assert_eq!(exec(&mut r), "?SYNTAX ERROR; RESERVED FOR BUILT-IN\n");
+    r.enter(r#"DIM X(1000):x(500)=9:?x(501);X(500)"#);
+    assert_eq!(exec(&mut r), " 0  9 \n");
+    r.enter(r#"z(10)=100:?Z(1);Z(10)"#);
+    assert_eq!(exec(&mut r), " 0  100 \n");
+}
+
+#[test]
+fn test_def_fn() {
+    let mut r = Runtime::default();
+    r.enter(r#"10 DEF FN(X)=X*2"#);
+    r.enter(r#"20 DEF FNA(X,Y)=FN(X)/Y"#);
+    r.enter(r#"30 PRINT FNA(1,3)"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), " 0.6666667 \n");
+}
+
+#[test]
+fn test_deftype() {
+    let mut r = Runtime::default();
+    r.enter(r#"s$="ess":?s$"#);
+    assert_eq!(exec(&mut r), "ess\n");
+    r.enter(r#"DEFSTR s:s="foo":?s"#);
+    assert_eq!(exec(&mut r), "foo\n");
+    r.enter(r#"?s$"#);
+    assert_eq!(exec(&mut r), "ess\n");
+    r.enter(r#"DEFSTR t:?t"#);
+    assert_eq!(exec(&mut r), "\n");
+    r.enter(r#"DEFINT i-"#);
+    assert_eq!(exec(&mut r), "?SYNTAX ERROR; EXPECTED VARIABLE\n");
+    r.enter(r#"DEFINT i-j:i=3.14:?i"#);
+    assert_eq!(exec(&mut r), " 3 \n");
+    r.enter(r#"DEFINT ii"#);
+    assert_eq!(exec(&mut r), "?SYNTAX ERROR\n");
+    r.enter(r#"a=1.1:DEFINT a-a:?a"#);
+    assert_eq!(exec(&mut r), " 0 \n");
+    r.enter(r#"a=1.1:DEFINT a-a:?a"#);
+    assert_eq!(exec(&mut r), " 1 \n");
+}
+
+#[test]
+fn test_erase() {
+    let mut r = Runtime::default();
+    r.enter(r#"DIM A$(10,10):A$(5,5)="FIVE":PRINT A$(5,5)"#);
+    assert_eq!(exec(&mut r), "FIVE\n");
+    r.enter(r#"ERASE A$:PRINT A$(5,5)"#);
+    assert_eq!(exec(&mut r), "\n");
+    r.enter(r#"DIM A$(20):PRINT A$(20)"#);
+    assert_eq!(exec(&mut r), "?REDIMENSIONED ARRAY\n");
+    r.enter(r#"ERASE A$:DIM A$(20):PRINT A$(20)"#);
+    assert_eq!(exec(&mut r), "\n");
+}
+
+#[test]
+fn test_for_loop_break_with_goto() {
     let mut r = Runtime::default();
     r.enter(r#"10fory=1to2"#);
     r.enter(r#"20forx=8to9"#);
@@ -30,12 +120,15 @@ fn test_for_loop_assign_step_after_var() {
 }
 
 #[test]
-fn test_input_to_array() {
+fn test_gosub_return() {
     let mut r = Runtime::default();
-    r.enter(r#"input a%,b(a%):print a%;: print b(2-a%);"#);
-    assert_eq!(exec(&mut r), "? ");
-    r.enter(r#"1,2"#);
-    assert_eq!(exec(&mut r), " 1  2 \n");
+    r.enter(r#"10 GOSUB 100"#);
+    r.enter(r#"20 PRINT "WORLD""#);
+    r.enter(r#"90 END"#);
+    r.enter(r#"100 PRINT "HELLO ";"#);
+    r.enter(r#"110 RETURN"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), "HELLO WORLD\n");
 }
 
 #[test]
@@ -59,15 +152,31 @@ fn test_if_then_else() {
 }
 
 #[test]
-fn test_gosub_return() {
+fn test_input_to_array() {
     let mut r = Runtime::default();
-    r.enter(r#"10 GOSUB 100"#);
-    r.enter(r#"20 PRINT "WORLD""#);
-    r.enter(r#"90 END"#);
-    r.enter(r#"100 PRINT "HELLO ";"#);
-    r.enter(r#"110 RETURN"#);
-    r.enter(r#"RUN"#);
-    assert_eq!(exec(&mut r), "HELLO WORLD\n");
+    r.enter(r#"input a%,b(a%):print a%;: print b(2-a%);"#);
+    assert_eq!(exec(&mut r), "? ");
+    r.enter(r#"1,2"#);
+    assert_eq!(exec(&mut r), " 1  2 \n");
+}
+
+#[test]
+fn test_let_mid_statement() {
+    let mut r = Runtime::default();
+    r.enter(r#"A$="PORTLAND, ME":MID$(A$,11)="OR":?A$"#);
+    assert_eq!(exec(&mut r), "PORTLAND, OR\n");
+    r.enter(r#"LET MID$(A$,11)="MEH":?A$"#);
+    assert_eq!(exec(&mut r), "PORTLAND, ME\n");
+    r.enter(r#"MID$(A$,0)="Portland":?A$"#);
+    assert_eq!(exec(&mut r), "?ILLEGAL FUNCTION CALL; POSITION IS ZERO\n");
+    r.enter(r#"MID$(A$,1)="Portland":?A$"#);
+    assert_eq!(exec(&mut r), "Portland, ME\n");
+    r.enter(r#"MID$(A$,5,1)="LALA":?A$"#);
+    assert_eq!(exec(&mut r), "PortLand, ME\n");
+    r.enter(r#"MID$(A$,1,0)="LALA":?A$"#);
+    assert_eq!(exec(&mut r), "PortLand, ME\n");
+    r.enter(r#"A$(5)="PORTLAND, ME":MID$(A$(5),11)="OR":?A$(5)"#);
+    assert_eq!(exec(&mut r), "PORTLAND, OR\n");
 }
 
 #[test]
@@ -81,29 +190,6 @@ fn test_new() {
     assert_eq!(exec(&mut r), " 0 \n");
     r.enter(r#"LIST"#);
     assert_eq!(exec(&mut r), "");
-}
-
-#[test]
-fn test_end_cont() {
-    let mut r = Runtime::default();
-    r.enter(r#"10 A=1"#);
-    r.enter(r#"20 END"#);
-    r.enter(r#"30 PRINT A"#);
-    r.enter(r#"RUN"#);
-    assert_eq!(exec(&mut r), "");
-    r.enter(r#"CONT"#);
-    assert_eq!(exec(&mut r), " 1 \n");
-}
-#[test]
-fn test_stop_cont() {
-    let mut r = Runtime::default();
-    r.enter(r#"10 A=1"#);
-    r.enter(r#"20 STOP"#);
-    r.enter(r#"30 PRINT A"#);
-    r.enter(r#"RUN"#);
-    assert_eq!(exec(&mut r), "?BREAK IN 20\n");
-    r.enter(r#"CONT"#);
-    assert_eq!(exec(&mut r), " 1 \n");
 }
 
 #[test]
@@ -146,24 +232,6 @@ fn test_on_gosub_invalid() {
 }
 
 #[test]
-fn test_def_fn() {
-    let mut r = Runtime::default();
-    r.enter(r#"10 DEF FN(X)=X*2"#);
-    r.enter(r#"20 DEF FNA(X,Y)=FN(X)/Y"#);
-    r.enter(r#"30 PRINT FNA(1,3)"#);
-    r.enter(r#"RUN"#);
-    assert_eq!(exec(&mut r), " 0.6666667 \n");
-}
-
-#[test]
-fn test_indirect_error() {
-    let mut r = Runtime::default();
-    r.enter(r#"10 GOTO 100"#);
-    r.enter(r#"RUN"#);
-    assert_eq!(exec(&mut r), "?UNDEFINED LINE IN 10:9\n");
-}
-
-#[test]
 fn test_read_data() {
     let mut r = Runtime::default();
     r.enter(r#"10 READ A, A$"#);
@@ -185,6 +253,36 @@ fn test_restore_data() {
     assert_eq!(exec(&mut r), " 10  20 -30 \n");
     r.enter(r#"RESTORE 30:READ A:PRINT A"#);
     assert_eq!(exec(&mut r), "-30 \n");
+}
+
+#[test]
+fn test_swap() {
+    let mut r = Runtime::default();
+    r.enter(r#"SWAP A,B!:PRINT A"#);
+    assert_eq!(exec(&mut r), " 0 \n");
+    r.enter(r#"A=1:B=2:SWAPA,B:PRINTA;B"#);
+    assert_eq!(exec(&mut r), " 2  1 \n");
+    r.enter(r#"DEFSTR S:S="S":A$="A":SWAP S,A$:PRINTA$;S"#);
+    assert_eq!(exec(&mut r), "SA\n");
+    r.enter(r#"A%=127:SWAP A%,B#"#);
+    assert_eq!(exec(&mut r), "?TYPE MISMATCH\n");
+    r.enter(r#"PRINT A%"#);
+    assert_eq!(exec(&mut r), " 127 \n");
+}
+
+#[test]
+fn test_tron_troff() {
+    let mut r = Runtime::default();
+    r.enter(r#"10 FOR I = 1 TO 5"#);
+    r.enter(r#"20 IF I = 2 THEN TRON"#);
+    r.enter(r#"30 IF I = 4 THEN TROFF"#);
+    r.enter(r#"40 PRINT I"#);
+    r.enter(r#"50 NEXT I"#);
+    r.enter(r#"run"#);
+    assert_eq!(
+        exec(&mut r),
+        " 1 \n[30][40] 2 \n[50][20][30][40] 3 \n[50][20][30] 4 \n 5 \n"
+    );
 }
 
 #[test]
@@ -214,89 +312,4 @@ fn test_while_wend_not_nested() {
     r.enter(r#"20 WHILE B<2:B=B+1:PRINT B;:WEND"#);
     r.enter(r#"RUN"#);
     assert_eq!(exec(&mut r), " 1  2  1  2 \n");
-}
-
-#[test]
-fn test_deftype() {
-    let mut r = Runtime::default();
-    r.enter(r#"s$="ess":?s$"#);
-    assert_eq!(exec(&mut r), "ess\n");
-    r.enter(r#"DEFSTR s:s="foo":?s"#);
-    assert_eq!(exec(&mut r), "foo\n");
-    r.enter(r#"?s$"#);
-    assert_eq!(exec(&mut r), "ess\n");
-    r.enter(r#"DEFSTR t:?t"#);
-    assert_eq!(exec(&mut r), "\n");
-    r.enter(r#"DEFINT i-"#);
-    assert_eq!(exec(&mut r), "?SYNTAX ERROR; EXPECTED VARIABLE\n");
-    r.enter(r#"DEFINT i-j:i=3.14:?i"#);
-    assert_eq!(exec(&mut r), " 3 \n");
-    r.enter(r#"DEFINT ii"#);
-    assert_eq!(exec(&mut r), "?SYNTAX ERROR\n");
-    r.enter(r#"a=1.1:DEFINT a-a:?a"#);
-    assert_eq!(exec(&mut r), " 0 \n");
-    r.enter(r#"a=1.1:DEFINT a-a:?a"#);
-    assert_eq!(exec(&mut r), " 1 \n");
-}
-
-#[test]
-fn test_erase() {
-    let mut r = Runtime::default();
-    r.enter(r#"DIM A$(10,10):A$(5,5)="FIVE":PRINT A$(5,5)"#);
-    assert_eq!(exec(&mut r), "FIVE\n");
-    r.enter(r#"ERASE A$:PRINT A$(5,5)"#);
-    assert_eq!(exec(&mut r), "\n");
-    r.enter(r#"DIM A$(20):PRINT A$(20)"#);
-    assert_eq!(exec(&mut r), "?REDIMENSIONED ARRAY\n");
-    r.enter(r#"ERASE A$:DIM A$(20):PRINT A$(20)"#);
-    assert_eq!(exec(&mut r), "\n");
-}
-
-#[test]
-fn test_swap() {
-    let mut r = Runtime::default();
-    r.enter(r#"SWAP A,B!:PRINT A"#);
-    assert_eq!(exec(&mut r), " 0 \n");
-    r.enter(r#"A=1:B=2:SWAPA,B:PRINTA;B"#);
-    assert_eq!(exec(&mut r), " 2  1 \n");
-    r.enter(r#"DEFSTR S:S="S":A$="A":SWAP S,A$:PRINTA$;S"#);
-    assert_eq!(exec(&mut r), "SA\n");
-    r.enter(r#"A%=127:SWAP A%,B#"#);
-    assert_eq!(exec(&mut r), "?TYPE MISMATCH\n");
-    r.enter(r#"PRINT A%"#);
-    assert_eq!(exec(&mut r), " 127 \n");
-}
-
-#[test]
-fn test_let_mid_statement() {
-    let mut r = Runtime::default();
-    r.enter(r#"A$="PORTLAND, ME":MID$(A$,11)="OR":?A$"#);
-    assert_eq!(exec(&mut r), "PORTLAND, OR\n");
-    r.enter(r#"LET MID$(A$,11)="MEH":?A$"#);
-    assert_eq!(exec(&mut r), "PORTLAND, ME\n");
-    r.enter(r#"MID$(A$,0)="Portland":?A$"#);
-    assert_eq!(exec(&mut r), "?ILLEGAL FUNCTION CALL; POSITION IS ZERO\n");
-    r.enter(r#"MID$(A$,1)="Portland":?A$"#);
-    assert_eq!(exec(&mut r), "Portland, ME\n");
-    r.enter(r#"MID$(A$,5,1)="LALA":?A$"#);
-    assert_eq!(exec(&mut r), "PortLand, ME\n");
-    r.enter(r#"MID$(A$,1,0)="LALA":?A$"#);
-    assert_eq!(exec(&mut r), "PortLand, ME\n");
-    r.enter(r#"A$(5)="PORTLAND, ME":MID$(A$(5),11)="OR":?A$(5)"#);
-    assert_eq!(exec(&mut r), "PORTLAND, OR\n");
-}
-
-#[test]
-fn test_tron_troff() {
-    let mut r = Runtime::default();
-    r.enter(r#"10 FOR I = 1 TO 5"#);
-    r.enter(r#"20 IF I = 2 THEN TRON"#);
-    r.enter(r#"30 IF I = 4 THEN TROFF"#);
-    r.enter(r#"40 PRINT I"#);
-    r.enter(r#"50 NEXT I"#);
-    r.enter(r#"run"#);
-    assert_eq!(
-        exec(&mut r),
-        " 1 \n[30][40] 2 \n[50][20][30][40] 3 \n[50][20][30] 4 \n 5 \n"
-    );
 }
