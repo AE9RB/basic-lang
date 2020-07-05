@@ -80,7 +80,7 @@ A1$ = "Hello"
 A2$ = CHR$(34) + "HELLO" + CHR$(34)
 ```
 
-Expressions are anything that evaluates to a variable. The number `1` is an expression;
+Expressions are anything that evaluates to a value. The number `1` is an expression;
 literals are a specific kind of expression. The variable `PI#` is also an expression.
 An expression may also perform arithmetic, compare values, and call functions.
 Here are some example of expressions.
