@@ -13,6 +13,8 @@ exclude = ["patch"]
 [profile.release]
 panic = "abort"
 lto = true
+codegen-units = 1
+opt-level = "s"
 
 [dependencies]
 ansi_term = "0.12"

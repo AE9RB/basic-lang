@@ -114,7 +114,7 @@ impl VarItem {
                 link.append(self.link)?;
                 link.push(Opcode::Literal(Val::try_from(len)?))?;
                 link.push(Opcode::DimArr(self.name))?;
-                return Ok(self.col.clone());
+                return Ok(self.col);
             }
         }
         Err(error!(SyntaxError, ..&self.col; "NOT AN ARRAY"))
@@ -125,7 +125,7 @@ impl VarItem {
         debug_assert!(self.arg_len.is_none());
         debug_assert!(self.link.is_empty());
         link.push(Opcode::Pop(self.name))?;
-        Ok(self.col.clone())
+        Ok(self.col)
     }
 
     fn push_as_pop(self, link: &mut Link) -> Result<Column> {
@@ -142,7 +142,7 @@ impl VarItem {
             debug_assert!(self.link.is_empty());
             link.push(Opcode::Pop(self.name))?;
         }
-        Ok(self.col.clone())
+        Ok(self.col)
     }
 
     fn push_as_expression(self, link: &mut Link) -> Result<Column> {
@@ -174,7 +174,7 @@ impl VarItem {
                 }
             }
         }
-        Ok(self.col.clone())
+        Ok(self.col)
     }
 }
 
