@@ -6,7 +6,8 @@ READY.
 
 ## Installation
 
-Windows and MacOS binaries are linked above.<br />
+Windows and MacOS binaries are linked above.
+
 Linux requires [Rust](https://www.rust-lang.org/tools/install) then
 the command `cargo install basic-lang`.
 
