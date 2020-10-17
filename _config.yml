@@ -1,6 +1,6 @@
 theme: jekyll-theme-tactile
-title: 64K BASIC
-description: The BASIC Programming Language: Microcomputer Edition
+title: "64K BASIC"
+description: "The BASIC Programming Language: Microcomputer Edition"
 github:
   public: true
   is_project_page: true
