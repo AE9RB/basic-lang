@@ -379,7 +379,6 @@ impl Runtime {
         Ok(Event::Input(prompt, is_caps))
     }
 
-    #[allow(clippy::cognitive_complexity)]
     fn execute_loop(&mut self, iterations: usize) -> Result<Event> {
         let has_indirect_errors = !self.listing.indirect_errors.is_empty();
         for _ in 0..iterations {
