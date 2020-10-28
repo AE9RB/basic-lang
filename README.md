@@ -1,4 +1,4 @@
-The BASIC programming language as it was in the beginning.
+The BASIC Programming Language: Microcomputer Edition
 ```
 64K BASIC
 READY.

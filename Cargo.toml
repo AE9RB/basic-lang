@@ -6,7 +6,7 @@ authors = ["David Turnbull"]
 license = "Apache-2.0 OR MIT"
 homepage = "http://basic-lang.org/"
 repository = "https://github.com/AE9RB/basic-lang"
-description = "The BASIC programming language as it was in the 8-bit era."
+description = "The BASIC Programming Language: Microcomputer Edition"
 readme = "README.md"
 exclude = ["patch"]
 
