@@ -125,8 +125,8 @@ PRINT 10/0     ' inf
 PRINT 10\0     ' ?DIVISION BY ZERO
 ```
 
-Relational operators always return an Integer with a value of 0 for true
-or -1 (&xFFFF) for false. All relational operators evaluate at the same
+Relational operators always return an Integer with a value of 0 for false
+or -1 (&xFFFF) for true. All relational operators evaluate at the same
 precedence. These are typically used with IF statements, but there are
 other uses if you take advantage of the 0 and -1 value guarantee.
 
