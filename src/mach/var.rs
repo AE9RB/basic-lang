@@ -102,7 +102,7 @@ impl Var {
                 } else {
                     use VarType::*;
                     if let Some(idx) = var_name.chars().next() {
-                        debug_assert!(idx >= 'A' && idx <= 'Z');
+                        debug_assert!(('A'..='Z').contains(&idx));
                         match self.types[idx as usize - 'A' as usize] {
                             Integer => Val::Integer(0),
                             Single => Val::Single(0.0),
@@ -204,7 +204,7 @@ impl Var {
         } else if var_name.ends_with('$') {
             self.insert_string(var_name, value)
         } else if let Some(idx) = var_name.chars().next() {
-            debug_assert!(idx >= 'A' && idx <= 'Z');
+            debug_assert!(('A'..='Z').contains(&idx));
             use VarType::*;
             match self.types[idx as usize - 'A' as usize] {
                 Integer => self.insert_integer(var_name, value),

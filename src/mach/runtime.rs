@@ -369,10 +369,7 @@ impl Runtime {
         };
         prompt.push('?');
         prompt.push(' ');
-        let is_caps = match caps {
-            Val::Integer(i) if i == 0 => false,
-            _ => true,
-        };
+        let is_caps = !matches!(caps, Val::Integer(i) if i == 0);
         self.stack.push(caps)?;
         self.stack.push(len)?;
         self.print_col = 0;

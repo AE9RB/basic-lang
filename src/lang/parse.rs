@@ -531,7 +531,6 @@ impl Expression {
 }
 
 impl Statement {
-    #[allow(clippy::cognitive_complexity)]
     fn expect(parse: &mut BasicParser) -> Result<Statement> {
         match parse.peek() {
             Some(Token::Ident(_)) => return Ok(Self::r#let(parse, true)?),
@@ -586,10 +585,10 @@ impl Statement {
 
     fn r#clear(parse: &mut BasicParser) -> Result<Statement> {
         let result = Ok(Statement::Clear(parse.col.clone()));
-        while match parse.peek() {
-            None | Some(Token::Colon) | Some(Token::Word(Word::Else)) => false,
-            _ => true,
-        } {
+        while !matches!(
+            parse.peek(),
+            None | Some(Token::Colon) | Some(Token::Word(Word::Else))
+        ) {
             parse.next();
         }
         result

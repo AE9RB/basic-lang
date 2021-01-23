@@ -316,10 +316,10 @@ fn load(filename: &str, allow_patch: bool, ignore_errors: bool) -> Result<Listin
         || filename.starts_with("https://")
         || filename.starts_with("//")
     {
-        let filename = if filename.starts_with("//") {
+        let filename = if let Some(filename) = filename.strip_prefix("//") {
             let mut url =
                 "https://raw.githubusercontent.com/AE9RB/basic-lang/master/patch/".to_string();
-            url.push_str(&filename[2..]);
+            url.push_str(filename);
             url
         } else {
             filename.to_string()

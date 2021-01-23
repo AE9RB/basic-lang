@@ -173,10 +173,7 @@ impl Function {
             None => return Ok(Val::Integer(0)),
         };
         let string: Rc<str> = string[ch_idx..].into(); //??
-        let index = match string.find(pattern.as_ref()) {
-            Some(n) => n,
-            None => 0,
-        };
+        let index = string.find(pattern.as_ref()).unwrap_or(0);
         let str_index = string
             .char_indices()
             .enumerate()

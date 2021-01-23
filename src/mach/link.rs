@@ -257,7 +257,7 @@ impl Link {
     pub fn set_start_of_direct(&mut self, op_addr: Address) {
         self.direct_set = true;
         self.symbols.insert(
-            LineNumber::max_value() as isize + 1 as Symbol,
+            LineNumber::max_value() as Symbol + 1,
             (op_addr, self.data.len()),
         );
     }

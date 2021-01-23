@@ -230,8 +230,7 @@ impl TryFrom<Val> for Rc<str> {
 
 impl From<&str> for Val {
     fn from(string: &str) -> Self {
-        if string.starts_with('&') {
-            let string = &string[1..];
+        if let Some(string) = string.strip_prefix("&") {
             if string.starts_with('H') || string.starts_with('h') {
                 if let Ok(num) = i16::from_str_radix(&string[1..], 16) {
                     return Val::Integer(num);
