@@ -1,4 +1,4 @@
-use super::{compile::compile, Address, Link, Opcode, Symbol, Val};
+use super::{codegen::codegen, Address, Link, Opcode, Symbol, Val};
 use crate::lang::{Error, Line, LineNumber};
 use std::sync::Arc;
 
@@ -63,7 +63,7 @@ impl Program {
         self.link.clear();
     }
 
-    pub fn compile<'b, T: IntoIterator<Item = &'b Line>>(&mut self, lines: T) {
+    pub fn codegen<'b, T: IntoIterator<Item = &'b Line>>(&mut self, lines: T) {
         let mut direct_seen = false;
         for line in lines {
             if let Some(line_number) = line.number() {
@@ -93,7 +93,7 @@ impl Program {
                     continue;
                 }
             };
-            compile(self, &ast);
+            codegen(self, &ast);
             if self.line_number.is_none() {
                 if let Err(e) = self.link.push(Opcode::End) {
                     Arc::make_mut(&mut self.errors).push(e);

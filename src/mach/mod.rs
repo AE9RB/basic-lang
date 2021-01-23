@@ -10,7 +10,7 @@ const MAX_LINE_LEN: usize = 1024;
 pub type Address = usize;
 pub type Symbol = isize;
 
-mod compile;
+mod codegen;
 mod function;
 mod link;
 mod listing;

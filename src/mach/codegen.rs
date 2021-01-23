@@ -7,53 +7,53 @@ use std::rc::Rc;
 
 type Result<T> = std::result::Result<T, Error>;
 
-pub fn compile(program: &mut Program, ast: &[ast::Statement]) {
-    Visitor::compile(program, ast)
+pub fn codegen(program: &mut Program, ast: &[ast::Statement]) {
+    Visitor::accept(program, ast)
 }
 
 struct Visitor<'a> {
     link: &'a mut Program,
-    comp: Compiler,
+    gen: Generator,
 }
 
 impl<'a> Visitor<'a> {
-    fn compile(program: &mut Program, ast: &[ast::Statement]) {
+    fn accept(program: &mut Program, ast: &[ast::Statement]) {
         let mut this = Visitor {
             link: program,
-            comp: Compiler::new(),
+            gen: Generator::new(),
         };
         for statement in ast {
             statement.accept(&mut this);
         }
-        for (_col, frag) in this.comp.stmt.drain(..) {
+        for (_col, frag) in this.gen.stmt.drain(..) {
             if let Some(error) = this.link.append(frag).err() {
                 this.link.error(error);
                 break;
             }
         }
-        debug_assert_eq!(0, this.comp.var.len());
-        debug_assert_eq!(0, this.comp.expr.len());
-        debug_assert_eq!(0, this.comp.stmt.len());
+        debug_assert_eq!(0, this.gen.var.len());
+        debug_assert_eq!(0, this.gen.expr.len());
+        debug_assert_eq!(0, this.gen.stmt.len());
     }
 }
 
 impl<'a> ast::Visitor for Visitor<'a> {
     fn visit_statement(&mut self, statement: &ast::Statement) {
         let mut link = Link::default();
-        let col = match self.comp.statement(&mut link, statement) {
+        let col = match self.gen.statement(&mut link, statement) {
             Ok(col) => col,
             Err(e) => {
                 self.link.error(e);
                 0..0
             }
         };
-        if let Some(error) = self.comp.stmt.push((col.clone(), link)).err() {
+        if let Some(error) = self.gen.stmt.push((col.clone(), link)).err() {
             self.link.error(error.in_column(&col))
         }
     }
     fn visit_variable(&mut self, var: &ast::Variable) {
         let mut link = Link::default();
-        let (col, name, len) = match self.comp.variable(&mut link, var) {
+        let (col, name, len) = match self.gen.variable(&mut link, var) {
             Ok((col, name, len)) => (col, name, len),
             Err(e) => {
                 self.link.error(e);
@@ -61,20 +61,20 @@ impl<'a> ast::Visitor for Visitor<'a> {
             }
         };
         let var_item = VarItem::new(col.clone(), name, link, len);
-        if let Some(error) = self.comp.var.push(var_item).err() {
+        if let Some(error) = self.gen.var.push(var_item).err() {
             self.link.error(error.in_column(&col))
         }
     }
     fn visit_expression(&mut self, expression: &ast::Expression) {
         let mut link = Link::default();
-        let col = match self.comp.expression(&mut link, expression) {
+        let col = match self.gen.expression(&mut link, expression) {
             Ok(col) => col,
             Err(e) => {
                 self.link.error(e);
                 0..0
             }
         };
-        if let Some(error) = self.comp.expr.push((col.clone(), link)).err() {
+        if let Some(error) = self.gen.expr.push((col.clone(), link)).err() {
             self.link.error(error.in_column(&col))
         }
     }
@@ -178,18 +178,18 @@ impl VarItem {
     }
 }
 
-struct Compiler {
+struct Generator {
     var: Stack<VarItem>,
     expr: Stack<(Column, Link)>,
     stmt: Stack<(Column, Link)>,
 }
 
-impl Compiler {
-    fn new() -> Compiler {
-        Compiler {
-            var: Stack::new("COMPILER VARIABLE OVERFLOW"),
-            expr: Stack::new("COMPILER EXPRESSION OVERFLOW"),
-            stmt: Stack::new("COMPILER STATEMENT OVERFLOW"),
+impl Generator {
+    fn new() -> Generator {
+        Generator {
+            var: Stack::new("VARIABLE OVERFLOW"),
+            expr: Stack::new("EXPRESSION OVERFLOW"),
+            stmt: Stack::new("STATEMENT OVERFLOW"),
         }
     }
 
@@ -222,7 +222,7 @@ impl Compiler {
 
     fn expression(&mut self, link: &mut Link, expr: &ast::Expression) -> Result<Column> {
         fn unary_expression(
-            this: &mut Compiler,
+            this: &mut Generator,
             link: &mut Link,
             op: Opcode,
             col: &Column,
@@ -232,7 +232,7 @@ impl Compiler {
             link.push(op)?;
             Ok(col.start..expr_col.end)
         }
-        fn binary_expression(this: &mut Compiler, link: &mut Link, op: Opcode) -> Result<Column> {
+        fn binary_expression(this: &mut Generator, link: &mut Link, op: Opcode) -> Result<Column> {
             let (col_rhs, rhs) = this.expr.pop()?;
             let (col_lhs, lhs) = this.expr.pop()?;
             link.append(lhs)?;

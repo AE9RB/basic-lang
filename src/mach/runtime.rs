@@ -123,10 +123,10 @@ impl Runtime {
     fn enter_direct(&mut self, line: Line) {
         if self.dirty {
             self.program.clear();
-            self.program.compile(self.listing.lines());
+            self.program.codegen(self.listing.lines());
             self.dirty = false;
         }
-        self.program.compile(&line);
+        self.program.codegen(&line);
         let (pc, indirect_errors, direct_errors) = self.program.link();
         self.pc = pc;
         self.tr = None;
