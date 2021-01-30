@@ -630,13 +630,14 @@ impl Runtime {
     }
 
     fn r#end(&mut self) -> Event {
-        self.cont = State::Stopped;
-        std::mem::swap(&mut self.cont, &mut self.state);
-        self.cont_pc = self.pc;
-        if self.pc >= self.entry_address {
-            self.cont = State::Stopped;
-            self.stack.clear();
+        if self.pc < self.entry_address {
+            std::mem::swap(&mut self.cont, &mut self.state);
+            self.cont_pc = self.pc;
         }
+        if self.pc == self.entry_address {
+            self.cont = State::Stopped;
+        }
+        self.state = State::Stopped;
         Event::Stopped
     }
 

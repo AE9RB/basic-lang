@@ -13,14 +13,20 @@ fn test_indirect_error() {
 #[test]
 fn test_cont_after_end() {
     let mut r = Runtime::default();
-    r.enter(r#"10 A=1"#);
-    r.enter(r#"20 END"#);
-    r.enter(r#"30 PRINT A"#);
+    r.enter(r#"10 GOSUB 40"#);
+    r.enter(r#"20 PRINT 1"#);
+    r.enter(r#"30 END"#);
+    r.enter(r#"40 PRINT 2"#);
     r.enter(r#"RUN"#);
-    assert_eq!(exec(&mut r), "");
-    r.enter(r#"CONT"#);
+    assert_eq!(exec(&mut r), " 2 \n");
+    r.enter(r#"RETURN"#);
     assert_eq!(exec(&mut r), " 1 \n");
+    r.enter(r#"CONT"#);
+    assert_eq!(exec(&mut r), " 2 \n");
+    r.enter(r#"CONT"#);
+    assert_eq!(exec(&mut r), "?CAN'T CONTINUE\n");
 }
+
 #[test]
 fn test_cont_after_stop() {
     let mut r = Runtime::default();
@@ -31,6 +37,51 @@ fn test_cont_after_stop() {
     assert_eq!(exec(&mut r), "?BREAK IN 20\n");
     r.enter(r#"CONT"#);
     assert_eq!(exec(&mut r), " 1 \n");
+}
+
+#[test]
+fn test_cont_after_debug() {
+    let mut r = Runtime::default();
+    r.enter(r#"10 A=1"#);
+    r.enter(r#"20 STOP"#);
+    r.enter(r#"30 PRINT A"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), "?BREAK IN 20\n");
+    r.enter(r#"?A:A=2"#);
+    assert_eq!(exec(&mut r), " 1 \n");
+    r.enter(r#"CONT"#);
+    assert_eq!(exec(&mut r), " 2 \n");
+}
+
+#[test]
+fn test_end_then_cont() {
+    let mut r = Runtime::default();
+    r.enter(r#"END"#);
+    assert_eq!(exec(&mut r), "");
+    r.enter(r#"CONT"#);
+    assert_eq!(exec(&mut r), "?CAN'T CONTINUE\n");
+}
+
+#[test]
+fn test_cont_after_eof() {
+    let mut r = Runtime::default();
+    r.enter(r#"10 PRINT 1"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), " 1 \n");
+    r.enter(r#"CONT"#);
+    assert_eq!(exec(&mut r), "?CAN'T CONTINUE\n");
+    r.enter(r#"20 END"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), " 1 \n");
+    r.enter(r#"CONT"#);
+    assert_eq!(exec(&mut r), "?CAN'T CONTINUE\n");
+    r.enter(r#"30 END"#);
+    r.enter(r#"RUN"#);
+    assert_eq!(exec(&mut r), " 1 \n");
+    r.enter(r#"CONT"#);
+    assert_eq!(exec(&mut r), "");
+    r.enter(r#"CONT"#);
+    assert_eq!(exec(&mut r), "?CAN'T CONTINUE\n");
 }
 
 #[test]
