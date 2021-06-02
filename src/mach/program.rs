@@ -37,10 +37,7 @@ impl Program {
     }
 
     pub fn get(&self, addr: Address) -> Option<Opcode> {
-        match self.link.get(addr) {
-            Some(o) => Some(o.clone()),
-            None => None,
-        }
+        self.link.get(addr).cloned()
     }
 
     pub fn read_data(&mut self) -> Result<Val> {

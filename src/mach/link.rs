@@ -343,7 +343,7 @@ impl TryFrom<&Link> for LineNumber {
     fn try_from(prog: &Link) -> std::result::Result<Self, Self::Error> {
         if prog.ops.len() == 1 {
             if let Some(Opcode::Literal(val)) = prog.ops.last() {
-                return Ok(LineNumber::try_from(val.clone())?);
+                return LineNumber::try_from(val.clone());
             }
         }
         Err(error!(UndefinedLine; "INVALID LINE NUMBER"))

@@ -211,7 +211,7 @@ impl Function {
 
     pub fn len(string: Val) -> Result<Val> {
         let string = Rc::<str>::try_from(string)?;
-        Ok(Val::try_from(string.chars().count())?)
+        Val::try_from(string.chars().count())
     }
 
     pub fn log(val: Val) -> Result<Val> {

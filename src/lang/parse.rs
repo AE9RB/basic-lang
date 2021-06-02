@@ -430,7 +430,7 @@ impl Expression {
                 lhs = Expression::binary_op(column, op, lhs, rhs)?;
             }
             Ok(lhs)
-        };
+        }
         descend(parse, var_map, 0)
     }
 
@@ -533,48 +533,48 @@ impl Expression {
 impl Statement {
     fn expect(parse: &mut BasicParser) -> Result<Statement> {
         match parse.peek() {
-            Some(Token::Ident(_)) => return Ok(Self::r#let(parse, true)?),
+            Some(Token::Ident(_)) => return Self::r#let(parse, true),
             Some(Token::Word(word)) => {
                 parse.next();
                 use Word::*;
                 match word {
-                    Clear => return Ok(Self::r#clear(parse)?),
-                    Cls => return Ok(Self::r#cls(parse)?),
-                    Cont => return Ok(Self::r#cont(parse)?),
-                    Data => return Ok(Self::r#data(parse)?),
-                    Def => return Ok(Self::r#def(parse)?),
-                    Defdbl => return Ok(Self::r#defdbl(parse)?),
-                    Defint => return Ok(Self::r#defint(parse)?),
-                    Defsng => return Ok(Self::r#defsng(parse)?),
-                    Defstr => return Ok(Self::r#defstr(parse)?),
-                    Delete => return Ok(Self::r#delete(parse)?),
-                    Dim => return Ok(Self::r#dim(parse)?),
-                    End => return Ok(Self::r#end(parse)?),
-                    Erase => return Ok(Self::r#erase(parse)?),
-                    For => return Ok(Self::r#for(parse)?),
-                    Gosub => return Ok(Self::r#gosub(parse)?),
-                    Goto => return Ok(Self::r#goto(parse)?),
-                    If => return Ok(Self::r#if(parse)?),
-                    Input => return Ok(Self::r#input(parse)?),
-                    Let => return Ok(Self::r#let(parse, false)?),
-                    List => return Ok(Self::r#list(parse)?),
-                    Load => return Ok(Self::r#load(parse)?),
-                    New => return Ok(Self::r#new(parse)?),
-                    Next => return Ok(Self::r#next(parse)?),
-                    On => return Ok(Self::r#on(parse)?),
-                    Print => return Ok(Self::r#print(parse)?),
-                    Read => return Ok(Self::r#read(parse)?),
-                    Renum => return Ok(Self::r#renum(parse)?),
-                    Restore => return Ok(Self::r#restore(parse)?),
-                    Return => return Ok(Self::r#return(parse)?),
-                    Run => return Ok(Self::r#run(parse)?),
-                    Save => return Ok(Self::r#save(parse)?),
-                    Stop => return Ok(Self::r#stop(parse)?),
-                    Swap => return Ok(Self::r#swap(parse)?),
-                    Troff => return Ok(Self::r#troff(parse)?),
-                    Tron => return Ok(Self::r#tron(parse)?),
-                    Wend => return Ok(Self::r#wend(parse)?),
-                    While => return Ok(Self::r#while(parse)?),
+                    Clear => return Self::r#clear(parse),
+                    Cls => return Self::r#cls(parse),
+                    Cont => return Self::r#cont(parse),
+                    Data => return Self::r#data(parse),
+                    Def => return Self::r#def(parse),
+                    Defdbl => return Self::r#defdbl(parse),
+                    Defint => return Self::r#defint(parse),
+                    Defsng => return Self::r#defsng(parse),
+                    Defstr => return Self::r#defstr(parse),
+                    Delete => return Self::r#delete(parse),
+                    Dim => return Self::r#dim(parse),
+                    End => return Self::r#end(parse),
+                    Erase => return Self::r#erase(parse),
+                    For => return Self::r#for(parse),
+                    Gosub => return Self::r#gosub(parse),
+                    Goto => return Self::r#goto(parse),
+                    If => return Self::r#if(parse),
+                    Input => return Self::r#input(parse),
+                    Let => return Self::r#let(parse, false),
+                    List => return Self::r#list(parse),
+                    Load => return Self::r#load(parse),
+                    New => return Self::r#new(parse),
+                    Next => return Self::r#next(parse),
+                    On => return Self::r#on(parse),
+                    Print => return Self::r#print(parse),
+                    Read => return Self::r#read(parse),
+                    Renum => return Self::r#renum(parse),
+                    Restore => return Self::r#restore(parse),
+                    Return => return Self::r#return(parse),
+                    Run => return Self::r#run(parse),
+                    Save => return Self::r#save(parse),
+                    Stop => return Self::r#stop(parse),
+                    Swap => return Self::r#swap(parse),
+                    Troff => return Self::r#troff(parse),
+                    Tron => return Self::r#tron(parse),
+                    Wend => return Self::r#wend(parse),
+                    While => return Self::r#while(parse),
                     Else | Rem1 | Rem2 | Step | Then | To => {}
                 }
             }

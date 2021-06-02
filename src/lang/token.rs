@@ -73,11 +73,7 @@ impl Token {
         ]
         .iter()
         .filter_map(|(ts, tk)| {
-            if let Some(idx) = s.find(ts) {
-                Some((idx, ts.len(), tk.clone()))
-            } else {
-                None
-            }
+            s.find(ts).map(|idx| (idx, ts.len(), tk.clone()))
         })
         .min_by_key(|(i, _, _)| *i)
         {
