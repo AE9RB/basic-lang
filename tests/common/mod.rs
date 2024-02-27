@@ -25,10 +25,10 @@ pub fn exec_n(runtime: &mut Runtime, cycles: usize) -> String {
                 }
             }
             Event::Print(ps) => {
-                s.push_str(&ps);
+                s.push_str(ps);
             }
             Event::Input(ps, _) => {
-                s.push_str(&ps);
+                s.push_str(ps);
                 break;
             }
             Event::List((ls, _columns)) => {

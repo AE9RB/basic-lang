@@ -88,7 +88,7 @@ impl<T> Stack<T> {
         if len > self.vec.len() {
             Err(self.underflow_error())
         } else {
-            let range = (self.vec.len() - len as usize)..;
+            let range = (self.vec.len() - len)..;
             let mut st: Stack<T> = Stack::new(self.overflow_message);
             for item in self.drain(range) {
                 st.push(item)?;

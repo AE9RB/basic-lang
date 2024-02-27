@@ -217,7 +217,7 @@ impl LineCompleter {
     }
 }
 
-impl<'a, Term: Terminal> Completer<Term> for LineCompleter {
+impl<Term: Terminal> Completer<Term> for LineCompleter {
     fn complete(
         &self,
         _word: &str,
@@ -324,7 +324,7 @@ fn load(filename: &str, allow_patch: bool, ignore_errors: bool) -> Result<Listin
         } else {
             filename.to_string()
         };
-        let mut reader = match reqwest::blocking::get(&filename) {
+        let mut reader = match reqwest::blocking::get(filename) {
             Ok(y) => {
                 if y.status().is_success() {
                     BufReader::new(y)

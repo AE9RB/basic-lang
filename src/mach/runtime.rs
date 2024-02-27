@@ -193,7 +193,7 @@ impl Runtime {
                 }
             }
             vec_val.push(Val::String(string[start..].into()));
-            if len as usize != vec_val.len() {
+            if len != vec_val.len() {
                 self.state = State::InputRedo;
                 return Ok(());
             }
@@ -258,9 +258,7 @@ impl Runtime {
     pub fn execute(&mut self, iterations: usize) -> Event {
         fn line_number(this: &Runtime) -> LineNumber {
             let mut pc = this.pc;
-            if pc > 0 {
-                pc -= 1
-            }
+            pc = pc.saturating_sub(1);
             this.program.line_number_for(pc)
         }
         match &self.state {
@@ -281,21 +279,20 @@ impl Runtime {
                 None => return Event::Stopped,
             },
             State::Interrupt => {
-                self.state = State::RuntimeError(error!(Break, line_number(&self)));
+                self.state = State::RuntimeError(error!(Break, line_number(self)));
             }
             State::Listing(range) => {
                 let mut range = range.clone();
                 if let Some((string, columns)) = self.listing.list_line(&mut range) {
                     self.state = State::Listing(range);
                     return Event::List((string, columns));
-                } else {
-                    self.state = State::Running;
                 }
+                self.state = State::Running;
             }
             State::Input => match self.execute_input() {
                 Ok(event) => return event,
                 Err(error) => {
-                    self.state = State::RuntimeError(error.in_line_number(line_number(&self)))
+                    self.state = State::RuntimeError(error.in_line_number(line_number(self)))
                 }
             },
             State::InputRedo => {
@@ -347,7 +344,7 @@ impl Runtime {
                     }
                     self.state = State::InputRedo;
                 } else {
-                    self.cont = State::RuntimeError(error.in_line_number(line_number(&self)));
+                    self.cont = State::RuntimeError(error.in_line_number(line_number(self)));
                     std::mem::swap(&mut self.cont, &mut self.state);
                     self.cont_pc = self.pc;
                     if self.pc >= self.entry_address || self.stack.is_full() {

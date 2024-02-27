@@ -6,25 +6,13 @@ type Result<T> = std::result::Result<T, Error>;
 
 /// ## Program memory
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct Program {
     errors: Arc<Vec<Error>>,
     indirect_errors: Arc<Vec<Error>>,
     direct_address: Address,
     line_number: LineNumber,
     link: Link,
-}
-
-impl Default for Program {
-    fn default() -> Self {
-        Program {
-            errors: Arc::default(),
-            indirect_errors: Arc::default(),
-            direct_address: 0,
-            line_number: None,
-            link: Link::default(),
-        }
-    }
 }
 
 impl Program {

@@ -3,6 +3,7 @@ use crate::error;
 use crate::lang::Error;
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::fmt::Write;
 use std::rc::Rc;
 
 type Result<T> = std::result::Result<T, Error>;
@@ -16,18 +17,13 @@ pub struct Var {
     types: [VarType; 26],
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 enum VarType {
     Integer,
+    #[default]
     Single,
     Double,
     String,
-}
-
-impl Default for VarType {
-    fn default() -> Self {
-        VarType::Single
-    }
 }
 
 impl Var {
@@ -102,7 +98,7 @@ impl Var {
                 } else {
                     use VarType::*;
                     if let Some(idx) = var_name.chars().next() {
-                        debug_assert!(('A'..='Z').contains(&idx));
+                        debug_assert!(idx.is_ascii_uppercase());
                         match self.types[idx as usize - 'A' as usize] {
                             Integer => Val::Integer(0),
                             Single => Val::Single(0.0),
@@ -165,12 +161,11 @@ impl Var {
             }
         }
         let mut s: String = format!("{}", var_name);
-        s.push_str(
-            &requested
-                .iter()
-                .map(|r| format!(",{}", r))
-                .collect::<String>(),
-        );
+        s.push_str(&requested.iter().fold(String::new(), |mut output, b| {
+            let _ = write!(output, ",{}", b);
+            output
+        }));
+
         s.push_str(&format!(",{}", var_name));
         Ok(s.into())
     }
@@ -204,7 +199,7 @@ impl Var {
         } else if var_name.ends_with('$') {
             self.insert_string(var_name, value)
         } else if let Some(idx) = var_name.chars().next() {
-            debug_assert!(('A'..='Z').contains(&idx));
+            debug_assert!(idx.is_ascii_uppercase());
             use VarType::*;
             match self.types[idx as usize - 'A' as usize] {
                 Integer => self.insert_integer(var_name, value),

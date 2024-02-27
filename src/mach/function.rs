@@ -381,7 +381,7 @@ impl Function {
 
     pub fn tab(print_col: usize, val: Val) -> Result<Val> {
         let tab = i16::try_from(val)?;
-        if tab < -255 || tab > 255 {
+        if !(-255..=255).contains(&tab) {
             return Err(error!(Overflow));
         }
         let len = if tab < 0 {
