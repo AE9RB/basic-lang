@@ -371,6 +371,7 @@ impl BasicLexer {
             {
                 s.push(ch)
             } else {
+                self.chars.push_front(ch);
                 break;
             }
         }
