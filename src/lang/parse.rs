@@ -495,7 +495,7 @@ impl Expression {
 
     fn literal(col: Column, lit: &Literal) -> Result<Expression> {
         fn parse<T: std::str::FromStr>(col: Column, s: &str) -> Result<T> {
-            let mut s = String::from(s).replace("D", "E");
+            let mut s = String::from(s).replace('D', "E");
             match s.chars().last() {
                 Some('!') | Some('#') | Some('%') => {
                     s.pop();
@@ -919,7 +919,7 @@ impl Statement {
         };
         Ok(Statement::Restore(
             parse.col.clone(),
-            Expression::Single(parse.col.clone(), num as f32),
+            Expression::Single(parse.col.clone(), num),
         ))
     }
 
@@ -1019,23 +1019,23 @@ impl From<(&token::Ident, &token::Ident)> for Ident {
         string.push('.');
         match f.1 {
             token::Ident::Plain(s) => Ident::Plain({
-                string.push_str(&s);
+                string.push_str(s);
                 string.into()
             }),
             token::Ident::String(s) => Ident::String({
-                string.push_str(&s);
+                string.push_str(s);
                 string.into()
             }),
             token::Ident::Single(s) => Ident::Single({
-                string.push_str(&s);
+                string.push_str(s);
                 string.into()
             }),
             token::Ident::Double(s) => Ident::Double({
-                string.push_str(&s);
+                string.push_str(s);
                 string.into()
             }),
             token::Ident::Integer(s) => Ident::Integer({
-                string.push_str(&s);
+                string.push_str(s);
                 string.into()
             }),
         }

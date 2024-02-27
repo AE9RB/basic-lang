@@ -9,7 +9,7 @@ pub struct Line {
 
 impl Line {
     pub fn new(source_line: &str) -> Line {
-        let (number, tokens) = lex(&source_line);
+        let (number, tokens) = lex(source_line);
         Line { number, tokens }
     }
 

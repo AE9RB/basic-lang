@@ -23,7 +23,7 @@ struct BasicLexer {
     remark: bool,
 }
 
-impl<'a> Iterator for BasicLexer {
+impl Iterator for BasicLexer {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {

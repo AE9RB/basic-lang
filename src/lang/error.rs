@@ -139,7 +139,7 @@ pub enum ErrorCode {
 
 impl std::fmt::Debug for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Error {{ {} }}", self.to_string())
+        write!(f, "Error {{ {} }}", self)
     }
 }
 
